@@ -3,24 +3,13 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
-  },
-  "prisma": {
-    "seed": "node prisma/seed.js"
+    "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "@prisma/client": "latest",
     "@vitejs/plugin-react": "latest",
-    "bcrypt": "latest",
     "vite": "latest",
     "react": "latest",
     "react-dom": "latest",
     "lucide-react": "latest"
-  },
-  "devDependencies": {
-    "prisma": "latest"
   }
 }
