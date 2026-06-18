@@ -27,6 +27,13 @@ import {
   signUp,
   verifyEmail
 } from "./lib/auth";
+import { pricingCatalog, pricingServices } from "./pricing/pricingCatalog";
+import {
+  calculateEstimateTotals,
+  calculateItemSubtotal,
+  formatPrice,
+  normalizeBillingPeriod
+} from "./pricing/pricingEngine";
 import "./styles.css";
 
 const logoPath = "/logo.png";
@@ -477,6 +484,7 @@ function App() {
   if (path === "/onboarding") return <OnboardingPage />;
   if (path === "/dashboard") return <DashboardRoute />;
   if (path === "/services") return <ServicesRoute />;
+  if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
   return (
@@ -682,16 +690,28 @@ function PricingPage() {
           HTGClouds provides reliable cloud infrastructure with transparent
           pricing for compute, storage, networking, databases, and backups.
         </p>
-        <a
-          className="button button-dark"
-          href="/signup"
-          onClick={(event) => {
-            event.preventDefault();
-            navigateTo("/signup");
-          }}
-        >
-          Start Free Trial
-        </a>
+        <div className="pricing-hero-actions">
+          <a
+            className="button button-dark"
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Start Free Trial
+          </a>
+          <a
+            className="button pricing-secondary-button"
+            href="/pricing/calculator"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing/calculator");
+            }}
+          >
+            Estimate Monthly Cost
+          </a>
+        </div>
       </section>
 
       <section className="pricing-shell">
@@ -790,6 +810,313 @@ function PricingTable({ label, columns, rows }) {
         </table>
       </div>
     </div>
+  );
+}
+
+const calculatorCategories = [
+  { id: "compute", label: "Compute" },
+  { id: "storage", label: "Storage" },
+  { id: "network", label: "Network" },
+  { id: "security", label: "Security" },
+  { id: "logs", label: "Logs" }
+];
+
+const calculatorBillingPeriods = ["hourly", "monthly", "yearly"];
+
+function getCalculatorServices(category) {
+  return pricingServices.filter((service) => service.category === category);
+}
+
+function getQuantityField(service) {
+  return service.pricingModel === "per-gb" ? "capacityGb" : "quantity";
+}
+
+function PricingCalculatorPage() {
+  const [activeCategory, setActiveCategory] = useState("compute");
+  const [selectedServiceId, setSelectedServiceId] = useState("ECS");
+  const [selectedSkuId, setSelectedSkuId] = useState(pricingCatalog.services.ECS.skus[0].id);
+  const [region, setRegion] = useState(pricingCatalog.regions[0]);
+  const [billingPeriod, setBillingPeriod] = useState(pricingCatalog.defaultBillingPeriod);
+  const [amount, setAmount] = useState(pricingCatalog.services.ECS.defaultQuantity);
+  const [estimateItems, setEstimateItems] = useState([]);
+
+  const selectedService = pricingCatalog.services[selectedServiceId] || pricingServices[0];
+  const selectedSku = selectedService.skus.find((sku) => sku.id === selectedSkuId) || selectedService.skus[0];
+  const quantityField = getQuantityField(selectedService);
+  const previewLine = calculateItemSubtotal({
+    serviceId: selectedService.id,
+    skuId: selectedSku.id,
+    quantity: quantityField === "quantity" ? amount : undefined,
+    capacityGb: quantityField === "capacityGb" ? amount : undefined,
+    billingPeriod
+  });
+  const estimateTotals = calculateEstimateTotals(estimateItems);
+
+  function selectCategory(categoryId) {
+    const servicesInCategory = getCalculatorServices(categoryId);
+    const nextService = servicesInCategory[0];
+    setActiveCategory(categoryId);
+    if (nextService) selectService(nextService.id);
+  }
+
+  function selectService(serviceId) {
+    const service = pricingCatalog.services[serviceId];
+    if (!service) return;
+    setSelectedServiceId(service.id);
+    setSelectedSkuId(service.skus[0].id);
+    setAmount(service.defaultQuantity);
+  }
+
+  function addToEstimate() {
+    setEstimateItems((current) => [
+      ...current,
+      {
+        id: `${selectedService.id}-${selectedSku.id}-${Date.now()}`,
+        serviceId: selectedService.id,
+        skuId: selectedSku.id,
+        region,
+        billingPeriod,
+        quantity: quantityField === "quantity" ? amount : undefined,
+        capacityGb: quantityField === "capacityGb" ? amount : undefined
+      }
+    ]);
+  }
+
+  function updateEstimateAmount(itemId, value) {
+    const parsed = Number(value);
+    setEstimateItems((current) =>
+      current.map((item) => {
+        if (item.id !== itemId) return item;
+        const service = pricingCatalog.services[item.serviceId];
+        const field = getQuantityField(service);
+        return {
+          ...item,
+          [field]: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+        };
+      })
+    );
+  }
+
+  function removeEstimateItem(itemId) {
+    setEstimateItems((current) => current.filter((item) => item.id !== itemId));
+  }
+
+  return (
+    <main className="pricing-page calculator-page">
+      <Navigation />
+      <section className="calculator-hero">
+        <span>Pricing Calculator</span>
+        <h1>Estimate HTGCloud Infrastructure Costs</h1>
+        <p>
+          Configure compute, storage, network, security, and logging services
+          using the HTGClouds pricing catalog.
+        </p>
+      </section>
+
+      <section className="calculator-shell">
+        <aside className="calculator-panel calculator-categories" aria-label="Pricing service categories">
+          <h2>Services</h2>
+          {calculatorCategories.map((category) => (
+            <button
+              key={category.id}
+              className={activeCategory === category.id ? "active" : ""}
+              type="button"
+              onClick={() => selectCategory(category.id)}
+            >
+              {category.label}
+              <span>{getCalculatorServices(category.id).length}</span>
+            </button>
+          ))}
+        </aside>
+
+        <section className="calculator-panel calculator-config">
+          <div className="calculator-section-heading">
+            <span>{selectedService.category}</span>
+            <h2>Configure Service</h2>
+          </div>
+
+          <label>
+            Service
+            <select value={selectedService.id} onChange={(event) => selectService(event.target.value)}>
+              {getCalculatorServices(activeCategory).map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="calculator-grid-two">
+            <label>
+              Region
+              <select value={region} onChange={(event) => setRegion(event.target.value)}>
+                {pricingCatalog.regions.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Billing Period
+              <select
+                value={billingPeriod}
+                onChange={(event) => setBillingPeriod(normalizeBillingPeriod(event.target.value))}
+              >
+                {calculatorBillingPeriods.map((period) => (
+                  <option key={period} value={period}>
+                    {period[0].toUpperCase() + period.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Flavor / Type / Tier
+            <select value={selectedSku.id} onChange={(event) => setSelectedSkuId(event.target.value)}>
+              {selectedService.skus.map((sku) => (
+                <option key={sku.id} value={sku.id}>
+                  {sku.name}{sku.type ? ` - ${sku.type}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <SkuPreview sku={selectedSku} service={selectedService} billingPeriod={billingPeriod} />
+
+          <label>
+            {quantityField === "capacityGb" ? "Capacity (GB)" : selectedService.quantityLabel}
+            <input
+              min="0"
+              type="number"
+              value={amount}
+              onChange={(event) => setAmount(Number(event.target.value))}
+            />
+          </label>
+
+          <div className="calculator-preview-total">
+            <span>Preview subtotal</span>
+            <strong>{previewLine.contactSales ? "Contact Sales" : formatPrice(previewLine.subtotal)}</strong>
+          </div>
+
+          <button className="calculator-add-button" type="button" onClick={addToEstimate}>
+            Add to Estimate
+          </button>
+        </section>
+
+        <aside className="calculator-panel calculator-summary">
+          <div className="calculator-summary-top">
+            <div>
+              <span>Live Estimate</span>
+              <h2>{estimateTotals.formattedSubtotal}</h2>
+              <p>{estimateTotals.contactSalesItems.length} contact-sales item(s) excluded from numeric total.</p>
+            </div>
+            <button type="button" onClick={() => setEstimateItems([])}>
+              Reset
+            </button>
+          </div>
+
+          <div className="estimate-list">
+            {estimateItems.length === 0 ? (
+              <div className="estimate-empty">No services added yet.</div>
+            ) : (
+              estimateItems.map((item) => (
+                <EstimateItem
+                  key={item.id}
+                  item={item}
+                  onRemove={() => removeEstimateItem(item.id)}
+                  onAmountChange={(value) => updateEstimateAmount(item.id, value)}
+                />
+              ))
+            )}
+          </div>
+        </aside>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function SkuPreview({ sku, service, billingPeriod }) {
+  const serviceId = service.id;
+  const priceLine = calculateItemSubtotal({
+    serviceId,
+    skuId: sku.id,
+    quantity: 1,
+    capacityGb: 1,
+    billingPeriod
+  });
+
+  return (
+    <div className="sku-preview">
+      <div>
+        <span>{service.pricingModel === "flat-tier" ? "Tier" : "Selected option"}</span>
+        <strong>{sku.name}</strong>
+        {sku.type && <small>{sku.type}</small>}
+      </div>
+      <div className="sku-meta">
+        {sku.vcpu !== undefined && <span>{sku.vcpu} vCPU</span>}
+        {sku.ramGb !== undefined && <span>{sku.ramGb} GB RAM</span>}
+        {sku.storageGb !== undefined && <span>{sku.storageGb} GB storage</span>}
+        {sku.cpuOvercommitRatio && <span>CPU ratio {sku.cpuOvercommitRatio}</span>}
+        {sku.includedTraffic && <span>{sku.includedTraffic} traffic</span>}
+        {sku.includedStorage && <span>{sku.includedStorage} included</span>}
+        {sku.retentionPolicy && <span>{sku.retentionPolicy} retention</span>}
+      </div>
+      {service.id === "WAF" && <p>Preview pricing from the WAF sheet. Confirm production readiness before quoting.</p>}
+      {sku.features && <p>{sku.features}</p>}
+      <strong className="sku-price">{priceLine.contactSales ? "Contact Sales" : formatPrice(priceLine.unitPrice)}</strong>
+    </div>
+  );
+}
+
+function EstimateItem({ item, onRemove, onAmountChange }) {
+  const service = pricingCatalog.services[item.serviceId];
+  const sku = service.skus.find((entry) => entry.id === item.skuId);
+  const line = calculateItemSubtotal(item);
+  const field = getQuantityField(service);
+  const amount = field === "capacityGb" ? item.capacityGb : item.quantity;
+
+  return (
+    <article className="estimate-item">
+      <div className="estimate-item-head">
+        <div>
+          <h3>{service.name}</h3>
+          <p>{sku?.name}{sku?.type ? ` - ${sku.type}` : ""}</p>
+        </div>
+        <button type="button" onClick={onRemove} aria-label={`Remove ${service.name}`}>
+          <X size={16} />
+        </button>
+      </div>
+      <dl>
+        <div>
+          <dt>Region</dt>
+          <dd>{item.region}</dd>
+        </div>
+        <div>
+          <dt>Billing</dt>
+          <dd>{line.billingPeriod}</dd>
+        </div>
+        <div>
+          <dt>Unit price</dt>
+          <dd>{line.contactSales ? "Contact Sales" : formatPrice(line.unitPrice)}</dd>
+        </div>
+      </dl>
+      <label>
+        {field === "capacityGb" ? "GB capacity" : service.quantityLabel}
+        <input
+          min="0"
+          type="number"
+          value={amount ?? service.defaultQuantity}
+          onChange={(event) => onAmountChange(event.target.value)}
+        />
+      </label>
+      <div className="estimate-subtotal">
+        <span>Subtotal</span>
+        <strong>{line.contactSales ? "Contact Sales" : formatPrice(line.subtotal)}</strong>
+      </div>
+    </article>
   );
 }
 
