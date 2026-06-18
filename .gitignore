@@ -1,0 +1,12 @@
+node_modules
+.next
+dist
+.env*
+build
+coverage
+logs
+tmp
+temp
+*.log
+*.tmp
+*.bak
