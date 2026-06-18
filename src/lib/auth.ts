@@ -27,8 +27,17 @@ type SignUpPayload = {
   phone?: string;
 };
 
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, "");
+const LOCAL_API_BASE_URL = "http://localhost:4000";
+const PRODUCTION_API_BASE_URL = "https://htgweb.onrender.com";
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL || "";
+const configuredApiIsLocal =
+  configuredApiBaseUrl.includes("localhost") || configuredApiBaseUrl.includes("127.0.0.1");
+
+const API_BASE_URL = (
+  import.meta.env.PROD && (!configuredApiBaseUrl || configuredApiIsLocal)
+    ? PRODUCTION_API_BASE_URL
+    : configuredApiBaseUrl || LOCAL_API_BASE_URL
+).replace(/\/$/, "");
 
 export async function signUp(payload: SignUpPayload) {
   return apiRequest("/api/auth/signup", {

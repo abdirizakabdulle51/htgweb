@@ -15,6 +15,17 @@ VITE_API_BASE_URL="http://localhost:4000"
 ```
 
 If your PostgreSQL password contains `@`, Prisma may require it to be URL encoded in `.env`.
+For production frontend builds, set `VITE_API_BASE_URL="https://htgweb.onrender.com"` or leave it unset to use that Render URL automatically.
+
+## Cloudflare Pages
+
+Set the Cloudflare Pages environment variable:
+
+```env
+VITE_API_BASE_URL="https://htgweb.onrender.com"
+```
+
+The frontend auth client falls back to the Render backend in production if the variable is unset or accidentally points to localhost. Local development continues to use `http://localhost:4000`.
 
 ## Install
 
