@@ -27,6 +27,19 @@ VITE_API_BASE_URL="https://htgweb.onrender.com"
 
 The frontend auth client falls back to the Render backend in production if the variable is unset or accidentally points to localhost. Local development continues to use `http://localhost:4000`.
 
+## Render Backend
+
+Set these Render environment variables:
+
+```env
+DATABASE_URL="postgresql://..."
+JWT_SECRET="replace-with-secure-random-secret"
+CLIENT_URL="https://htgweb.abdirizak-abdulle.workers.dev"
+NODE_ENV=production
+```
+
+In production, the auth cookie is `httpOnly`, `secure`, `sameSite: "none"`, and scoped to `/` so the Cloudflare frontend can use the Render API with credentials.
+
 ## Install
 
 ```bash

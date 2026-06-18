@@ -14,6 +14,7 @@ const jwtSecret = process.env.JWT_SECRET || "replace-with-secure-random-secret";
 const authCookieName = "htgclouds_token";
 const allowedOrigins = new Set([
   clientUrl,
+  "https://htgweb.abdirizak-abdulle.workers.dev",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:5174",
@@ -52,6 +53,8 @@ app.post("/api/auth/signup", async (request, response) => {
     const country = clean(request.body.country) || null;
     const phoneNumber = clean(request.body.phoneNumber) || null;
     const companyName = clean(request.body.companyName) || null;
+
+    console.log("[AUTH] Signup request:", email);
 
     if (!fullName || !email || !password || !companyName) {
       throw new HttpError("Please complete the required fields.", 400);
@@ -109,8 +112,8 @@ app.post("/api/auth/signup", async (request, response) => {
       });
     }
 
+    console.log("[AUTH] User created");
     console.log("========================================");
-    console.log("[AUTH] Signup request:", email);
     console.log("[AUTH] Verification code for", email, ":", code);
     console.log("========================================");
 
@@ -119,7 +122,7 @@ app.post("/api/auth/signup", async (request, response) => {
       email: user.email
     });
   } catch (error) {
-    console.error("[AUTH] Signup failed:", error);
+    console.error("[AUTH] Signup error:", error);
     const status = error instanceof HttpError ? error.status : 500;
     const message = error instanceof Error ? error.message : "Signup failed.";
     return response.status(status).json({ error: message });
@@ -394,13 +397,17 @@ function setAuthCookie(response, user) {
   );
 
   response.cookie(authCookieName, token, cookieOptions());
+  console.log("[AUTH] Cookie set");
 }
 
 function cookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
+
   return {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
+    path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000
   };
 }
