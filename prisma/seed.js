@@ -2,38 +2,45 @@ import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-
 const passwordHash = await bcrypt.hash("password123", 12);
 
 await prisma.user.upsert({
   where: { email: "demo@htgclouds.com" },
   update: {
     passwordHash,
-    emailVerified: new Date(),
+    emailVerified: true,
     onboardingCompleted: true,
-    organizationName: "HTGClouds",
-    projectName: "My First Project",
-    selectedRegion: "US-East",
-    useCase: "Work",
-    alreadyUsesCloudProvider: "No",
-    productsInterest: ["Elastic Cloud Server", "Storage"]
+    onboarding: {
+      upsert: {
+        update: {
+          useCase: "Work",
+          usesCloudProvider: "No",
+          selectedProducts: ["Elastic Cloud Server", "Storage"]
+        },
+        create: {
+          useCase: "Work",
+          usesCloudProvider: "No",
+          selectedProducts: ["Elastic Cloud Server", "Storage"]
+        }
+      }
+    }
   },
   create: {
     fullName: "HTGClouds Demo",
     email: "demo@htgclouds.com",
     passwordHash,
-    company: "HTGClouds",
+    companyName: "HTGClouds",
     country: "Somalia",
-    countryCode: "SO",
-    phoneCountryCode: "+252",
-    emailVerified: new Date(),
+    phoneNumber: "+252 61 1234567",
+    emailVerified: true,
     onboardingCompleted: true,
-    organizationName: "HTGClouds",
-    projectName: "My First Project",
-    selectedRegion: "US-East",
-    useCase: "Work",
-    alreadyUsesCloudProvider: "No",
-    productsInterest: ["Elastic Cloud Server", "Storage"]
+    onboarding: {
+      create: {
+        useCase: "Work",
+        usesCloudProvider: "No",
+        selectedProducts: ["Elastic Cloud Server", "Storage"]
+      }
+    }
   }
 });
 

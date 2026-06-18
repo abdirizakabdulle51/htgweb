@@ -2,14 +2,27 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "server": "node server/index.js",
+    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.0",
     "@vitejs/plugin-react": "latest",
+    "bcrypt": "latest",
+    "cookie-parser": "latest",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "jsonwebtoken": "latest",
     "vite": "latest",
     "react": "latest",
     "react-dom": "latest",
     "lucide-react": "latest"
+  },
+  "devDependencies": {
+    "concurrently": "latest",
+    "prisma": "^6.19.0"
   }
 }

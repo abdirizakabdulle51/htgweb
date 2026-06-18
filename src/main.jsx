@@ -1258,14 +1258,29 @@ function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  async function handleSubmit(event) {
+  async function handleSignIn(event) {
     event.preventDefault();
+    console.log("[SIGNIN] Button clicked");
     setError("");
 
     try {
-      const user = await signInWithPassword(email, password);
-      navigateTo(user?.onboardingCompleted ? "/dashboard" : "/onboarding");
+      console.log("[SIGNIN] Sending request");
+      const data = await signInWithPassword(email, password);
+      console.log("[SIGNIN] Response received", {
+        success: data.success,
+        emailVerified: data.emailVerified,
+        onboardingCompleted: data.onboardingCompleted
+      });
+
+      if (!data.emailVerified) {
+        throw new Error("Please verify your email before signing in.");
+      }
+
+      const redirectTarget = data.onboardingCompleted ? "/dashboard" : "/onboarding";
+      console.log(`[SIGNIN] Redirecting to ${redirectTarget}`);
+      navigateTo(redirectTarget);
     } catch (error) {
+      console.error("[SIGNIN] Failed", error);
       setError(error.message || "Email or password is incorrect.");
       return;
     }
@@ -1273,7 +1288,7 @@ function SignInPage() {
 
   return (
     <AuthLayout compact>
-      <form className="auth-card" onSubmit={handleSubmit}>
+      <form className="auth-card" onSubmit={handleSignIn}>
         <AuthHeader
           title="Welcome to HTGClouds"
           subtitle="Don't have an account?"
@@ -1351,7 +1366,11 @@ function VerifyEmailPage() {
 
     try {
       const data = await verifyEmail({ email: pendingEmail, code: joined });
-      navigateTo(data.onboardingCompleted ? "/dashboard" : "/onboarding");
+      console.log("[AUTH] verification success");
+      console.log("[AUTH] onboarding status", data.onboardingCompleted);
+      const redirectTarget = data.onboardingCompleted ? "/dashboard" : "/onboarding";
+      console.log("[AUTH] redirect target", redirectTarget);
+      navigateTo(redirectTarget);
     } catch (error) {
       setError(error.message);
     }
@@ -1960,7 +1979,10 @@ function OnboardingWizard({ user }) {
       return;
     }
 
+    console.log("[AUTH] onboarding status", false);
     await saveOnboarding(form);
+    console.log("[AUTH] onboarding status", true);
+    console.log("[AUTH] redirect target", "/dashboard");
     navigateTo("/dashboard");
   }
 

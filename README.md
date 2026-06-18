@@ -1,29 +1,56 @@
 # HTGClouds
 
-HTGClouds is currently running as a Vite React app. The UI is unchanged, and authentication is handled through `src/lib/auth.ts` so the app can keep running while the PostgreSQL backend is developed separately.
+HTGClouds is a Vite React frontend with a separate Express authentication backend.
 
-## Run The App
+## Environment
+
+Copy `.env.example` to `.env` and set local values:
+
+```env
+DATABASE_URL="postgresql://postgres:replace-with-database-password@localhost:5432/htgclouds"
+JWT_SECRET="replace-with-secure-random-secret"
+CLIENT_URL="http://localhost:5173"
+SERVER_PORT=4000
+VITE_API_BASE_URL="http://localhost:4000"
+```
+
+If your PostgreSQL password contains `@`, Prisma may require it to be URL encoded in `.env`.
+
+## Install
 
 ```bash
 npm install
+npx prisma generate
+npx prisma migrate deploy
+```
+
+## Run
+
+Frontend only:
+
+```bash
 npm run dev
 ```
 
-The Vite dev server opens on `http://127.0.0.1:5173` by default.
+Backend only:
 
-## Current Auth Behavior
-
-The frontend auth service first tries normal `/api/...` fetch calls for future backend integration. If those endpoints are not available, it falls back to temporary local mock auth so the app still works.
-
-Demo credentials:
-
-```text
-demo@htgclouds.com
-password123
+```bash
+npm run server
 ```
 
-During mock sign up, any 6-digit verification code is accepted.
+Frontend and backend together:
 
-## Backend Notes
+```bash
+npm run dev:all
+```
 
-The PostgreSQL/Prisma work is kept separate from the Vite runtime for now. Keep framework-specific server auth libraries out of the Vite client.
+The Vite app runs on `http://127.0.0.1:5173`.
+The Express auth server runs on `http://localhost:4000`.
+
+## Development Email Verification
+
+Real email is not connected yet. Verification codes are logged in the backend terminal:
+
+```text
+Verification code for user@example.com: 123456
+```
