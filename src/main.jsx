@@ -20,6 +20,7 @@ import {
 import {
   getCurrentUser as getAuthUser,
   logout as logoutUser,
+  resendVerificationEmail,
   resetPassword,
   saveOnboarding,
   signInWithPassword,
@@ -1342,6 +1343,7 @@ function VerifyEmailPage() {
   }, []);
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   function updateDigit(index, value) {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -1358,6 +1360,8 @@ function VerifyEmailPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setError("");
+    setMessage("");
     const joined = code.join("");
     if (joined.length !== 6) {
       setError("Enter any 6-digit verification code.");
@@ -1373,6 +1377,18 @@ function VerifyEmailPage() {
       navigateTo(redirectTarget);
     } catch (error) {
       setError(error.message);
+    }
+  }
+
+  async function handleResend() {
+    setError("");
+    setMessage("");
+
+    try {
+      const data = await resendVerificationEmail(pendingEmail);
+      setMessage(data.message || "New verification code generated");
+    } catch (error) {
+      setError(error.message || "Could not resend verification code.");
     }
   }
 
@@ -1395,11 +1411,12 @@ function VerifyEmailPage() {
           ))}
         </div>
         {error && <p className="auth-error">{error}</p>}
+        {message && <p className="auth-terms">{message}</p>}
         <button className="auth-submit" type="submit">
           Verify Email
         </button>
         <p className="auth-terms">
-          Didn't receive the code? <button type="button">Resend email</button>
+          Didn't receive the code? <button type="button" onClick={handleResend}>Resend email</button>
         </p>
       </form>
     </AuthLayout>

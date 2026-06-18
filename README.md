@@ -78,3 +78,11 @@ Real email is not connected yet. Verification codes are logged in the backend te
 ```text
 Verification code for user@example.com: 123456
 ```
+
+During Render testing, you can fetch the latest unused verification code:
+
+```text
+https://htgweb.onrender.com/api/auth/dev-code?email=user@example.com
+```
+
+The verify email page can generate a new code through `POST /api/auth/resend-verification`.

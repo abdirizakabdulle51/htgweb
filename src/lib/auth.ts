@@ -60,6 +60,13 @@ export async function verifyEmail({ email, code }: { email: string; code: string
   });
 }
 
+export async function resendVerificationEmail(email: string) {
+  return apiRequest("/api/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+}
+
 export async function signInWithPassword(email: string, password: string) {
   return apiRequest("/api/auth/signin", {
     method: "POST",

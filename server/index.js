@@ -130,10 +130,6 @@ app.post("/api/auth/signup", async (request, response) => {
 });
 
 app.get("/api/auth/dev-code", async (request, response) => {
-  if (process.env.NODE_ENV === "production") {
-    return response.status(404).json({ error: "Not found." });
-  }
-
   const email = clean(request.query.email).toLowerCase();
 
   if (!isEmail(email)) {
@@ -163,6 +159,60 @@ app.get("/api/auth/dev-code", async (request, response) => {
     code: savedCode.code,
     expiresAt: savedCode.expiresAt
   });
+});
+
+app.post("/api/auth/resend-verification", async (request, response) => {
+  try {
+    const email = clean(request.body.email).toLowerCase();
+
+    if (!isEmail(email)) {
+      throw new HttpError("Enter a valid email address.", 400);
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new HttpError("No user found for that email.", 404);
+    }
+
+    if (user.emailVerified) {
+      return response.json({
+        success: true,
+        ok: true,
+        message: "Email already verified"
+      });
+    }
+
+    const code = verificationCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.verificationCode.updateMany({
+        where: { userId: user.id, used: false },
+        data: { used: true, expiresAt: new Date() }
+      });
+
+      await tx.verificationCode.create({
+        data: {
+          userId: user.id,
+          code,
+          expiresAt
+        }
+      });
+    });
+
+    console.log(`[AUTH] Resent verification code for ${email}: ${code}`);
+
+    return response.json({
+      success: true,
+      ok: true,
+      message: "New verification code generated"
+    });
+  } catch (error) {
+    console.error("[AUTH] Resend verification error:", error);
+    const status = error instanceof HttpError ? error.status : 500;
+    const message = error instanceof Error ? error.message : "Could not resend verification code.";
+    return response.status(status).json({ error: message });
+  }
 });
 
 app.post("/api/auth/verify-email", async (request, response) => {
