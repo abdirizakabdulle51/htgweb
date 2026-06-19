@@ -12,6 +12,7 @@ import {
   Menu,
   Radio,
   Server,
+  Shield,
   ShieldCheck,
   Star,
   X,
@@ -181,110 +182,66 @@ const footerColumns = [
   ["Legal", "Privacy Policy", "Terms of Service"]
 ];
 
-const pricingTabs = ["Compute", "Storage", "Networking", "Database & Backups"];
+const pricingTabs = ["Compute", "Storage", "Networking", "Database"];
 
-const computePricingSections = [
-  {
-    icon: Server,
-    title: "General Purpose Compute",
-    description:
-      "Designed with a balanced CPU-to-RAM ratio for web services, enterprise applications, and production APIs.",
-    rows: [
-      ["GP-1", "2 GB", "1", "1 TB", "$0.025/hr"],
-      ["GP-2", "4 GB", "2", "2 TB", "$0.045/hr"],
-      ["GP-4", "8 GB", "4", "4 TB", "$0.090/hr"],
-      ["GP-8", "16 GB", "8", "5 TB", "$0.180/hr"]
-    ]
-  },
-  {
-    icon: Boxes,
-    title: "Compute Optimised",
-    description:
-      "Optimized for data analysis, batch processing, and high-throughput workloads that need sustained vCPU performance.",
-    rows: [
-      ["CO-2", "4 GB", "2", "2 TB", "$0.055/hr"],
-      ["CO-4", "8 GB", "4", "4 TB", "$0.110/hr"],
-      ["CO-8", "16 GB", "8", "5 TB", "$0.215/hr"],
-      ["CO-16", "32 GB", "16", "8 TB", "$0.420/hr"]
-    ]
-  },
-  {
-    icon: HardDrive,
-    title: "Memory Optimised",
-    description:
-      "Built for high-frequency computing, caching layers, databases, and parallel workloads that need larger memory footprints.",
-    rows: [
-      ["MO-2", "8 GB", "2", "2 TB", "$0.070/hr"],
-      ["MO-4", "16 GB", "4", "4 TB", "$0.140/hr"],
-      ["MO-8", "32 GB", "8", "5 TB", "$0.280/hr"],
-      ["MO-16", "64 GB", "16", "8 TB", "$0.560/hr"]
-    ]
-  }
-];
+const pricingTabServices = {
+  Compute: ["ECS", "ECS-CCE", "BMS"],
+  Storage: ["EVS", "SFS", "OBS", "CSBS", "VBS"],
+  Networking: ["EIP-number", "EIP-bandwidth", "ELB-number", "NAT", "VPN", "VPN Gateway", "VPCEP"],
+  Database: ["database-contact", "CSBS", "VBS"]
+};
 
-const categoryPricing = {
-  Storage: {
-    icon: HardDrive,
-    title: "Storage Pricing",
-    description: "Durable cloud storage for objects, block volumes, backups, and recovery data.",
-    columns: ["Service", "Included Storage", "Transfer", "Price"],
-    rows: [
-      ["Object Storage", "100 GB", "1 TB outbound", "$0.018/GB/mo"],
-      ["Block Storage", "50 GB volume", "Regional", "$0.080/GB/mo"],
-      ["Backup Storage", "100 GB", "Encrypted", "$0.025/GB/mo"]
-    ]
-  },
-  Networking: {
-    icon: Globe2,
-    title: "Networking Pricing",
-    description: "Predictable pricing for public connectivity, traffic balancing, and secure network access.",
-    columns: ["Service", "Included Usage", "Transfer", "Price"],
-    rows: [
-      ["Elastic IP", "1 IPv4 address", "Metered outbound", "$0.006/hr"],
-      ["Load Balancer", "1 listener", "2 TB included", "$0.030/hr"],
-      ["VPN", "Site-to-site tunnel", "Encrypted traffic", "$0.050/hr"],
-      ["Data Transfer", "Regional egress", "Per GB", "$0.035/GB"]
-    ]
-  },
-  "Database & Backups": {
-    icon: Database,
-    title: "Database & Backup Pricing",
-    description: "Managed relational databases and protected snapshot storage for production systems.",
-    columns: ["Service", "Included Capacity", "Transfer", "Price"],
-    rows: [
-      ["RDS PostgreSQL", "2 vCPU / 4 GB", "Backup included", "$0.075/hr"],
-      ["RDS MySQL", "2 vCPU / 4 GB", "Backup included", "$0.070/hr"],
-      ["Backup Service", "100 GB", "Encrypted", "$0.030/GB/mo"],
-      ["Snapshot Storage", "100 GB", "Regional", "$0.020/GB/mo"]
-    ]
-  }
+const pricingServiceDescriptions = {
+  ECS: "Flexible virtual servers for web apps, APIs, enterprise workloads, and production systems.",
+  "ECS-CCE": "Compute worker nodes for managed Kubernetes and cloud-native container workloads.",
+  BMS: "Dedicated physical compute for performance-sensitive and security-conscious workloads.",
+  EVS: "Block storage volumes for cloud servers, databases, and persistent application data.",
+  SFS: "Shared file storage for applications that need scalable, multi-instance access.",
+  OBS: "Object storage buckets for backups, archives, static assets, and application data.",
+  CSBS: "Cloud server backup storage for protected snapshots and operational recovery.",
+  VBS: "Volume backup storage for restoring disks and protecting critical block volumes.",
+  "EIP-number": "Public IP address pricing for internet-facing workloads and services.",
+  "EIP-bandwidth": "Bandwidth tier pricing for public connectivity and traffic throughput.",
+  "ELB-number": "Load balancer instances for distributing application traffic reliably.",
+  NAT: "NAT gateway instances for secure outbound connectivity from private networks.",
+  VPN: "Site-to-site VPN connections for encrypted private network access.",
+  "VPN Gateway": "VPN gateway instances for resilient hybrid connectivity.",
+  VPCEP: "Private endpoint connectivity for accessing services inside isolated networks."
+};
+
+const pricingIconByCategory = {
+  compute: Server,
+  storage: HardDrive,
+  network: Globe2,
+  security: Shield,
+  logs: Radio
 };
 
 const pricingFaqs = [
   {
-    question: "How is HTGClouds billing calculated?",
+    question: "How is HTGCloud pricing calculated?",
     answer:
-      "Billing is calculated from the resources you run, measured by hourly compute usage, storage capacity, data transfer, and optional managed services."
+      "Pricing is calculated from the services you configure, including compute flavor, storage capacity, network units, billing period, and quantity."
   },
   {
-    question: "Can I estimate monthly usage?",
+    question: "Can I estimate monthly cloud costs before signing up?",
     answer:
-      "Yes. You can estimate monthly usage by multiplying hourly rates by expected runtime and adding storage, transfer, database, and backup usage."
+      "Yes. Use the HTGCloud pricing calculator to estimate monthly cost from the same catalog used on this pricing page."
   },
   {
-    question: "Do you support prepaid billing?",
+    question: "Do prices vary by region?",
     answer:
-      "Prepaid billing is planned for eligible business accounts. For now, pricing is shown transparently with mock rates for planning."
+      "The current catalog supports Mogadishu-region-hq3 and Hoa-Mogadishu-2. Region-specific pricing can be added to the catalog as commercial rates evolve."
   },
   {
-    question: "Are there hidden fees?",
+    question: "Are yearly plans available?",
     answer:
-      "No. HTGClouds is designed around clear infrastructure pricing with no hidden platform fees in the displayed service categories."
+      "Many compute, storage, and network services include yearly rates. Services without a yearly value show the available billing period or Contact Sales."
   },
   {
-    question: "Can I upgrade resources later?",
+    question: "What does Contact Sales mean?",
     answer:
-      "Yes. Cloud resources are designed to scale as requirements grow, including compute size, storage capacity, and network services."
+      "Contact Sales means the catalog marks that tier as quoted or custom, so it is itemized but excluded from numeric totals until a price is confirmed."
   }
 ];
 
@@ -679,6 +636,7 @@ function Hero() {
 
 function PricingPage() {
   const [activeTab, setActiveTab] = useState("Compute");
+  const activeServices = getPricingTabItems(activeTab);
 
   return (
     <main className="pricing-page">
@@ -728,13 +686,9 @@ function PricingPage() {
           ))}
         </aside>
         <div className="pricing-panels">
-          {activeTab === "Compute" ? (
-            computePricingSections.map((section) => (
-              <PricingComputeCard key={section.title} section={section} />
-            ))
-          ) : (
-            <PricingCategoryPanel category={categoryPricing[activeTab]} />
-          )}
+          {activeServices.map((item) => (
+            <PricingServiceCard key={item.id} item={item} />
+          ))}
         </div>
       </section>
 
@@ -745,8 +699,40 @@ function PricingPage() {
   );
 }
 
-function PricingComputeCard({ section }) {
-  const Icon = section.icon;
+function getPricingTabItems(tab) {
+  return pricingTabServices[tab].map((serviceId) => {
+    if (serviceId === "database-contact") {
+      return {
+        id: serviceId,
+        name: "Managed Database Services",
+        description:
+          "Managed PostgreSQL, MySQL, and enterprise database services are available through custom commercial plans.",
+        category: "database",
+        contactSales: true,
+        rows: [["RDS PostgreSQL", "Managed database", "Contact Sales", "Contact Sales"], ["RDS MySQL", "Managed database", "Contact Sales", "Contact Sales"]],
+        columns: ["Service", "Type", "Monthly", "Yearly"],
+        summary: "Contact Sales",
+        detail: "Custom database plans"
+      };
+    }
+
+    const service = pricingCatalog.services[serviceId];
+    return {
+      id: service.id,
+      name: service.name,
+      description: pricingServiceDescriptions[service.id] || "Production-ready HTGCloud infrastructure service.",
+      category: service.category,
+      service,
+      rows: buildPricingRows(service),
+      columns: getPricingColumns(service),
+      summary: getServiceStartingPrice(service),
+      detail: getServicePricingDetail(service)
+    };
+  });
+}
+
+function PricingServiceCard({ item }) {
+  const Icon = item.contactSales ? Database : pricingIconByCategory[item.category] || Cloud;
 
   return (
     <article className="pricing-card">
@@ -754,35 +740,101 @@ function PricingComputeCard({ section }) {
         <div className="pricing-icon">
           <Icon size={20} />
         </div>
-        <h2>{section.title}</h2>
-        <p>{section.description}</p>
-        <a href="#">Learn more <span aria-hidden="true">-&gt;</span></a>
+        <h2>{item.name}</h2>
+        <p>{item.description}</p>
+        <div className="pricing-starting">
+          <span>Starting from</span>
+          <strong>{item.summary}</strong>
+          <small>{item.detail}</small>
+        </div>
+        <a
+          href="/pricing/calculator"
+          onClick={(event) => {
+            event.preventDefault();
+            navigateTo("/pricing/calculator");
+          }}
+        >
+          Estimate in Calculator <span aria-hidden="true">-&gt;</span>
+        </a>
       </div>
-      <PricingTable
-        label="Base rate"
-        columns={["Name", "Memory", "vCore", "Network", "Price per hour"]}
-        rows={section.rows}
-      />
+      <details className="pricing-details">
+        <summary>View Pricing Details</summary>
+        <PricingTable
+          label={item.contactSales ? "Availability" : "Catalog rates"}
+          columns={item.columns}
+          rows={item.rows}
+        />
+      </details>
     </article>
   );
 }
 
-function PricingCategoryPanel({ category }) {
-  const Icon = category.icon;
+function getPricingColumns(service) {
+  if (service.pricingModel === "flavor") return ["Flavor", "Example specs", "Monthly", "Yearly"];
+  if (service.pricingModel === "per-gb") return ["Type", "Unit", "Monthly", "Yearly"];
+  if (service.pricingModel === "bandwidth-tier") return ["Tier", "Unit", "Monthly", "Yearly"];
+  return ["Type", "Unit", "Monthly", "Yearly"];
+}
 
-  return (
-    <article className="pricing-card pricing-card-single">
-      <div className="pricing-card-copy">
-        <div className="pricing-icon">
-          <Icon size={20} />
-        </div>
-        <h2>{category.title}</h2>
-        <p>{category.description}</p>
-        <a href="#">Learn more <span aria-hidden="true">-&gt;</span></a>
-      </div>
-      <PricingTable label="Base rate" columns={category.columns} rows={category.rows} />
-    </article>
-  );
+function buildPricingRows(service) {
+  const sortedSkus = [...service.skus].sort((a, b) => getComparableSkuPrice(a) - getComparableSkuPrice(b));
+  return sortedSkus.slice(0, 6).map((sku) => [
+    getSkuDisplayName(sku),
+    getSkuPricingUnit(service, sku),
+    formatSkuPeriodPrice(sku, "monthly"),
+    formatSkuPeriodPrice(sku, "yearly")
+  ]);
+}
+
+function getComparableSkuPrice(sku) {
+  if (sku.contactSales) return Number.POSITIVE_INFINITY;
+  return sku.prices?.monthly ?? sku.prices?.yearly ?? sku.prices?.hourly ?? Number.POSITIVE_INFINITY;
+}
+
+function getServiceStartingPrice(service) {
+  const pricedSkus = service.skus.filter((sku) => !sku.contactSales && sku.prices);
+  if (pricedSkus.length === 0) return "Contact Sales";
+  const lowest = pricedSkus.reduce((best, sku) => (getComparableSkuPrice(sku) < getComparableSkuPrice(best) ? sku : best));
+  const period = lowest.prices?.monthly !== undefined ? "monthly" : lowest.prices?.yearly !== undefined ? "yearly" : "hourly";
+  const price = lowest.prices?.[period];
+  return `${formatPrice(price)}${getPeriodSuffix(period)}`;
+}
+
+function getServicePricingDetail(service) {
+  if (service.pricingModel === "flavor") {
+    const sku = service.skus
+      .filter((entry) => !entry.contactSales)
+      .sort((a, b) => getComparableSkuPrice(a) - getComparableSkuPrice(b))[0];
+    if (sku?.vcpu !== undefined && sku?.ramGb !== undefined) return `${sku.vcpu} vCPU • ${sku.ramGb} GB RAM example`;
+  }
+  if (service.pricingModel === "per-gb") return `Per ${service.quantityLabel || "GB"} capacity`;
+  if (service.pricingModel === "bandwidth-tier") return "Per Mbps tier";
+  if (service.pricingModel === "per-quantity") return `Per ${service.quantityLabel}`;
+  return service.quantityLabel;
+}
+
+function getSkuDisplayName(sku) {
+  return sku.type ? `${sku.name} (${sku.type})` : sku.name;
+}
+
+function getSkuPricingUnit(service, sku) {
+  if (sku.vcpu !== undefined && sku.ramGb !== undefined) {
+    const storage = sku.storageGb !== undefined ? ` • ${sku.storageGb} GB storage` : "";
+    return `${sku.vcpu} vCPU • ${sku.ramGb} GB RAM${storage}`;
+  }
+  if (sku.includedStorage) return `${sku.includedStorage} included`;
+  if (sku.includedTraffic) return `${sku.includedTraffic} traffic`;
+  if (sku.retentionPolicy) return sku.retentionPolicy;
+  if (service.pricingModel === "per-gb") return `Per ${sku.unitLabel}`;
+  if (sku.unit === "mbps") return `Per ${sku.unitLabel}`;
+  return `Per ${sku.unitLabel}`;
+}
+
+function formatSkuPeriodPrice(sku, period) {
+  if (sku.contactSales) return "Contact Sales";
+  const price = sku.prices?.[period];
+  if (price === undefined) return "-";
+  return `${formatPrice(price)}${getPeriodSuffix(period)}`;
 }
 
 function PricingTable({ label, columns, rows }) {
@@ -831,10 +883,158 @@ function getQuantityField(service) {
   return service.pricingModel === "per-gb" ? "capacityGb" : "quantity";
 }
 
+function getPricingModelLabel(service) {
+  if (service.pricingModel === "flavor") return "Flavor based";
+  if (service.pricingModel === "per-gb") return "GB capacity";
+  if (service.pricingModel === "bandwidth-tier") return "Bandwidth tiers";
+  if (service.pricingModel === "flat-tier") return "Tier based";
+  if (service.pricingModel === "instance-type") return "Instance based";
+  return "Quantity based";
+}
+
+function getSkuFamily(service, sku) {
+  if (service.pricingModel === "flavor") {
+    if (service.id === "BMS" || sku.cpuOvercommitRatio === "dedicated") {
+      return {
+        id: "dedicated-bare-metal",
+        label: "Dedicated Bare Metal",
+        description: "Physical compute for performance-sensitive workloads."
+      };
+    }
+
+    const ramPerCpu = sku.vcpu ? sku.ramGb / sku.vcpu : 0;
+    if (sku.name.startsWith("C") || sku.cpuOvercommitRatio === "1:1") {
+      return {
+        id: "compute-optimized",
+        label: "Compute Optimized",
+        description: "Balanced CPU performance for demanding applications."
+      };
+    }
+
+    if (ramPerCpu >= 6) {
+      return {
+        id: "memory-optimized",
+        label: "Memory Optimized",
+        description: "Higher memory density for data-heavy workloads."
+      };
+    }
+
+    return {
+      id: "general-purpose",
+      label: "General Purpose",
+      description: "Everyday compute for web, app, and platform services."
+    };
+  }
+
+  if (service.pricingModel === "per-gb") {
+    if (service.id === "OBS") return { id: "object-storage", label: "Object Storage", description: "Durable object capacity for cloud data." };
+    if (service.id === "SFS") return { id: "file-storage", label: "File Storage", description: "Shared file capacity for distributed systems." };
+    if (service.id === "CSBS" || service.id === "VBS") return { id: "backup-storage", label: "Backup Storage", description: "Protected backup capacity for recovery." };
+    return { id: "block-storage", label: "Block Storage", description: "Persistent disk capacity for cloud servers." };
+  }
+
+  if (service.pricingModel === "bandwidth-tier") {
+    return { id: "bandwidth-tier", label: "Bandwidth Tiers", description: "Select public network throughput." };
+  }
+
+  if (service.pricingModel === "flat-tier") {
+    if (sku.name.toLowerCase().includes("basic")) return { id: "basic", label: "Basic", description: "Entry service tier for evaluation." };
+    if (sku.name.toLowerCase().includes("advanced")) return { id: "advanced", label: "Advanced", description: "Expanded controls for production use." };
+    if (sku.name.toLowerCase().includes("enterprise")) return { id: "enterprise", label: "Enterprise", description: "Highest service tier for critical teams." };
+    return { id: "managed-tier", label: "Managed Tier", description: "Packaged service capability." };
+  }
+
+  if (service.id.includes("EIP")) return { id: "public-network", label: "Public Network", description: "Public IP and traffic resources." };
+  if (service.id.includes("ELB")) return { id: "load-balancing", label: "Load Balancing", description: "Traffic distribution resources." };
+  if (service.id.includes("VPN")) return { id: "private-connectivity", label: "Private Connectivity", description: "Secure network connectivity." };
+
+  return { id: "service-option", label: "Service Options", description: "Available pricing options." };
+}
+
+function getSkuFamilies(service, billingPeriod = pricingCatalog.defaultBillingPeriod) {
+  const groupMap = new Map();
+
+  service.skus.forEach((sku) => {
+    const family = getSkuFamily(service, sku);
+    if (!groupMap.has(family.id)) {
+      groupMap.set(family.id, { ...family, skus: [] });
+    }
+    groupMap.get(family.id).skus.push(sku);
+  });
+
+  return Array.from(groupMap.values()).map((family) => {
+    const pricedLines = family.skus.map((sku) =>
+      calculateItemSubtotal({
+        serviceId: service.id,
+        skuId: sku.id,
+        quantity: 1,
+        capacityGb: 1,
+        billingPeriod
+      })
+    );
+    const numericPrices = pricedLines
+      .filter((line) => !line.contactSales && line.unitPrice !== null)
+      .map((line) => line.unitPrice);
+    const startingPrice = numericPrices.length
+      ? formatPrice(Math.min(...numericPrices))
+      : "Contact Sales";
+
+    return { ...family, startingPrice };
+  });
+}
+
+function getFilteredSkus(skus, query) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return skus;
+
+  return skus.filter((sku) => {
+    const searchable = [
+      getFriendlySkuTitle(sku),
+      sku.name,
+      sku.type,
+      sku.features,
+      sku.vcpu !== undefined ? `${sku.vcpu} vcpu` : "",
+      sku.ramGb !== undefined ? `${sku.ramGb} gb ram` : "",
+      sku.cpuOvercommitRatio ? `cpu ratio ${sku.cpuOvercommitRatio}` : ""
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return searchable.includes(normalizedQuery);
+  });
+}
+
+function getFriendlySkuTitle(sku) {
+  if (sku.vcpu !== undefined && sku.ramGb !== undefined) {
+    return `${sku.vcpu} vCPU • ${sku.ramGb} GB RAM`;
+  }
+  if (sku.type) return sku.type;
+  return sku.name;
+}
+
+function getSkuDetailLine(sku) {
+  const details = [];
+  if (sku.storageGb !== undefined) details.push(`${sku.storageGb} GB storage`);
+  if (sku.cpuOvercommitRatio) details.push(`CPU Ratio ${sku.cpuOvercommitRatio}`);
+  if (sku.includedTraffic) details.push(`${sku.includedTraffic} traffic`);
+  if (sku.includedStorage) details.push(`${sku.includedStorage} included`);
+  if (sku.retentionPolicy) details.push(`${sku.retentionPolicy} retention`);
+  if (sku.features) details.push(sku.features);
+  return details.join(" • ");
+}
+
+function getPeriodSuffix(period) {
+  if (period === "hourly") return "/hr";
+  if (period === "yearly") return "/yr";
+  return "/mo";
+}
+
 function PricingCalculatorPage() {
   const [activeCategory, setActiveCategory] = useState("compute");
   const [selectedServiceId, setSelectedServiceId] = useState("ECS");
   const [selectedSkuId, setSelectedSkuId] = useState(pricingCatalog.services.ECS.skus[0].id);
+  const [selectedFamilyId, setSelectedFamilyId] = useState(getSkuFamily(pricingCatalog.services.ECS, pricingCatalog.services.ECS.skus[0]).id);
+  const [skuSearch, setSkuSearch] = useState("");
   const [region, setRegion] = useState(pricingCatalog.regions[0]);
   const [billingPeriod, setBillingPeriod] = useState(pricingCatalog.defaultBillingPeriod);
   const [amount, setAmount] = useState(pricingCatalog.services.ECS.defaultQuantity);
@@ -842,6 +1042,9 @@ function PricingCalculatorPage() {
 
   const selectedService = pricingCatalog.services[selectedServiceId] || pricingServices[0];
   const selectedSku = selectedService.skus.find((sku) => sku.id === selectedSkuId) || selectedService.skus[0];
+  const familyGroups = getSkuFamilies(selectedService, billingPeriod);
+  const activeFamily = familyGroups.find((family) => family.id === selectedFamilyId) || familyGroups[0];
+  const visibleSkus = getFilteredSkus(activeFamily?.skus || selectedService.skus, skuSearch);
   const quantityField = getQuantityField(selectedService);
   const previewLine = calculateItemSubtotal({
     serviceId: selectedService.id,
@@ -863,8 +1066,18 @@ function PricingCalculatorPage() {
     const service = pricingCatalog.services[serviceId];
     if (!service) return;
     setSelectedServiceId(service.id);
-    setSelectedSkuId(service.skus[0].id);
+    const firstFamily = getSkuFamilies(service, billingPeriod)[0];
+    const firstSku = firstFamily?.skus[0] || service.skus[0];
+    setSelectedFamilyId(firstFamily?.id || getSkuFamily(service, firstSku).id);
+    setSelectedSkuId(firstSku.id);
+    setSkuSearch("");
     setAmount(service.defaultQuantity);
+  }
+
+  function selectFamily(family) {
+    const firstSku = family.skus[0];
+    setSelectedFamilyId(family.id);
+    if (firstSku) setSelectedSkuId(firstSku.id);
   }
 
   function addToEstimate() {
@@ -932,19 +1145,29 @@ function PricingCalculatorPage() {
         <section className="calculator-panel calculator-config">
           <div className="calculator-section-heading">
             <span>{selectedService.category}</span>
-            <h2>Configure Service</h2>
+            <h2>Configure {selectedService.name}</h2>
           </div>
 
-          <label>
-            Service
-            <select value={selectedService.id} onChange={(event) => selectService(event.target.value)}>
+          <section className="service-picker" aria-label="Choose service">
+            <div className="config-subheading">
+              <span>Service</span>
+              <strong>Choose a cloud service</strong>
+            </div>
+            <div className="service-choice-grid">
               {getCalculatorServices(activeCategory).map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name}
-                </option>
+                <button
+                  className={selectedService.id === service.id ? "selected" : ""}
+                  key={service.id}
+                  type="button"
+                  onClick={() => selectService(service.id)}
+                >
+                  <span>{service.id}</span>
+                  <strong>{service.name}</strong>
+                  <small>{getPricingModelLabel(service)}</small>
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </section>
 
           <div className="calculator-grid-two">
             <label>
@@ -972,18 +1195,59 @@ function PricingCalculatorPage() {
             </label>
           </div>
 
-          <label>
-            Flavor / Type / Tier
-            <select value={selectedSku.id} onChange={(event) => setSelectedSkuId(event.target.value)}>
-              {selectedService.skus.map((sku) => (
-                <option key={sku.id} value={sku.id}>
-                  {sku.name}{sku.type ? ` - ${sku.type}` : ""}
-                </option>
+          <section className="family-selector" aria-label="Choose instance family">
+            <div className="config-subheading">
+              <span>{selectedService.pricingModel === "flavor" ? "Instance family" : "Pricing family"}</span>
+              <strong>{selectedService.pricingModel === "flavor" ? "Start with a workload profile" : "Choose a pricing option group"}</strong>
+            </div>
+            <div className="family-card-grid">
+              {familyGroups.map((family) => (
+                <button
+                  className={activeFamily?.id === family.id ? "selected" : ""}
+                  key={family.id}
+                  type="button"
+                  onClick={() => selectFamily(family)}
+                >
+                  <strong>{family.label}</strong>
+                  <span>{family.description}</span>
+                  <small>{family.skus.length} option{family.skus.length === 1 ? "" : "s"} from {family.startingPrice}</small>
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </section>
 
-          <SkuPreview sku={selectedSku} service={selectedService} billingPeriod={billingPeriod} />
+          <section className="instance-selector" aria-label="Choose instance type">
+            <div className="config-subheading">
+              <span>{selectedService.pricingModel === "flavor" ? "Instance type" : "Type / Tier"}</span>
+              <strong>Select an exact configuration</strong>
+            </div>
+            <input
+              aria-label="Search instance type"
+              className="instance-search"
+              placeholder="Search instance type..."
+              type="search"
+              value={skuSearch}
+              onChange={(event) => setSkuSearch(event.target.value)}
+            />
+            <div className="instance-card-grid">
+              {visibleSkus.length === 0 ? (
+                <div className="instance-empty">No matching configurations.</div>
+              ) : (
+                visibleSkus.map((sku) => (
+                  <InstanceOptionCard
+                    key={sku.id}
+                    billingPeriod={billingPeriod}
+                    selected={selectedSku.id === sku.id}
+                    service={selectedService}
+                    sku={sku}
+                    onSelect={() => setSelectedSkuId(sku.id)}
+                  />
+                ))
+              )}
+            </div>
+          </section>
+
+          <SkuPreview sku={selectedSku} service={selectedService} billingPeriod={billingPeriod} region={region} />
 
           <label>
             {quantityField === "capacityGb" ? "Capacity (GB)" : selectedService.quantityLabel}
@@ -1009,27 +1273,37 @@ function PricingCalculatorPage() {
           <div className="calculator-summary-top">
             <div>
               <span>Live Estimate</span>
-              <h2>{estimateTotals.formattedSubtotal}</h2>
-              <p>{estimateTotals.contactSalesItems.length} contact-sales item(s) excluded from numeric total.</p>
+              <h2>{estimateItems.length} Services Selected</h2>
+              {estimateTotals.contactSalesItems.length > 0 && (
+                <p>{estimateTotals.contactSalesItems.length} contact-sales item(s) excluded from numeric total.</p>
+              )}
             </div>
             <button type="button" onClick={() => setEstimateItems([])}>
               Reset
             </button>
           </div>
 
-          <div className="estimate-list">
-            {estimateItems.length === 0 ? (
-              <div className="estimate-empty">No services added yet.</div>
-            ) : (
-              estimateItems.map((item) => (
-                <EstimateItem
-                  key={item.id}
-                  item={item}
-                  onRemove={() => removeEstimateItem(item.id)}
-                  onAmountChange={(value) => updateEstimateAmount(item.id, value)}
-                />
-              ))
-            )}
+          <div className="estimate-scroll">
+            <div className="estimate-list">
+              {estimateItems.length === 0 ? (
+                <div className="estimate-empty">No services added yet.</div>
+              ) : (
+                estimateItems.map((item) => (
+                  <EstimateItem
+                    key={item.id}
+                    item={item}
+                    onRemove={() => removeEstimateItem(item.id)}
+                    onAmountChange={(value) => updateEstimateAmount(item.id, value)}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="estimate-summary-footer">
+            <span>Estimated total</span>
+            <strong>{estimateTotals.formattedSubtotal}</strong>
+            <small>{estimateItems.length} Services Selected</small>
           </div>
         </aside>
       </section>
@@ -1038,7 +1312,42 @@ function PricingCalculatorPage() {
   );
 }
 
-function SkuPreview({ sku, service, billingPeriod }) {
+function InstanceOptionCard({ sku, service, billingPeriod, selected, onSelect }) {
+  const priceLine = calculateItemSubtotal({
+    serviceId: service.id,
+    skuId: sku.id,
+    quantity: 1,
+    capacityGb: 1,
+    billingPeriod
+  });
+  const detailLine = getSkuDetailLine(sku);
+
+  return (
+    <button
+      className={`instance-card${selected ? " selected" : ""}`}
+      type="button"
+      onClick={onSelect}
+    >
+      <span>{service.pricingModel === "flavor" ? "Instance" : "Option"}</span>
+      <strong>{getFriendlySkuTitle(sku)}</strong>
+      <div className="instance-specs">
+        {sku.vcpu !== undefined && <small>{sku.vcpu} vCPU</small>}
+        {sku.ramGb !== undefined && <small>{sku.ramGb} GB RAM</small>}
+        {sku.storageGb !== undefined && <small>{sku.storageGb} GB storage</small>}
+        {sku.cpuOvercommitRatio && <small>CPU Ratio {sku.cpuOvercommitRatio}</small>}
+        {sku.unit === "gb" && <small>Per GB</small>}
+        {sku.unit === "mbps" && <small>Per Mbps</small>}
+        {sku.unit === "quantity" && <small>Per {sku.unitLabel}</small>}
+        {sku.unit === "tier" && <small>{sku.unitLabel}</small>}
+      </div>
+      {detailLine && <p>{detailLine}</p>}
+      <b>{priceLine.contactSales ? "Contact Sales" : `Starting ${formatPrice(priceLine.unitPrice)}${getPeriodSuffix(priceLine.billingPeriod)}`}</b>
+      <em>{selected ? "Selected" : "Select"}</em>
+    </button>
+  );
+}
+
+function SkuPreview({ sku, service, billingPeriod, region }) {
   const serviceId = service.id;
   const priceLine = calculateItemSubtotal({
     serviceId,
@@ -1050,23 +1359,53 @@ function SkuPreview({ sku, service, billingPeriod }) {
 
   return (
     <div className="sku-preview">
-      <div>
-        <span>{service.pricingModel === "flat-tier" ? "Tier" : "Selected option"}</span>
-        <strong>{sku.name}</strong>
-        {sku.type && <small>{sku.type}</small>}
+      <div className="selected-config-head">
+        <div>
+          <span>Selected Configuration</span>
+          <strong>{getFriendlySkuTitle(sku)}</strong>
+        </div>
+        <b>{priceLine.contactSales ? "Contact Sales" : `${formatPrice(priceLine.unitPrice)}${getPeriodSuffix(priceLine.billingPeriod)}`}</b>
       </div>
-      <div className="sku-meta">
-        {sku.vcpu !== undefined && <span>{sku.vcpu} vCPU</span>}
-        {sku.ramGb !== undefined && <span>{sku.ramGb} GB RAM</span>}
-        {sku.storageGb !== undefined && <span>{sku.storageGb} GB storage</span>}
-        {sku.cpuOvercommitRatio && <span>CPU ratio {sku.cpuOvercommitRatio}</span>}
-        {sku.includedTraffic && <span>{sku.includedTraffic} traffic</span>}
-        {sku.includedStorage && <span>{sku.includedStorage} included</span>}
-        {sku.retentionPolicy && <span>{sku.retentionPolicy} retention</span>}
-      </div>
+      <dl className="selected-config-list">
+        <div>
+          <dt>Service</dt>
+          <dd>{service.name}</dd>
+        </div>
+        <div>
+          <dt>Region</dt>
+          <dd>{region}</dd>
+        </div>
+        <div>
+          <dt>Billing</dt>
+          <dd>{billingPeriod}</dd>
+        </div>
+        {sku.vcpu !== undefined && (
+          <div>
+            <dt>vCPU</dt>
+            <dd>{sku.vcpu}</dd>
+          </div>
+        )}
+        {sku.ramGb !== undefined && (
+          <div>
+            <dt>RAM</dt>
+            <dd>{sku.ramGb} GB</dd>
+          </div>
+        )}
+        {sku.storageGb !== undefined && (
+          <div>
+            <dt>Storage</dt>
+            <dd>{sku.storageGb} GB</dd>
+          </div>
+        )}
+        {sku.cpuOvercommitRatio && (
+          <div>
+            <dt>CPU Ratio</dt>
+            <dd>{sku.cpuOvercommitRatio}</dd>
+          </div>
+        )}
+      </dl>
       {service.id === "WAF" && <p>Preview pricing from the WAF sheet. Confirm production readiness before quoting.</p>}
       {sku.features && <p>{sku.features}</p>}
-      <strong className="sku-price">{priceLine.contactSales ? "Contact Sales" : formatPrice(priceLine.unitPrice)}</strong>
     </div>
   );
 }
@@ -1083,7 +1422,7 @@ function EstimateItem({ item, onRemove, onAmountChange }) {
       <div className="estimate-item-head">
         <div>
           <h3>{service.name}</h3>
-          <p>{sku?.name}{sku?.type ? ` - ${sku.type}` : ""}</p>
+          <p>{sku ? getFriendlySkuTitle(sku) : item.skuId}</p>
         </div>
         <button type="button" onClick={onRemove} aria-label={`Remove ${service.name}`}>
           <X size={16} />
@@ -1091,16 +1430,12 @@ function EstimateItem({ item, onRemove, onAmountChange }) {
       </div>
       <dl>
         <div>
-          <dt>Region</dt>
-          <dd>{item.region}</dd>
-        </div>
-        <div>
           <dt>Billing</dt>
           <dd>{line.billingPeriod}</dd>
         </div>
         <div>
-          <dt>Unit price</dt>
-          <dd>{line.contactSales ? "Contact Sales" : formatPrice(line.unitPrice)}</dd>
+          <dt>Quantity</dt>
+          <dd>{line.quantity} {line.unitLabel}</dd>
         </div>
       </dl>
       <label>
@@ -1112,7 +1447,7 @@ function EstimateItem({ item, onRemove, onAmountChange }) {
           onChange={(event) => onAmountChange(event.target.value)}
         />
       </label>
-      <div className="estimate-subtotal">
+      <div className="estimate-unit-price">
         <span>Subtotal</span>
         <strong>{line.contactSales ? "Contact Sales" : formatPrice(line.subtotal)}</strong>
       </div>
