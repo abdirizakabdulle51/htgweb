@@ -9,11 +9,14 @@ import {
   Database,
   Globe2,
   HardDrive,
+  Maximize2,
   Menu,
+  MousePointerClick,
   Radio,
   Server,
   Shield,
   ShieldCheck,
+  SlidersVertical,
   Star,
   X,
   Zap
@@ -441,6 +444,7 @@ function App() {
   if (path === "/onboarding") return <OnboardingPage />;
   if (path === "/dashboard") return <DashboardRoute />;
   if (path === "/services") return <ServicesRoute />;
+  if (path === "/products/compute/elastic-cloud-server") return <ElasticCloudServerPage />;
   if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
@@ -1498,6 +1502,300 @@ function PricingCta() {
     </section>
   );
 }
+
+const ecsBenefits = [
+  {
+    icon: SlidersVertical,
+    title: "High Performance",
+    text: "Powered by latest-generation processors and NVMe SSDs for lightning-fast computing and storage."
+  },
+  {
+    icon: Maximize2,
+    title: "Automatic Scaling",
+    text: "Adjust compute resources to changing demand."
+  },
+  {
+    icon: Shield,
+    title: "Secure and Reliable",
+    text: "Enterprise-grade cloud infrastructure built for performance, scalability, and peace of mind."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Flexible Customization",
+    text: "Choose CPU, memory, storage, and networking options to fit your workload."
+  }
+];
+
+const ecsWorkloadCards = [
+  {
+    icon: Globe2,
+    title: "Web Applications",
+    description:
+      "Deploy modern websites, APIs, and SaaS platforms with reliable performance and scalable infrastructure.",
+    examples: ["WordPress", "React Applications", "Node.js APIs", "Laravel Applications"],
+    capabilities: ["Auto Scaling", "SSD Storage", "Public Networking"]
+  },
+  {
+    icon: Code2,
+    title: "Development & Testing",
+    description:
+      "Create isolated environments for development, QA, staging, and continuous integration workflows.",
+    examples: ["CI/CD Pipelines", "QA Environments", "Staging Servers", "Sandbox Projects"],
+    capabilities: ["Fast Provisioning", "Snapshots", "Flexible Scaling"]
+  },
+  {
+    icon: Shield,
+    title: "Enterprise Systems",
+    description:
+      "Run business-critical applications requiring security, reliability, and high availability.",
+    examples: ["ERP Systems", "CRM Platforms", "Internal Applications", "Databases"],
+    capabilities: ["High Availability", "Private Networks", "Security Groups"]
+  },
+  {
+    icon: Server,
+    title: "Batch Processing",
+    description:
+      "Process scheduled workloads, reports, analytics jobs, and automation tasks efficiently.",
+    examples: ["ETL Jobs", "Scheduled Reports", "Automation Tasks", "Data Processing"],
+    capabilities: ["Large Compute Capacity", "Scheduled Execution", "Cost Efficient"]
+  }
+];
+
+const ecsEnterpriseKpis = [
+  ["99.99%", "Enterprise SLA"],
+  ["Multi-AZ", "Architecture"],
+  ["NVMe SSD", "Storage"],
+  ["Auto Scaling", "Enabled"]
+];
+
+const ecsEnterpriseCapabilities = [
+  {
+    title: "Performance",
+    points: ["Latest-generation CPUs", "Optimized networking", "Predictable compute performance"]
+  },
+  {
+    title: "Availability",
+    points: ["Multi-AZ deployment", "Automatic recovery", "Snapshot protection"]
+  },
+  {
+    title: "Security",
+    points: ["Security groups", "VPC isolation", "Encrypted storage"]
+  },
+  {
+    title: "Scalability",
+    points: ["Auto scaling", "Load balancing", "API-driven provisioning"]
+  }
+];
+
+const ecsFaqs = [
+  {
+    question: "What is Elastic Cloud Server?",
+    answer: "Elastic Cloud Server provides scalable virtual servers with configurable CPU, memory, storage, and networking for production workloads."
+  },
+  {
+    question: "Can I resize ECS resources later?",
+    answer: "Yes. ECS is designed for flexible scaling, allowing teams to adjust compute resources as workload requirements change."
+  },
+  {
+    question: "Does ECS support persistent storage?",
+    answer: "Yes. ECS works with scalable block storage so data can persist independently from server lifecycle operations."
+  },
+  {
+    question: "Is ECS suitable for enterprise systems?",
+    answer: "Yes. ECS supports network isolation, high availability options, security controls, and enterprise-grade reliability."
+  },
+  {
+    question: "How is ECS pricing calculated?",
+    answer: "ECS pricing is based on the selected flavor, billing period, and number of server instances."
+  }
+];
+
+function ElasticCloudServerPage() {
+  return (
+    <main className="product-page ecs-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Products</span> Elastic Compute Service
+          </div>
+          <h1>Elastic Cloud Server (ECS)</h1>
+          <p>
+            Flexible, scalable cloud server solutions designed to power your
+            applications with enterprise-grade performance and reliability.
+          </p>
+          <div className="ecs-trust-chips" aria-label="ECS platform capabilities">
+            {["Enterprise Grade", "Auto Scaling", "NVMe SSD", "API Driven", "Multi AZ"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get a Demo
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+          <div className="ecs-stats">
+            <div>
+              <strong>99.99%</strong>
+              <span>Enterprise SLA</span>
+            </div>
+            <div>
+              <strong>ISO 27001</strong>
+              <span>Certified</span>
+            </div>
+            <div>
+              <strong>24/7</strong>
+              <span>Support</span>
+            </div>
+          </div>
+        </div>
+        <EcsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading">
+          <h2>Why Choose ECS?</h2>
+          <p>Enterprise-grade cloud infrastructure built for performance, scalability, and peace of mind.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {ecsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Built for Every Workload</h2>
+          <p>Deploy, scale, and manage cloud infrastructure for web applications, enterprise systems, development environments, and batch processing workloads.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {ecsWorkloadCards.map(({ icon: Icon, title, description, examples, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-card-list">
+                <span>Examples</span>
+                <ul>
+                  {examples.map((example) => (
+                    <li key={example}>{example}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Why Enterprises Choose HTGClouds ECS</h2>
+          <p>Enterprise-grade compute infrastructure designed for performance, availability, security, and scale.</p>
+        </div>
+        <div className="ecs-kpi-strip">
+          {ecsEnterpriseKpis.map(([value, label]) => (
+            <div key={value}>
+              <strong>{value}</strong>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="ecs-capability-panel">
+          {ecsEnterpriseCapabilities.map((capability) => (
+            <article key={capability.title}>
+              <h3>{capability.title}</h3>
+              <ul>
+                {capability.points.map((point) => (
+                  <li key={point}>
+                    <CircleCheck size={15} />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <EcsFaq />
+      <EcsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function EcsHeroVisual() {
+  return (
+    <div className="ecs-visual">
+      <img src="/images/products/ecs/ecs-hero.png" alt="" />
+    </div>
+  );
+}
+
+function EcsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGCloud ECS.</p>
+      </div>
+      <div className="pricing-faq-list">
+        {ecsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EcsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Ready to Optimize Your Infrastructure?</h2>
+      </div>
+      <div>
+        <p>
+          HTGClouds empowers businesses with scalable compute infrastructure,
+          secure networking, and reliable performance.
+        </p>
+        <a
+          href="/signup"
+          onClick={(event) => {
+            event.preventDefault();
+            navigateTo("/signup");
+          }}
+        >
+          Start Free Trial
+        </a>
+      </div>
+    </section>
+  );
+}
+
 
 function DocumentationPreview() {
   return (
