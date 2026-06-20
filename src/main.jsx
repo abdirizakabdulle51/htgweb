@@ -99,6 +99,73 @@ const navItems = [
   { label: "Pricing", path: "/pricing" }
 ];
 
+const productCategories = [
+  { label: "Compute", icon: Server },
+  { label: "Storage", icon: HardDrive },
+  { label: "Network", icon: Globe2 },
+  { label: "Databases", icon: Database },
+  { label: "Application", icon: Boxes },
+  { label: "Management Tools", icon: Radio },
+  { label: "Security and Compliance", icon: ShieldCheck }
+];
+
+const productMenuItems = {
+  Compute: [
+    {
+      name: "Elastic Cloud Server",
+      text: "Cloud servers that can be automatically accessed and flexibly scaled.",
+      path: "/products/compute/elastic-cloud-server"
+    },
+    {
+      name: "Cloud Container Engine",
+      text: "Experience enterprise-class, managed Kubernetes service.",
+      path: "#"
+    },
+    {
+      name: "Image Management Service",
+      text: "Provide comprehensive image management capabilities.",
+      path: "/products/compute/image-management-service"
+    },
+    {
+      name: "Bare Metal Server",
+      text: "High performance and high security cloud based physical server.",
+      path: "#"
+    },
+    {
+      name: "Auto Scaling",
+      text: "Adapt compute resources to changing demand.",
+      path: "#"
+    }
+  ],
+  Storage: [
+    { name: "Elastic Volume Service", text: "Persistent block storage for cloud servers.", path: "#" },
+    { name: "Object Storage Service", text: "Durable object storage for cloud-native data.", path: "#" },
+    { name: "Scalable File Service", text: "Shared file storage for distributed workloads.", path: "#" }
+  ],
+  Network: [
+    { name: "Virtual Private Cloud", text: "Private isolated networks for cloud resources.", path: "#" },
+    { name: "Elastic IP", text: "Public IP connectivity for internet-facing workloads.", path: "#" },
+    { name: "Elastic Load Balance", text: "Traffic distribution for resilient applications.", path: "#" }
+  ],
+  Databases: [
+    { name: "Relational Database Service", text: "Managed relational databases with backup and recovery.", path: "#" },
+    { name: "GaussDB", text: "Enterprise-grade managed database service.", path: "#" }
+  ],
+  Application: [
+    { name: "Simple Message Notification", text: "Reliable message delivery for applications.", path: "#" },
+    { name: "ROMA Connect", text: "Integration service for enterprise applications.", path: "#" }
+  ],
+  "Management Tools": [
+    { name: "Log Tank Service", text: "Centralized log collection, search, and retention.", path: "#" },
+    { name: "Application Operation Management", text: "Observe and operate production workloads.", path: "#" }
+  ],
+  "Security and Compliance": [
+    { name: "Web Application Firewall", text: "Protect web applications from common attacks.", path: "#" },
+    { name: "Cloud Bastion Host", text: "Secure administrative access and audit controls.", path: "#" }
+  ]
+};
+
+
 const services = [
   {
     icon: Server,
@@ -445,6 +512,7 @@ function App() {
   if (path === "/dashboard") return <DashboardRoute />;
   if (path === "/services") return <ServicesRoute />;
   if (path === "/products/compute/elastic-cloud-server") return <ElasticCloudServerPage />;
+  if (path === "/products/compute/image-management-service") return <ImageManagementServicePage />;
   if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
@@ -541,6 +609,8 @@ function useCurrentUser() {
 }
 
 function Navigation() {
+  const [isProductMenuOpen, setProductMenuOpen] = useState(false);
+
   return (
     <header className="site-header">
       <a
@@ -555,20 +625,35 @@ function Navigation() {
         <img src={logoPath} alt="HTGClouds" />
       </a>
       <nav className="desktop-nav" aria-label="Main navigation">
-        {navItems.map((item) => (
-          <a
-            key={item.label}
-            href={item.path || "#"}
-            onClick={(event) => {
-              if (!item.path) return;
-              event.preventDefault();
-              navigateTo(item.path);
-            }}
-          >
-            {item.label}
-            {item.hasMenu && <ChevronDown size={12} strokeWidth={2.4} />}
-          </a>
-        ))}
+        {navItems.map((item) =>
+          item.label === "Products" ? (
+            <div
+              className="product-nav-wrap"
+              key={item.label}
+              onMouseEnter={() => setProductMenuOpen(true)}
+              onMouseLeave={() => setProductMenuOpen(false)}
+            >
+              <button className="nav-link-button" type="button" aria-expanded={isProductMenuOpen}>
+                {item.label}
+                <ChevronDown size={12} strokeWidth={2.4} />
+              </button>
+              {isProductMenuOpen && <ProductsMegaMenu />}
+            </div>
+          ) : (
+            <a
+              key={item.label}
+              href={item.path || "#"}
+              onClick={(event) => {
+                if (!item.path) return;
+                event.preventDefault();
+                navigateTo(item.path);
+              }}
+            >
+              {item.label}
+              {item.hasMenu && <ChevronDown size={12} strokeWidth={2.4} />}
+            </a>
+          )
+        )}
       </nav>
       <div className="nav-actions">
         <a
@@ -596,6 +681,58 @@ function Navigation() {
         </button>
       </div>
     </header>
+  );
+}
+
+function ProductsMegaMenu() {
+  const [activeCategory, setActiveCategory] = useState("Compute");
+  const products = productMenuItems[activeCategory] || productMenuItems.Compute;
+
+  return (
+    <div className="products-mega" role="menu" aria-label="Products">
+      <aside className="mega-categories">
+        {productCategories.map(({ label, icon: Icon }) => (
+          <button
+            className={activeCategory === label ? "active" : ""}
+            key={label}
+            type="button"
+            onMouseEnter={() => setActiveCategory(label)}
+            onFocus={() => setActiveCategory(label)}
+          >
+            <Icon size={22} />
+            <span>{label}</span>
+            <ChevronDown size={16} />
+          </button>
+        ))}
+      </aside>
+      <section className="mega-products">
+        {products.map((product) => (
+          <a
+            key={product.name}
+            href={product.path}
+            onClick={(event) => {
+              if (product.path === "#") {
+                event.preventDefault();
+                return;
+              }
+              event.preventDefault();
+              navigateTo(product.path);
+            }}
+          >
+            <strong>{product.name}</strong>
+            <span>{product.text}</span>
+          </a>
+        ))}
+      </section>
+      <aside className="mega-featured">
+        <span>Featured</span>
+        <div className="mega-featured-image">
+          <img src="/use-case-enterprise.png" alt="" />
+        </div>
+        <strong>Cloud Container Engine</strong>
+        <p>Managed Kubernetes for resilient, scalable cloud-native workloads.</p>
+      </aside>
+    </div>
   );
 }
 
@@ -637,6 +774,290 @@ function Hero() {
     </section>
   );
 }
+
+const imsBenefits = [
+  {
+    icon: HardDrive,
+    title: "Centralized Image Management",
+    text: "Manage public, private, and shared images from a single service to support consistent cloud server provisioning."
+  },
+  {
+    icon: Maximize2,
+    title: "Flexible Image Creation",
+    text: "Create private images from existing cloud servers or import external image files to support customized environments."
+  },
+  {
+    icon: Shield,
+    title: "Secure Image Handling",
+    text: "Optional system-managed encryption is supported when creating private images to protect image data."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Efficient Deployment",
+    text: "Use images to quickly create cloud servers in batches, supporting repeatable deployments and system upgrades."
+  }
+];
+
+const imsScenarioRows = [
+  ["Public Image Catalog", true, true, true, true],
+  ["Private Image Creation", true, true, true, true],
+  ["Image Import", true, true, true, false],
+  ["Encrypted Images", true, true, true, true],
+  ["Cross-Team Sharing", true, true, true, true],
+  ["Batch Provisioning", true, false, true, true],
+  ["System Migration", false, true, true, false]
+];
+
+const imsCapabilityCards = [
+  {
+    title: "Standardized Server Deployment",
+    text: "Provision cloud servers with consistent operating systems and preconfigured environments using reusable images."
+  },
+  {
+    title: "System Migration",
+    text: "Import existing image files to seamlessly migrate workloads into the cloud with minimal downtime."
+  },
+  {
+    title: "Batch Provisioning",
+    text: "Deploy and scale multiple cloud servers at once using private images to improve speed and operational efficiency."
+  },
+  {
+    title: "Cross-Team Image Sharing",
+    text: "Share and reuse images across teams or tenants to maintain consistency and reduce duplication."
+  }
+];
+
+const imsFaqs = [
+  {
+    question: "What is Image Management Service?",
+    answer: "Image Management Service helps teams create, import, manage, share, and use cloud images for consistent server provisioning."
+  },
+  {
+    question: "Can I create private images from existing servers?",
+    answer: "Yes. IMS supports creating private images from existing cloud servers so teams can reuse configured operating systems and software stacks."
+  },
+  {
+    question: "Does IMS support image sharing?",
+    answer: "Yes. IMS supports sharing images across approved teams or tenants to standardize deployment environments."
+  },
+  {
+    question: "How does IMS help with batch deployment?",
+    answer: "Reusable images allow teams to provision multiple cloud servers with the same configuration, reducing setup time and operational drift."
+  },
+  {
+    question: "Can imported images be used to migrate workloads?",
+    answer: "Yes. Imported images can support workload migration by bringing existing server images into the HTGClouds environment."
+  }
+];
+
+function ImageManagementServicePage() {
+  return (
+    <main className="product-page ims-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">Centralized Image Management</div>
+          <h1>Image Management Service (IMS)</h1>
+          <p>
+            Image Management Service (IMS) enables you to create, manage, share,
+            and use cloud images to provision Elastic Cloud Servers with consistent
+            operating systems, software, and configurations.
+          </p>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get a Demo
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+          <div className="ecs-stats">
+            <div>
+              <strong>99.99%</strong>
+              <span>Enterprise SLA</span>
+            </div>
+            <div>
+              <strong>ISO 27001</strong>
+              <span>Certified</span>
+            </div>
+            <div>
+              <strong>24/7</strong>
+              <span>Support</span>
+            </div>
+          </div>
+        </div>
+        <ImsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading">
+          <h2>Why Choose IMS?</h2>
+          <p>Reliable image management designed for standardized deployments and operational efficiency.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {imsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <h2>How IMS Supports Different Scenarios</h2>
+        <div className="ecs-workload-table">
+          <h3>Image Management Service across common image usage scenarios.</h3>
+          <table>
+            <thead>
+              <tr>
+                {["Feature", "Web Apps", "Dev & Test", "Enterprise Systems", "Batch Jobs"].map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {imsScenarioRows.map(([feature, web, dev, enterprise, batch]) => (
+                <tr key={feature}>
+                  <td>{feature}</td>
+                  {[web, dev, enterprise, batch].map((enabled, index) => (
+                    <td key={`${feature}-${index}`} className={enabled ? "yes" : "no"}>
+                      {enabled ? <CircleCheck size={15} /> : <X size={15} />}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="ecs-section">
+        <div className="ecs-section-heading centered">
+          <h2>Clear, structured, and reliable</h2>
+        </div>
+        <div className="ecs-storage-grid ims-capability-grid">
+          {imsCapabilityCards.map((card, index) => (
+            <article key={card.title}>
+              <ImsCapabilityIllustration index={index} />
+              <h3>{card.title}</h3>
+              <p>{card.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <ImsFaq />
+      <ImsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function ImsHeroVisual() {
+  return (
+    <div className="ecs-visual">
+      <img src="/images/products/ims/ims-hero.png" alt="" />
+    </div>
+  );
+}
+
+function ImsCapabilityIllustration({ index }) {
+  if (index === 0) {
+    return (
+      <div className="ims-capability-visual ims-visual-1" aria-hidden="true">
+        <span className="ims-success"><CircleCheck size={13} /></span>
+        <span className="ims-server-card">
+          <small>Server provisioned successfully</small>
+          <strong>Ubuntu</strong>
+          <b>22.04</b>
+          <em>Standardized environment</em>
+        </span>
+      </div>
+    );
+  }
+
+  if (index === 1) {
+    return (
+      <div className="ims-capability-visual ims-visual-2" aria-hidden="true">
+        <span className="ims-import-label">Image Import</span>
+        <span className="ims-migration-rings" />
+        <span className="ims-migration-line" />
+        <span className="ims-migration-button">Cloud Migration</span>
+      </div>
+    );
+  }
+
+  if (index === 2) {
+    return (
+      <div className="ims-capability-visual ims-visual-3" aria-hidden="true">
+        <span className="ims-flow-top"><small>Private Image</small><i /> <small>Cloud</small></span>
+        <span className="ims-provision-card">
+          <small>Provisioning</small>
+          <em>6 servers</em>
+          <strong>Server 1</strong>
+          <b>Running 4/6</b>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ims-capability-visual ims-visual-4" aria-hidden="true">
+      <span className="ims-share-card left"><small>Private image</small><strong>img-base-2</strong></span>
+      <span className="ims-share-card right"><strong>4 teams</strong></span>
+      <span className="ims-share-icon"><HardDrive size={20} /></span>
+    </div>
+  );
+}
+
+function ImsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Image Management Service.</p>
+      </div>
+      <div className="pricing-faq-list">
+        {imsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ImsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Ready to Standardize Your Cloud Images?</h2>
+      </div>
+      <div>
+        <p>
+          HTGClouds helps teams create reusable, secure images for faster,
+          more consistent cloud server deployments.
+        </p>
+        <a
+          href="/signup"
+          onClick={(event) => {
+            event.preventDefault();
+            navigateTo("/signup");
+          }}
+        >
+          Start Free Trial
+        </a>
+      </div>
+    </section>
+  );
+}
+
 
 function PricingPage() {
   const [activeTab, setActiveTab] = useState("Compute");
