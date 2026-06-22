@@ -119,7 +119,7 @@ const productMenuItems = {
     {
       name: "Cloud Container Engine",
       text: "Experience enterprise-class, managed Kubernetes service.",
-      path: "#"
+      path: "/products/compute/cloud-container-engine"
     },
     {
       name: "Image Management Service",
@@ -129,12 +129,12 @@ const productMenuItems = {
     {
       name: "Bare Metal Server",
       text: "High performance and high security cloud based physical server.",
-      path: "#"
+      path: "/products/compute/bare-metal-server"
     },
     {
       name: "Auto Scaling",
       text: "Adapt compute resources to changing demand.",
-      path: "#"
+      path: "/products/compute/auto-scaling"
     }
   ],
   Storage: [
@@ -165,6 +165,43 @@ const productMenuItems = {
   ]
 };
 
+const productFeaturedServices = {
+  Compute: {
+    icon: Server,
+    name: "Elastic Cloud Server",
+    path: "/products/compute/elastic-cloud-server"
+  },
+  Storage: {
+    icon: Cloud,
+    name: "Object Storage Service (OBS)",
+    path: "#"
+  },
+  Network: {
+    icon: Globe2,
+    name: "Virtual Private Cloud (VPC)",
+    path: "#"
+  },
+  Databases: {
+    icon: Database,
+    name: "Relational Database Service (RDS)",
+    path: "#"
+  },
+  Application: {
+    icon: Boxes,
+    name: "Cloud Container Engine (CCE)",
+    path: "#"
+  },
+  "Management Tools": {
+    icon: Radio,
+    name: "Cloud Monitoring",
+    path: "#"
+  },
+  "Security and Compliance": {
+    icon: ShieldCheck,
+    name: "Security Center",
+    path: "#"
+  }
+};
 
 const services = [
   {
@@ -512,7 +549,10 @@ function App() {
   if (path === "/dashboard") return <DashboardRoute />;
   if (path === "/services") return <ServicesRoute />;
   if (path === "/products/compute/elastic-cloud-server") return <ElasticCloudServerPage />;
+  if (path === "/products/compute/cloud-container-engine") return <CloudContainerEnginePage />;
   if (path === "/products/compute/image-management-service") return <ImageManagementServicePage />;
+  if (path === "/products/compute/bare-metal-server") return <BareMetalServerPage />;
+  if (path === "/products/compute/auto-scaling") return <AutoScalingPage />;
   if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
@@ -687,6 +727,8 @@ function Navigation() {
 function ProductsMegaMenu() {
   const [activeCategory, setActiveCategory] = useState("Compute");
   const products = productMenuItems[activeCategory] || productMenuItems.Compute;
+  const featuredService = productFeaturedServices[activeCategory] || productFeaturedServices.Compute;
+  const FeaturedIcon = featuredService.icon;
 
   return (
     <div className="products-mega" role="menu" aria-label="Products">
@@ -725,12 +767,24 @@ function ProductsMegaMenu() {
         ))}
       </section>
       <aside className="mega-featured">
-        <span>Featured</span>
-        <div className="mega-featured-image">
-          <img src="/use-case-enterprise.png" alt="" />
-        </div>
-        <strong>Cloud Container Engine</strong>
-        <p>Managed Kubernetes for resilient, scalable cloud-native workloads.</p>
+        <span>Featured Service</span>
+        <a
+          className="mega-featured-card"
+          href={featuredService.path}
+          onClick={(event) => {
+            if (featuredService.path === "#") {
+              event.preventDefault();
+              return;
+            }
+            event.preventDefault();
+            navigateTo(featuredService.path);
+          }}
+        >
+          <span className="mega-featured-icon" aria-hidden="true">
+            <FeaturedIcon size={30} />
+          </span>
+          <strong>{featuredService.name}</strong>
+        </a>
       </aside>
     </div>
   );
@@ -775,94 +829,187 @@ function Hero() {
   );
 }
 
-const imsBenefits = [
+const ecsBenefits = [
   {
-    icon: HardDrive,
-    title: "Centralized Image Management",
-    text: "Manage public, private, and shared images from a single service to support consistent cloud server provisioning."
+    icon: SlidersVertical,
+    title: "High Performance",
+    text: "Powered by latest-generation processors and NVMe SSDs for lightning-fast computing and storage."
   },
   {
     icon: Maximize2,
-    title: "Flexible Image Creation",
-    text: "Create private images from existing cloud servers or import external image files to support customized environments."
+    title: "Automatic Scaling",
+    text: "Adjust compute resources to changing demand."
   },
   {
     icon: Shield,
-    title: "Secure Image Handling",
-    text: "Optional system-managed encryption is supported when creating private images to protect image data."
+    title: "Secure and Reliable",
+    text: "Enterprise-grade cloud infrastructure built for performance, scalability, and peace of mind."
   },
   {
     icon: MousePointerClick,
-    title: "Efficient Deployment",
-    text: "Use images to quickly create cloud servers in batches, supporting repeatable deployments and system upgrades."
+    title: "Flexible Customization",
+    text: "Choose CPU, memory, storage, and networking options to fit your workload."
   }
 ];
 
-const imsScenarioRows = [
-  ["Public Image Catalog", true, true, true, true],
-  ["Private Image Creation", true, true, true, true],
-  ["Image Import", true, true, true, false],
-  ["Encrypted Images", true, true, true, true],
-  ["Cross-Team Sharing", true, true, true, true],
-  ["Batch Provisioning", true, false, true, true],
-  ["System Migration", false, true, true, false]
+const ecsWorkloadRows = [
+  ["OS-Level Control", true, true, true, true],
+  ["Virtual Servers", true, true, true, true],
+  ["Flexible Scaling", true, true, true, false],
+  ["Persistent Storage", true, true, true, true],
+  ["Network Isolation", true, true, true, true],
+  ["High Availability Options", true, false, true, false],
+  ["Cost Efficient", true, true, true, true]
 ];
 
-const imsCapabilityCards = [
+const ecsStorageCards = [
   {
-    title: "Standardized Server Deployment",
-    text: "Provision cloud servers with consistent operating systems and preconfigured environments using reusable images."
+    title: "Scalable Block Storage",
+    text: "EVS delivers scalable block storage for cloud and bare metal servers, providing persistent, high-performance storage that adapts to evolving infrastructure needs."
   },
   {
-    title: "System Migration",
-    text: "Import existing image files to seamlessly migrate workloads into the cloud with minimal downtime."
+    title: "Flexible Disk Configuration",
+    text: "EVS supports both system disks and data disks, enabling servers to boot reliably and store application data securely."
   },
   {
-    title: "Batch Provisioning",
-    text: "Deploy and scale multiple cloud servers at once using private images to improve speed and operational efficiency."
+    title: "Security & Lifecycle Control",
+    text: "Encryption with supported algorithms protects sensitive information, while full lifecycle management ensures consistent performance and reliability."
   },
   {
-    title: "Cross-Team Image Sharing",
-    text: "Share and reuse images across teams or tenants to maintain consistency and reduce duplication."
+    title: "Cloud & Backup Use Cases",
+    text: "EVS is ideal for storing application data independently from compute resources, running system disks for cloud servers, and implementing data protection strategies."
   }
 ];
 
-const imsFaqs = [
+const ecsWorkloadCards = [
   {
-    question: "What is Image Management Service?",
-    answer: "Image Management Service helps teams create, import, manage, share, and use cloud images for consistent server provisioning."
+    icon: Globe2,
+    title: "Web Applications",
+    description:
+      "Deploy modern websites, APIs, and SaaS platforms with reliable performance and scalable infrastructure.",
+    examples: ["WordPress", "React Applications", "Node.js APIs", "Laravel Applications"],
+    capabilities: ["Auto Scaling", "SSD Storage", "Public Networking"]
   },
   {
-    question: "Can I create private images from existing servers?",
-    answer: "Yes. IMS supports creating private images from existing cloud servers so teams can reuse configured operating systems and software stacks."
+    icon: Code2,
+    title: "Development & Testing",
+    description:
+      "Create isolated environments for development, QA, staging, and continuous integration workflows.",
+    examples: ["CI/CD Pipelines", "QA Environments", "Staging Servers", "Sandbox Projects"],
+    capabilities: ["Fast Provisioning", "Snapshots", "Flexible Scaling"]
   },
   {
-    question: "Does IMS support image sharing?",
-    answer: "Yes. IMS supports sharing images across approved teams or tenants to standardize deployment environments."
+    icon: Shield,
+    title: "Enterprise Systems",
+    description:
+      "Run business-critical applications requiring security, reliability, and high availability.",
+    examples: ["ERP Systems", "CRM Platforms", "Internal Applications", "Databases"],
+    capabilities: ["High Availability", "Private Networks", "Security Groups"]
   },
   {
-    question: "How does IMS help with batch deployment?",
-    answer: "Reusable images allow teams to provision multiple cloud servers with the same configuration, reducing setup time and operational drift."
-  },
-  {
-    question: "Can imported images be used to migrate workloads?",
-    answer: "Yes. Imported images can support workload migration by bringing existing server images into the HTGClouds environment."
+    icon: Server,
+    title: "Batch Processing",
+    description:
+      "Process scheduled workloads, reports, analytics jobs, and automation tasks efficiently.",
+    examples: ["ETL Jobs", "Scheduled Reports", "Automation Tasks", "Data Processing"],
+    capabilities: ["Large Compute Capacity", "Scheduled Execution", "Cost Efficient"]
   }
 ];
 
-function ImageManagementServicePage() {
+const ecsEnterpriseKpis = [
+  ["99.99%", "Enterprise SLA"],
+  ["Multi-AZ", "Architecture"],
+  ["NVMe SSD", "Storage"],
+  ["Auto Scaling", "Enabled"]
+];
+
+const ecsEnterpriseCapabilities = [
+  {
+    title: "Performance",
+    points: ["Latest-generation CPUs", "Optimized networking", "Predictable compute performance"]
+  },
+  {
+    title: "Availability",
+    points: ["Multi-AZ deployment", "Automatic recovery", "Snapshot protection"]
+  },
+  {
+    title: "Security",
+    points: ["Security groups", "VPC isolation", "Encrypted storage"]
+  },
+  {
+    title: "Scalability",
+    points: ["Auto scaling", "Load balancing", "API-driven provisioning"]
+  }
+];
+
+const ecsFaqs = [
+  {
+    question: "What is Elastic Cloud Server (ECS)?",
+    answer: "Elastic Cloud Server (ECS) provides scalable virtual servers with configurable CPU, memory, storage, and networking for production workloads."
+  },
+  {
+    question: "Can I resize ECS resources later?",
+    answer: "Yes. ECS is designed for flexible scaling, allowing teams to adjust compute resources as workload requirements change."
+  },
+  {
+    question: "Does ECS support persistent storage?",
+    answer: "Yes. ECS works with scalable block storage so data can persist independently from server lifecycle operations."
+  },
+  {
+    question: "Is ECS suitable for enterprise systems?",
+    answer: "Yes. ECS supports network isolation, high availability options, security controls, and enterprise-grade reliability."
+  },
+  {
+    question: "How is ECS pricing calculated?",
+    answer: "ECS pricing is based on the selected flavor, billing period, and number of server instances."
+  }
+];
+
+function ElasticCloudServerPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Deploy scalable cloud servers with HTGClouds Elastic Cloud Server for secure, reliable, and high-performance infrastructure.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Elastic Cloud Server (ECS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
   return (
-    <main className="product-page ims-page">
+    <main className="product-page ecs-page">
       <Navigation />
       <section className="ecs-hero">
         <div className="ecs-hero-copy">
-          <div className="ecs-kicker">Centralized Image Management</div>
-          <h1>Image Management Service (IMS)</h1>
+          <div className="ecs-kicker">
+            <span>Products</span> Elastic Cloud Server
+          </div>
+          <h1>Elastic Cloud Server (ECS)</h1>
           <p>
-            Image Management Service (IMS) enables you to create, manage, share,
-            and use cloud images to provision Elastic Cloud Servers with consistent
-            operating systems, software, and configurations.
+            Flexible, scalable cloud server solutions designed to power your
+            applications with enterprise-grade performance and reliability.
           </p>
+          <div className="ecs-trust-chips" aria-label="ECS platform capabilities">
+            {["Enterprise Grade", "Auto Scaling", "NVMe SSD", "API Driven", "Multi AZ"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
           <div className="ecs-actions">
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get a Demo
@@ -886,16 +1033,16 @@ function ImageManagementServicePage() {
             </div>
           </div>
         </div>
-        <ImsHeroVisual />
+        <EcsHeroVisual />
       </section>
 
       <section className="ecs-section ecs-benefits-section">
         <div className="ecs-section-heading">
-          <h2>Why Choose IMS?</h2>
-          <p>Reliable image management designed for standardized deployments and operational efficiency.</p>
+          <h2>Why Choose ECS?</h2>
+          <p>Enterprise-grade cloud infrastructure built for performance, scalability, and peace of mind.</p>
         </div>
         <div className="ecs-benefit-grid">
-          {imsBenefits.map(({ icon: Icon, title, text }) => (
+          {ecsBenefits.map(({ icon: Icon, title, text }) => (
             <article key={title}>
               <span>
                 <Icon size={18} />
@@ -908,47 +1055,1630 @@ function ImageManagementServicePage() {
       </section>
 
       <section className="ecs-section ecs-workloads">
-        <h2>How IMS Supports Different Scenarios</h2>
-        <div className="ecs-workload-table">
-          <h3>Image Management Service across common image usage scenarios.</h3>
-          <table>
-            <thead>
-              <tr>
-                {["Feature", "Web Apps", "Dev & Test", "Enterprise Systems", "Batch Jobs"].map((column) => (
-                  <th key={column}>{column}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {imsScenarioRows.map(([feature, web, dev, enterprise, batch]) => (
-                <tr key={feature}>
-                  <td>{feature}</td>
-                  {[web, dev, enterprise, batch].map((enabled, index) => (
-                    <td key={`${feature}-${index}`} className={enabled ? "yes" : "no"}>
-                      {enabled ? <CircleCheck size={15} /> : <X size={15} />}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="ecs-section">
         <div className="ecs-section-heading centered">
-          <h2>Clear, structured, and reliable</h2>
+          <h2>Built for Every Workload</h2>
+          <p>Deploy, scale, and manage cloud infrastructure for web applications, enterprise systems, development environments, and batch processing workloads.</p>
         </div>
-        <div className="ecs-storage-grid ims-capability-grid">
-          {imsCapabilityCards.map((card, index) => (
-            <article key={card.title}>
-              <ImsCapabilityIllustration index={index} />
-              <h3>{card.title}</h3>
-              <p>{card.text}</p>
+        <div className="ecs-workload-grid">
+          {ecsWorkloadCards.map(({ icon: Icon, title, description, examples, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-card-list">
+                <span>Examples</span>
+                <ul>
+                  {examples.map((example) => (
+                    <li key={example}>{example}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
             </article>
           ))}
         </div>
       </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Why Enterprises Choose HTGClouds ECS</h2>
+          <p>Enterprise-grade compute infrastructure designed for performance, availability, security, and scale.</p>
+        </div>
+        <div className="ecs-kpi-strip">
+          {ecsEnterpriseKpis.map(([value, label]) => (
+            <div key={value}>
+              <strong>{value}</strong>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="ecs-capability-panel">
+          {ecsEnterpriseCapabilities.map((capability) => (
+            <article key={capability.title}>
+              <h3>{capability.title}</h3>
+              <ul>
+                {capability.points.map((point) => (
+                  <li key={point}>
+                    <CircleCheck size={15} />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <EcsFaq />
+      <EcsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function EcsHeroVisual() {
+  return (
+    <div className="ecs-visual">
+      <img src="/images/products/ecs/ecs-hero.png" alt="" />
+    </div>
+  );
+}
+
+function EcsStorageIllustration({ index }) {
+  if (index === 0) {
+    return (
+      <div className="ecs-storage-visual visual-1" aria-hidden="true">
+        <span className="storage-label label-left">Block Storage</span>
+        <span className="storage-label label-top">Bare Metal</span>
+        <span className="storage-label label-right">Servers</span>
+        <span className="storage-orbit orbit-1" />
+        <span className="storage-orbit orbit-2" />
+        <span className="storage-core"><HardDrive size={22} /></span>
+      </div>
+    );
+  }
+
+  if (index === 1) {
+    return (
+      <div className="ecs-storage-visual visual-2" aria-hidden="true">
+        <span className="disk-row row-one">
+          <span className="disk-icon"><HardDrive size={18} /></span>
+          <span><strong>System Disks</strong><em>Operating system</em></span>
+        </span>
+        <span className="disk-row row-two">
+          <span className="disk-icon"><HardDrive size={18} /></span>
+          <span><strong>Data Disks</strong><em>System logs</em></span>
+        </span>
+      </div>
+    );
+  }
+
+  if (index === 2) {
+    return (
+      <div className="ecs-storage-visual visual-3" aria-hidden="true">
+        <span className="secure-banner"><CircleCheck size={13} /> Data Secured</span>
+        <span className="secure-row">Sources <i /></span>
+        <span className="secure-row">Files <i /></span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ecs-storage-visual visual-4" aria-hidden="true">
+      <span className="volume-tabs"><strong>Volumes</strong><em>Instances</em></span>
+      <span className="volume-row"><b>Volume-A1</b><i>SSD - 100GB</i></span>
+      <span className="volume-value">68</span>
+      <span className="volume-slider"><i /></span>
+      <span className="volume-capacity">68/100 GB</span>
+    </div>
+  );
+}
+
+function EcsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Elastic Cloud Server (ECS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {ecsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EcsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Ready to Optimize Your Infrastructure?</h2>
+      </div>
+      <div>
+        <p>
+          HTGClouds empowers businesses with scalable compute infrastructure,
+          secure networking, and reliable performance.
+        </p>
+        <a
+          href="/signup"
+          onClick={(event) => {
+            event.preventDefault();
+            navigateTo("/signup");
+          }}
+        >
+          Start Free Trial
+        </a>
+      </div>
+    </section>
+  );
+}
+
+const cceBenefits = [
+  {
+    icon: Cloud,
+    title: "Fully Managed Kubernetes",
+    text: "Manage Kubernetes cluster lifecycle, including control plane operations, upgrades, and core add-ons, with reduced operational overhead."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Built-in Scalability",
+    text: "Scale containerized workloads using horizontal pod autoscaling and scheduled scaling policies based on workload demand."
+  },
+  {
+    icon: Shield,
+    title: "High Availability Architecture",
+    text: "Deploy clusters across multiple nodes and availability zones to maintain service continuity."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure Container Runtime",
+    text: "Run workloads using containerd and secure runtime options designed to isolate and protect container resources."
+  }
+];
+
+const cceWorkloads = [
+  {
+    icon: Boxes,
+    title: "Microservices Platforms",
+    description: "Run distributed microservices with Kubernetes-native orchestration, service discovery, and scaling.",
+    examples: ["API services", "Service mesh applications", "Distributed application platforms"],
+    capabilities: ["Orchestration", "Service Discovery", "Scaling"]
+  },
+  {
+    icon: Code2,
+    title: "Cloud-Native Applications",
+    description: "Deploy modern applications built with containers, Kubernetes, and automated delivery workflows.",
+    examples: ["Web applications", "SaaS platforms", "CI/CD workloads"],
+    capabilities: ["Containers", "Kubernetes", "Automated Delivery"]
+  },
+  {
+    icon: Server,
+    title: "Enterprise Container Platforms",
+    description: "Operate production Kubernetes environments with consistency, control, and integrated cloud services.",
+    examples: ["Enterprise platforms", "Internal business applications", "Production Kubernetes clusters"],
+    capabilities: ["Control", "Integrated Services", "Production Ready"]
+  },
+  {
+    icon: Zap,
+    title: "Batch & Scheduled Jobs",
+    description: "Run containerized batch jobs and scheduled workloads with Kubernetes-native job management.",
+    examples: ["Data processing", "Scheduled tasks", "Background workers"],
+    capabilities: ["Job Management", "Scheduled Runs", "Containerized Workers"]
+  }
+];
+
+const cceCapabilities = [
+  {
+    icon: Cloud,
+    title: "Managed Kubernetes Clusters",
+    description: "Create and operate Kubernetes clusters with lifecycle management for production workloads."
+  },
+  {
+    icon: Code2,
+    title: "Kubernetes-Native APIs",
+    description: "Use standard Kubernetes APIs and tools to deploy and manage applications."
+  },
+  {
+    icon: Boxes,
+    title: "Container Runtime Support",
+    description: "Run workloads using containerd and Kubernetes-native runtime capabilities."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Horizontal Pod Autoscaling",
+    description: "Automatically scale pods based on workload demand and resource utilization."
+  },
+  {
+    icon: Globe2,
+    title: "Integrated Networking",
+    description: "Use container networks, service networks, Kubernetes service IPs, and load balancing integration."
+  },
+  {
+    icon: HardDrive,
+    title: "Persistent Storage Integration",
+    description: "Connect workloads to EVS, SFS, OBS, local volumes, and Kubernetes StorageClass."
+  }
+];
+
+const cceFaqs = [
+  {
+    question: "What is Cloud Container Engine (CCE)?",
+    answer: "Cloud Container Engine is a managed Kubernetes service for deploying, scaling, and operating containerized applications."
+  },
+  {
+    question: "What workloads are suitable for CCE?",
+    answer: "CCE is suitable for microservices, cloud-native applications, enterprise container platforms, and containerized batch workloads."
+  },
+  {
+    question: "Which container runtime is supported?",
+    answer: "CCE supports containerd and Kubernetes-native runtimes."
+  },
+  {
+    question: "Does CCE support autoscaling?",
+    answer: "Yes. CCE supports horizontal pod autoscaling and scheduled scaling policies."
+  },
+  {
+    question: "Is CCE suitable for production workloads?",
+    answer: "Yes. CCE is designed to support production Kubernetes environments with high availability, scalability, and operational control."
+  }
+];
+
+function CloudContainerEnginePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Deploy, scale, and operate containerized applications with HTGClouds Cloud Container Engine, a managed Kubernetes service built for cloud-native workloads.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Cloud Container Engine (CCE) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page cce-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Managed Kubernetes Service</span>
+          </div>
+          <h1>Cloud Container Engine (CCE)</h1>
+          <p>
+            Deploy, scale, and operate containerized applications with fully managed
+            Kubernetes clusters. Cloud Container Engine provides managed Kubernetes
+            infrastructure for cloud-native workloads, helping teams run containers
+            with built-in scalability, high availability, and operational control.
+          </p>
+          <div className="ecs-trust-chips" aria-label="CCE platform capabilities">
+            {["Managed Kubernetes", "Container Orchestration", "Auto Scaling", "High Availability", "Secure Runtime"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="ecs-stats">
+            <div>
+              <strong>Managed Kubernetes</strong>
+              <span>Cluster Lifecycle Management</span>
+            </div>
+            <div>
+              <strong>Auto Scaling</strong>
+              <span>Horizontal Pod Autoscaling</span>
+            </div>
+            <div>
+              <strong>Production Ready</strong>
+              <span>High Availability Architecture</span>
+            </div>
+          </div>
+        </div>
+        <CceHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading">
+          <h2>Why Choose CCE?</h2>
+          <p>Enterprise-ready Kubernetes infrastructure designed for production container workloads.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {cceBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Built for Container Workloads</h2>
+          <p>Cloud Container Engine supports modern application delivery across microservices, cloud-native platforms, enterprise systems, and scheduled workloads.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {cceWorkloads.map(({ icon: Icon, title, description, examples, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-card-list">
+                <span>Examples</span>
+                <ul>
+                  {examples.map((example) => (
+                    <li key={example}>{example}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <CceArchitectureWorkflow />
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Create, operate, scale, network, and store containerized workloads with managed Kubernetes infrastructure.</p>
+        </div>
+        <div className="as-capability-card-grid cce-capability-card-grid">
+          {cceCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <CceFaq />
+      <CceCta />
+      <Footer />
+    </main>
+  );
+}
+
+function CceHeroVisual() {
+  return (
+    <div className="ecs-visual cce-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Cloud Container Engine managed Kubernetes illustration">
+        <rect x="74" y="78" width="372" height="364" rx="34" fill="#f5fbfb" />
+        <circle cx="260" cy="188" r="62" fill="#23b8be" opacity="0.16" />
+        <circle cx="260" cy="188" r="44" fill="#11161b" />
+        <path d="M260 150 l34 19 v38 l-34 20 l-34 -20 v-38 z" fill="none" stroke="#ffffff" strokeWidth="8" strokeLinejoin="round" />
+        <path d="M260 150 v37 l34 20 M260 187 l-34 20" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" />
+        {[142, 222, 302].map((x) => (
+          <g key={x}>
+            <rect x={x} y="308" width="62" height="70" rx="14" fill="#ffffff" stroke="#d7edf0" strokeWidth="2" />
+            <circle cx={x + 31} cy="334" r="13" fill="#23b8be" opacity="0.22" />
+            <path d={`M${x + 19} 354 h24 M${x + 19} 366 h24`} stroke="#23b8be" strokeWidth="4" strokeLinecap="round" />
+          </g>
+        ))}
+        <path d="M260 232 v42 M173 274 h174" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="8 10" />
+        <rect x="150" y="108" width="220" height="42" rx="21" fill="#e7f8f8" />
+        <text x="260" y="135" textAnchor="middle" fill="#126f73" fontSize="20" fontWeight="500">Managed Kubernetes</text>
+      </svg>
+    </div>
+  );
+}
+
+function CceArchitectureWorkflow() {
+  return (
+    <section className="ecs-section cce-architecture-section">
+      <div className="ecs-section-heading centered">
+        <h2>How CCE Works</h2>
+        <p>Run containerized applications on managed Kubernetes clusters with integrated compute, networking, storage, and scaling.</p>
+      </div>
+      <div className="cce-architecture-layout">
+        <div className="cce-architecture-diagram" aria-label="Cloud Container Engine workflow">
+          <svg className="cce-diagram-svg" viewBox="0 0 760 640" role="img" aria-labelledby="cceDiagramTitle">
+            <title id="cceDiagramTitle">Developer pipeline to CCE, Kubernetes cluster, worker nodes, and containerized applications with connected cloud services</title>
+            <defs>
+              <marker id="cceArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#98a0a6" />
+              </marker>
+            </defs>
+            <g className="cce-main-flow">
+              <rect x="80" y="38" width="300" height="76" rx="18" fill="#ffffff" />
+              <text x="230" y="84" textAnchor="middle">Developer / CI-CD Pipeline</text>
+              <path d="M230 116 V154" markerEnd="url(#cceArrow)" />
+
+              <rect x="80" y="164" width="300" height="76" rx="18" fill="#eafafa" />
+              <text x="230" y="210" textAnchor="middle">Cloud Container Engine (CCE)</text>
+              <path d="M230 242 V280" markerEnd="url(#cceArrow)" />
+
+              <rect x="80" y="290" width="300" height="76" rx="18" fill="#ffffff" />
+              <text x="230" y="336" textAnchor="middle">Kubernetes Cluster</text>
+              <path d="M230 368 V406" markerEnd="url(#cceArrow)" />
+
+              <rect x="80" y="416" width="300" height="76" rx="18" fill="#ffffff" />
+              <text x="230" y="462" textAnchor="middle">Worker Nodes</text>
+              <path d="M230 494 V532" markerEnd="url(#cceArrow)" />
+
+              <rect x="80" y="542" width="300" height="76" rx="18" fill="#11161b" />
+              <text x="230" y="588" textAnchor="middle" className="cce-dark-label">Containerized Applications</text>
+            </g>
+
+            <g className="cce-connected-services">
+              <text x="565" y="68" textAnchor="middle" className="cce-services-title">Connected Services</text>
+              {[
+                ["ECS", 110, Server],
+                ["ELB", 188, Globe2],
+                ["EVS", 266, HardDrive],
+                ["SFS", 344, Cloud],
+                ["OBS", 422, Database],
+                ["Auto Scaling", 500, Zap]
+              ].map(([label, y, Icon]) => (
+                <g key={label}>
+                  <rect x="470" y={y} width="190" height="50" rx="14" fill="#ffffff" />
+                  <foreignObject x="488" y={y + 13} width="24" height="24">
+                    <Icon size={22} color="#126f73" />
+                  </foreignObject>
+                  <text x="535" y={y + 32}>{label}</text>
+                </g>
+              ))}
+              <path d="M462 202 H386" markerEnd="url(#cceArrow)" />
+              <path d="M462 344 H386" markerEnd="url(#cceArrow)" />
+              <path d="M462 500 H386" markerEnd="url(#cceArrow)" />
+            </g>
+          </svg>
+        </div>
+        <div className="cce-architecture-copy">
+          <div>
+            <h3>Overview</h3>
+            <p>
+              Cloud Container Engine is a managed Kubernetes service that handles
+              cluster lifecycle management while allowing teams to deploy and operate
+              containerized applications using standard Kubernetes APIs.
+            </p>
+          </div>
+          <div>
+            <h3>Advantages</h3>
+            <article>
+              <h4>Managed Operations</h4>
+              <p>Reduce operational overhead by relying on managed Kubernetes lifecycle operations, upgrades, and core add-ons.</p>
+            </article>
+            <article>
+              <h4>Cloud-Native Scalability</h4>
+              <p>Scale applications using Kubernetes-native autoscaling and scheduled scaling policies.</p>
+            </article>
+            <article>
+              <h4>Integrated Cloud Services</h4>
+              <p>Connect container workloads with compute, networking, storage, and load balancing services.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CceFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Cloud Container Engine (CCE).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {cceFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CceCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Build and Scale Cloud-Native Applications</h2>
+      </div>
+      <div>
+        <p>Get started with Cloud Container Engine - managed Kubernetes built for real-world container workloads.</p>
+        <a
+          href="/signup"
+          onClick={(event) => {
+            event.preventDefault();
+            navigateTo("/signup");
+          }}
+        >
+          Get Started
+        </a>
+      </div>
+    </section>
+  );
+}
+
+const bmsBenefits = [
+  {
+    icon: Server,
+    title: "Dedicated Physical Servers",
+    text: "Each BMS instance runs on exclusive physical hardware with no virtualization overhead, ensuring predictable performance and full resource control."
+  },
+  {
+    icon: Zap,
+    title: "High Computing Performance",
+    text: "Supports x86 and Arm-based processors for databases, business systems, and HPC workloads."
+  },
+  {
+    icon: Shield,
+    title: "Hardware-Level Isolation",
+    text: "Physical isolation improves security and workload separation for sensitive environments."
+  },
+  {
+    icon: Cloud,
+    title: "Cloud-Based Management",
+    text: "Provision, start, stop, restart, and manage servers through the HTGClouds platform."
+  }
+];
+
+const bmsOverviewHighlights = [
+  "Automated provisioning and OS installation",
+  "Integration with networking and block storage",
+  "Centralized lifecycle management",
+  "Monitoring and operational visibility"
+];
+
+const bmsCapabilities = [
+  {
+    icon: Server,
+    title: "Dedicated Physical Servers",
+    description: "Exclusive hardware access with single-tenant infrastructure and predictable performance."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Automated Lifecycle Management",
+    description: "Automate provisioning, OS installation, and start, stop, restart, and delete operations."
+  },
+  {
+    icon: HardDrive,
+    title: "Storage Integration",
+    description: "Use EVS disk support with online attach, detach, and capacity expansion."
+  },
+  {
+    icon: Globe2,
+    title: "Secure Networking",
+    description: "Integrate with VPC networking, security groups, and Elastic IP support."
+  },
+  {
+    icon: Radio,
+    title: "Monitoring & Operations",
+    description: "Manage resources through the cloud console with monitoring and operational visibility."
+  }
+];
+
+const bmsUseCases = [
+  {
+    icon: Database,
+    title: "Core Databases",
+    description: "Run performance-sensitive databases with predictable compute and I/O performance.",
+    capabilities: ["Predictable Compute", "I/O Performance", "Dedicated Hardware"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Enterprise Application Systems",
+    description: "Support critical business systems requiring dedicated infrastructure.",
+    capabilities: ["Business Critical", "Dedicated Infrastructure", "Operational Control"]
+  },
+  {
+    icon: Zap,
+    title: "High-Performance Computing (HPC)",
+    description: "Execute compute-intensive workloads using direct hardware access.",
+    capabilities: ["Compute Intensive", "Direct Hardware", "High Performance"]
+  },
+  {
+    icon: Boxes,
+    title: "Batch Processing",
+    description: "Process large-scale workloads with consistent performance and resource availability.",
+    capabilities: ["Large Scale", "Consistent Performance", "Resource Availability"]
+  }
+];
+
+const bmsFaqs = [
+  {
+    question: "What is Bare Metal Server (BMS)?",
+    answer: "BMS is a cloud service that provides dedicated physical servers with cloud-based provisioning and management."
+  },
+  {
+    question: "How is BMS different from virtual servers?",
+    answer: "BMS offers exclusive access to physical hardware without virtualization overhead, providing higher performance and isolation."
+  },
+  {
+    question: "What workloads are suitable for BMS?",
+    answer: "BMS is suitable for databases, enterprise application systems, and high-performance computing workloads."
+  },
+  {
+    question: "Does BMS support cloud networking and storage?",
+    answer: "Yes. BMS integrates with VPC networking and EVS block storage services."
+  },
+  {
+    question: "Can I manage BMS through the cloud console?",
+    answer: "Yes. BMS supports full lifecycle management and monitoring through the cloud management console."
+  }
+];
+
+function BareMetalServerPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Dedicated physical servers with cloud-style provisioning, high computing performance, hardware-level isolation, and operational control for enterprise workloads.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Bare Metal Server (BMS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page bms-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Dedicated Physical Infrastructure</span>
+          </div>
+          <h1>Bare Metal Server (BMS)</h1>
+          <p>
+            Dedicated physical servers with cloud-style provisioning and management.
+            Bare Metal Server (BMS) provides exclusive access to physical servers,
+            delivering high computing performance, hardware-level isolation, and
+            operational control for performance-sensitive and security-critical workloads.
+          </p>
+          <div className="ecs-trust-chips" aria-label="BMS platform capabilities">
+            {["Dedicated Hardware", "High Performance", "Hardware Isolation", "Cloud Management", "Enterprise Ready"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="ecs-stats">
+            <div>
+              <strong>Dedicated Hardware</strong>
+              <span>Exclusive physical resources with no virtualization overhead.</span>
+            </div>
+            <div>
+              <strong>Enterprise Performance</strong>
+              <span>Predictable performance for demanding workloads.</span>
+            </div>
+            <div>
+              <strong>Hardware Isolation</strong>
+              <span>Enhanced security and workload separation.</span>
+            </div>
+          </div>
+        </div>
+        <BmsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading">
+          <h2>Why Choose BMS?</h2>
+          <p>Dedicated infrastructure designed for performance, isolation, and enterprise workloads.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {bmsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section bms-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Product Overview</h2>
+          <p>Bare Metal Server (BMS) combines the performance and security of traditional physical servers with the flexibility and automation of cloud resource management.</p>
+        </div>
+        <div className="ecs-workload-capabilities bms-overview-highlights">
+          {bmsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Operate dedicated physical servers with cloud-based lifecycle, storage, networking, monitoring, and operational control.</p>
+        </div>
+        <div className="as-capability-card-grid bms-capability-card-grid">
+          {bmsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Dedicated physical infrastructure for databases, enterprise systems, high-performance computing, and large-scale batch workloads.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {bmsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <BmsHowItWorks />
+      <BmsFaq />
+      <BmsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function BmsHeroVisual() {
+  return (
+    <div className="ecs-visual bms-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Bare Metal Server dedicated infrastructure illustration">
+        <rect x="74" y="78" width="372" height="364" rx="34" fill="#f5fbfb" />
+        <rect x="168" y="122" width="184" height="244" rx="26" fill="#ffffff" stroke="#d7edf0" strokeWidth="3" />
+        <rect x="194" y="154" width="132" height="54" rx="12" fill="#11161b" />
+        <path d="M214 181 h92" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" strokeDasharray="10 10" />
+        {[232, 272, 312].map((y) => (
+          <g key={y}>
+            <rect x="194" y={y} width="132" height="34" rx="8" fill="#eafafa" stroke="#ccebee" />
+            <circle cx="214" cy={y + 17} r="5" fill="#23b8be" />
+            <path d={`M232 ${y + 17} h70`} stroke="#7fcfd3" strokeWidth="4" strokeLinecap="round" />
+          </g>
+        ))}
+        <path d="M160 394 h200" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" />
+        <path d="M210 394 v-28 M310 394 v-28" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" />
+        <rect x="154" y="104" width="212" height="42" rx="21" fill="#e7f8f8" />
+        <text x="260" y="131" textAnchor="middle" fill="#126f73" fontSize="20" fontWeight="500">Dedicated Hardware</text>
+      </svg>
+    </div>
+  );
+}
+
+function BmsHowItWorks() {
+  return (
+    <section className="ecs-section bms-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Provision dedicated physical servers through HTGClouds while maintaining cloud-style management, monitoring, and lifecycle operations.</p>
+      </div>
+      <div className="bms-how-layout">
+        <div className="bms-scenario-panel">
+          <h3>Scenario</h3>
+          <p>Organizations requiring dedicated infrastructure can provision physical servers through HTGClouds while maintaining cloud-style management, monitoring, and lifecycle operations.</p>
+        </div>
+        <div className="bms-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Dedicated Hardware</h4>
+            <p>Access exclusive physical resources with no virtualization overhead.</p>
+          </article>
+          <article>
+            <h4>Predictable Performance</h4>
+            <p>Maintain consistent performance for business-critical applications.</p>
+          </article>
+          <article>
+            <h4>Cloud Operations</h4>
+            <p>Manage physical servers through a centralized cloud platform.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BmsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Bare Metal Server (BMS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {bmsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BmsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Deploy Dedicated Physical Infrastructure</h2>
+      </div>
+      <div>
+        <p>Get started with Bare Metal Server and combine dedicated hardware performance with cloud-based control and management.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const autoScalingBenefits = [
+  {
+    icon: Zap,
+    title: "Automatic Resource Adjustment",
+    text: "Automatically add or remove cloud servers based on demand to maintain application performance without manual intervention."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Flexible Scaling Policies",
+    text: "Scale infrastructure using metric-based, scheduled, or event-triggered policies aligned with business requirements."
+  },
+  {
+    icon: Shield,
+    title: "High Availability Support",
+    text: "Distribute workloads across availability zones to improve resilience and minimize service disruptions."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Cost Optimization",
+    text: "Reduce infrastructure costs by automatically scaling down unused resources during periods of low demand."
+  }
+];
+
+const autoScalingWorkloads = [
+  {
+    icon: Globe2,
+    title: "Web Applications",
+    description: "Automatically scale application servers during traffic spikes while maintaining a consistent user experience.",
+    examples: ["Public websites", "SaaS platforms", "APIs"],
+    capabilities: ["Automatic Scaling", "High Availability", "Elastic Capacity"]
+  },
+  {
+    icon: Boxes,
+    title: "E-Commerce Platforms",
+    description: "Increase capacity during promotional campaigns and seasonal traffic peaks.",
+    examples: ["Online stores", "Flash sales", "Digital marketplaces"],
+    capabilities: ["Scheduled Policies", "Elastic Capacity", "Cost Optimized"]
+  },
+  {
+    icon: Code2,
+    title: "Batch & Scheduled Workloads",
+    description: "Provision resources only when required for background processing and scheduled operations.",
+    examples: ["Data processing", "Scheduled reporting", "ETL workloads"],
+    capabilities: ["Scheduled Policies", "Elastic Capacity", "Cost Optimized"]
+  },
+  {
+    icon: Server,
+    title: "Enterprise Systems",
+    description: "Maintain reliable performance for business-critical applications.",
+    examples: ["ERP systems", "Internal applications", "Enterprise platforms"],
+    capabilities: ["High Availability", "Multi-AZ Support", "Health Management"]
+  }
+];
+
+const autoScalingCapabilities = [
+  {
+    icon: Zap,
+    title: "Dynamic Scaling",
+    description: "Automatically increase or reduce ECS capacity as workload demand changes."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Scheduled Scaling",
+    description: "Prepare capacity ahead of known traffic patterns, recurring jobs, and business events."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Health Management",
+    description: "Monitor instances and replace unhealthy servers to help maintain application availability."
+  },
+  {
+    icon: Server,
+    title: "ECS Integration",
+    description: "Work directly with Elastic Cloud Server to provision scalable compute capacity."
+  },
+  {
+    icon: Globe2,
+    title: "Load Balancer Integration",
+    description: "Distribute traffic across scaled instances using Elastic Load Balance integration."
+  },
+  {
+    icon: Boxes,
+    title: "Multi-AZ Resilience",
+    description: "Scale across availability zones to improve resilience for production workloads."
+  }
+];
+
+const autoScalingFaqs = [
+  {
+    question: "What is Auto Scaling?",
+    answer: "Auto Scaling automatically adjusts the number of cloud servers based on predefined scaling policies and workload demand."
+  },
+  {
+    question: "Which resources can Auto Scaling manage?",
+    answer: "Auto Scaling manages Elastic Cloud Servers (ECS) within scaling groups."
+  },
+  {
+    question: "How are scaling actions triggered?",
+    answer: "Scaling actions can be triggered using performance metrics, schedules, or predefined business events."
+  },
+  {
+    question: "Does Auto Scaling support high availability?",
+    answer: "Yes. Auto Scaling supports multi-availability zone deployments for improved service availability."
+  },
+  {
+    question: "Is Auto Scaling suitable for production workloads?",
+    answer: "Yes. Auto Scaling is designed for production environments requiring dynamic capacity management and high availability."
+  }
+];
+
+function AutoScalingPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Automatically scale cloud server capacity based on demand. Improve application availability, performance, and cost efficiency with HTGClouds Auto Scaling.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Auto Scaling (AS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page as-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Automated Resource Management</span>
+          </div>
+          <h1>Auto Scaling (AS)</h1>
+          <p>
+            Automatically adjust compute resources to match application demand. Auto Scaling
+            helps maintain application performance and cost efficiency by automatically increasing
+            or decreasing cloud server capacity based on predefined scaling policies and real-time
+            workload requirements.
+          </p>
+          <div className="ecs-trust-chips" aria-label="Auto Scaling platform capabilities">
+            {["Automatic Scaling", "High Availability", "Scheduled Policies", "Cost Optimized", "Elastic Capacity"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+          <div className="ecs-stats">
+            <div>
+              <strong>Automatic Scaling</strong>
+              <span>Dynamic Capacity Management</span>
+            </div>
+            <div>
+              <strong>Multi-AZ Support</strong>
+              <span>Enterprise Availability</span>
+            </div>
+            <div>
+              <strong>Cost Efficient</strong>
+              <span>Pay Only for Resources Used</span>
+            </div>
+          </div>
+        </div>
+        <AutoScalingHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading">
+          <h2>Why Choose Auto Scaling?</h2>
+          <p>Elastic resource management designed for modern cloud applications with dynamic and unpredictable workloads.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {autoScalingBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Built for Dynamic Workloads</h2>
+          <p>Auto Scaling helps organizations maintain performance, availability, and efficiency across a wide range of cloud workloads.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {autoScalingWorkloads.map(({ icon: Icon, title, description, examples, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-card-list">
+                <span>Examples</span>
+                <ul>
+                  {examples.map((example) => (
+                    <li key={example}>{example}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <AutoScalingArchitecture />
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Manage scaling groups, policies, health checks, integrations, and availability for automated infrastructure scaling.</p>
+        </div>
+        <div className="as-capability-card-grid">
+          {autoScalingCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <AutoScalingFaq />
+      <AutoScalingCta />
+      <Footer />
+    </main>
+  );
+}
+
+function AutoScalingHeroVisual() {
+  return (
+    <div className="ecs-visual as-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Auto Scaling service illustration">
+        <rect x="74" y="78" width="372" height="364" rx="34" fill="#f5fbfb" />
+        <path d="M138 340 h244" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="10 12" />
+        <path d="M158 288 c20 -64 62 -98 112 -98 c52 0 80 41 96 98" fill="none" stroke="#23b8be" strokeWidth="16" strokeLinecap="round" />
+        <path d="M366 288 l-2 -56 l48 30 z" fill="#23b8be" />
+        {[132, 214, 296].map((x, index) => (
+          <g key={x}>
+            <rect x={x} y={318 - index * 26} width="58" height="68" rx="12" fill="#ffffff" stroke="#d7edf0" strokeWidth="2" />
+            <path d={`M${x + 16} ${342 - index * 26} h26 M${x + 16} ${356 - index * 26} h26`} stroke="#23b8be" strokeWidth="4" strokeLinecap="round" />
+          </g>
+        ))}
+        <circle cx="260" cy="190" r="58" fill="#11161b" />
+        <path d="M232 190 h56 M260 162 v56" stroke="#ffffff" strokeWidth="14" strokeLinecap="round" />
+        <rect x="164" y="108" width="192" height="42" rx="21" fill="#e7f8f8" />
+        <text x="260" y="135" textAnchor="middle" fill="#126f73" fontSize="20" fontWeight="500">Scaling Group</text>
+      </svg>
+    </div>
+  );
+}
+
+function AutoScalingArchitecture() {
+  return (
+    <section className="ecs-section as-architecture-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Automatically scale ECS capacity based on workload demand while maintaining application performance.</p>
+      </div>
+      <div className="as-architecture-layout">
+        <div className="as-architecture-diagram" aria-label="Auto Scaling architecture workflow">
+          <svg className="as-diagram-svg" viewBox="0 0 1200 690" role="img" aria-labelledby="asDiagramTitle">
+            <title id="asDiagramTitle">Elastic Load Balance, Object Storage, and Auto Scaling feed ECS instances and output processed data to Object Storage</title>
+            <defs>
+              <marker id="asArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#98a0a6" />
+              </marker>
+              <filter id="asSoftShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="14" stdDeviation="14" floodColor="#0f1a20" floodOpacity="0.08" />
+              </filter>
+            </defs>
+
+            <g className="as-service-source">
+              <rect x="84" y="128" width="74" height="74" rx="18" fill="#1574f6" />
+              <path d="M121 145 L97 188 H145 Z M121 145 V180 M97 188 L121 180 L145 188" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+              <text x="121" y="252" textAnchor="middle">Elastic Load Balance</text>
+              <text x="121" y="284" textAnchor="middle">(ELB)</text>
+
+              <rect x="84" y="330" width="74" height="74" rx="18" fill="#23bf5a" />
+              <path d="M96 370 C105 346, 126 346, 134 362 C144 356, 158 364, 156 378 C155 391, 144 397, 132 397 H108 C94 397, 88 386, 96 370 Z" fill="#fff" />
+              <path d="M121 386 V360 M109 372 L121 360 L133 372" fill="none" stroke="#23bf5a" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+              <text x="121" y="456" textAnchor="middle">Object Storage Service</text>
+              <text x="121" y="488" textAnchor="middle">(OBS)</text>
+
+              <rect x="84" y="532" width="74" height="74" rx="18" fill="#08aade" />
+              <path d="M98 582 C104 548, 111 548, 117 582 C123 616, 130 616, 136 582 C142 548, 149 548, 155 582" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+              <text x="121" y="656" textAnchor="middle">Auto Scaling</text>
+            </g>
+
+            <text x="330" y="164" textAnchor="middle" className="as-flow-label">Keep loads balanced</text>
+            <text x="330" y="365" textAnchor="middle" className="as-flow-label">Raw data</text>
+            <text x="346" y="568" textAnchor="middle" className="as-flow-label">Keep workloads stable</text>
+            <path d="M176 166 H432" stroke="#98a0a6" strokeWidth="2.6" markerEnd="url(#asArrow)" />
+            <path d="M176 368 H432" stroke="#98a0a6" strokeWidth="2.6" markerEnd="url(#asArrow)" />
+            <path d="M176 570 H432" stroke="#98a0a6" strokeWidth="2.6" markerEnd="url(#asArrow)" />
+
+            <g className="as-ecs-group" filter="url(#asSoftShadow)">
+              <rect x="450" y="76" width="220" height="562" rx="18" fill="#f8f9f9" />
+
+              {[118, 292, 500].map((y) => (
+                <g key={y}>
+                  <rect x="524" y={y} width="72" height="72" rx="17" fill="#ff5335" />
+                  <path d={`M535 ${y + 47} C542 ${y + 30}, 556 ${y + 31}, 561 ${y + 42} C567 ${y + 31}, 586 ${y + 36}, 586 ${y + 51} C586 ${y + 61}, 577 ${y + 65}, 566 ${y + 65} H545 C534 ${y + 65}, 529 ${y + 58}, 535 ${y + 47} Z`} fill="#fff" />
+                  <path d={`M548 ${y + 54} H572`} stroke="#ff5335" strokeWidth="3" strokeLinecap="round" />
+                </g>
+              ))}
+
+              <text x="560" y="236" textAnchor="middle">Elastic Cloud Server</text>
+              <text x="560" y="268" textAnchor="middle">(ECS)</text>
+              <text x="560" y="410" textAnchor="middle">Elastic Cloud Server</text>
+              <text x="560" y="442" textAnchor="middle">(ECS)</text>
+              <text x="560" y="618" textAnchor="middle">Elastic Cloud Server</text>
+              <text x="560" y="650" textAnchor="middle">(ECS)</text>
+              <text x="560" y="482" textAnchor="middle" className="as-ellipsis">...</text>
+            </g>
+
+            <path d="M690 166 H742 C772 166 780 196 780 230 V334 C780 358 798 368 828 368" fill="none" stroke="#98a0a6" strokeWidth="2.6" markerEnd="url(#asArrow)" />
+            <path d="M690 368 H828" stroke="#98a0a6" strokeWidth="2.6" markerEnd="url(#asArrow)" />
+            <path d="M690 570 H742 C772 570 780 540 780 506 V402 C780 378 798 368 828 368" fill="none" stroke="#98a0a6" strokeWidth="2.6" markerEnd="url(#asArrow)" />
+            <text x="930" y="348" textAnchor="middle" className="as-flow-label">Processed data</text>
+            <path d="M918 368 H1016" stroke="#98a0a6" strokeWidth="2.6" markerEnd="url(#asArrow)" />
+
+            <g className="as-output-obs" filter="url(#asSoftShadow)">
+              <rect x="1040" y="330" width="74" height="74" rx="18" fill="#23bf5a" />
+              <path d="M1052 370 C1061 346, 1082 346, 1090 362 C1100 356, 1114 364, 1112 378 C1111 391, 1100 397, 1088 397 H1064 C1050 397, 1044 386, 1052 370 Z" fill="#fff" />
+              <path d="M1077 386 V360 M1065 372 L1077 360 L1089 372" fill="none" stroke="#23bf5a" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+              <text x="1077" y="456" textAnchor="middle">Object Storage Service</text>
+              <text x="1077" y="488" textAnchor="middle">(OBS)</text>
+            </g>
+          </svg>
+        </div>
+        <div className="as-architecture-copy">
+          <div>
+            <h3>Scenario</h3>
+            <p>
+              Automatically launch compute instances for scheduled workloads and release them
+              when tasks finish. Capacity can also scale up or down automatically based on
+              workload demand.
+            </p>
+          </div>
+          <div>
+            <h3>Advantages</h3>
+            <article>
+              <strong>Flexible Scaling</strong>
+              <p>Adjust capacity manually or use scheduled, recurring, or alarm-based scaling policies.</p>
+            </article>
+            <article>
+              <strong>Cost Efficient</strong>
+              <p>Instances are added only when needed, helping optimize performance and cost. Pay only for the resources you use.</p>
+            </article>
+            <article>
+              <strong>Multiple Instance Types</strong>
+              <p>Run workloads across different instance types to improve performance and resource utilization.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AutoScalingFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Auto Scaling.</p>
+      </div>
+      <div className="pricing-faq-list">
+        {autoScalingFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AutoScalingCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Scale Automatically. Operate Efficiently.</h2>
+      </div>
+      <div>
+        <p>Automatically adjust cloud resources to match changing demand while maintaining performance and optimizing costs.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const imsCoreCapabilities = [
+  {
+    icon: HardDrive,
+    title: "Centralized Image Management",
+    description: "Manage public, private, and shared images from a single service to support consistent cloud server provisioning.",
+    benefits: ["Version Control", "Team Sharing", "Image Catalog"]
+  },
+  {
+    icon: Maximize2,
+    title: "Flexible Image Creation",
+    description: "Create private images from existing cloud servers or import external image files to support customized environments.",
+    benefits: ["Version History", "Rollback", "Governance"]
+  },
+  {
+    icon: Shield,
+    title: "Secure Image Handling",
+    description: "Optional system-managed encryption is supported when creating private images to protect image data.",
+    benefits: ["High Availability", "DR Ready", "Global Distribution"]
+  },
+  {
+    icon: MousePointerClick,
+    title: "Efficient Deployment",
+    description: "Use images to quickly create cloud servers in batches, supporting repeatable deployments and system upgrades.",
+    benefits: ["Faster Provisioning", "Consistency", "Reduced Errors"]
+  }
+];
+
+const imsDeploymentScenarios = [
+  {
+    icon: Cloud,
+    title: "Golden Image Management",
+    description: "Create and maintain approved golden images that standardize operating systems, software, and baseline configuration.",
+    examples: ["Ubuntu Templates", "Approved Images", "Private Catalog", "Shared Images"],
+    capabilities: ["Version Control", "Team Sharing", "Image Catalog"]
+  },
+  {
+    icon: Code2,
+    title: "Development & Testing",
+    description: "Provision repeatable development, QA, staging, and sandbox environments from trusted image versions.",
+    examples: ["QA Environments", "Staging Servers", "Sandbox Projects", "Test Clusters"],
+    capabilities: ["Fast Provisioning", "Rollback", "Consistency"]
+  },
+  {
+    icon: Shield,
+    title: "Enterprise Operations",
+    description: "Govern image lifecycles for production systems with consistent security posture and operational control.",
+    examples: ["ERP Images", "CRM Platforms", "Internal Systems", "Production Baselines"],
+    capabilities: ["Governance", "Secure Images", "Audit Ready"]
+  },
+  {
+    icon: Globe2,
+    title: "Multi-Region Deployment",
+    description: "Replicate standardized images across regions so workloads can be deployed close to users and recovery targets.",
+    examples: ["Mogadishu Region", "Hoa-Mogadishu-2", "DR Sites", "Regional Rollouts"],
+    capabilities: ["High Availability", "DR Ready", "Replication"]
+  }
+];
+
+const imsFaqs = [
+  {
+    question: "What is Image Management Service (IMS)?",
+    answer: "Image Management Service (IMS) helps teams create, import, manage, share, and use cloud images for consistent server provisioning."
+  },
+  {
+    question: "Can I create private images from existing servers?",
+    answer: "Yes. IMS supports creating private images from existing cloud servers so teams can reuse configured operating systems and software stacks."
+  },
+  {
+    question: "Does IMS support image sharing?",
+    answer: "Yes. IMS supports sharing images across approved teams or tenants to standardize deployment environments."
+  },
+  {
+    question: "How does IMS help with batch deployment?",
+    answer: "Reusable images allow teams to provision multiple cloud servers with the same configuration, reducing setup time and operational drift."
+  },
+  {
+    question: "Can imported images be used to migrate workloads?",
+    answer: "Yes. Imported images can support workload migration by bringing existing server images into the HTGClouds environment."
+  }
+];
+
+function ImageManagementServicePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Create, manage, replicate, and deploy cloud images with HTGClouds Image Management Service.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Image Management Service (IMS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ims-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">Centralized Image Management</div>
+          <h1>Image Management Service (IMS)</h1>
+          <p>
+            Image Management Service (IMS) enables you to create, manage, share,
+            and use cloud images to provision Elastic Cloud Servers with consistent
+            operating systems, software, and configurations.
+          </p>
+          <div className="ecs-trust-chips" aria-label="IMS platform capabilities">
+            {["Enterprise Grade", "Secure & Encrypted", "Multi Region", "API Driven", "Highly Available"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get a Demo
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+          <div className="ecs-stats">
+            <div>
+              <strong>99.99% SLA</strong>
+              <span>Enterprise Reliability</span>
+            </div>
+            <div>
+              <strong>Multi-Region Replication</strong>
+              <span>Image Availability</span>
+            </div>
+            <div>
+              <strong>Automated Deployment</strong>
+              <span>Faster Provisioning</span>
+            </div>
+          </div>
+        </div>
+        <ImsHeroVisual />
+      </section>
+
+      <section className="ecs-section ims-core-section">
+        <div className="ecs-section-heading">
+          <h2>Why Choose IMS?</h2>
+          <p>Reliable image management designed for standardized deployments and operational efficiency.</p>
+        </div>
+        <div className="ims-core-grid">
+          {imsCoreCapabilities.map(({ icon: Icon, title, description, benefits }) => (
+            <article className="ims-core-block" key={title}>
+              <span className="ims-core-icon" aria-hidden="true">
+                <Icon size={24} />
+              </span>
+              <div className="ims-core-content">
+                <h3>{title}</h3>
+                <p>{description}</p>
+                <div className="ims-core-chips">
+                  {benefits.map((benefit) => (
+                    <span key={benefit}>
+                      <CircleCheck size={14} />
+                      {benefit}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Built for Every Deployment Scenario</h2>
+          <p>Create, manage, replicate, and deploy standardized cloud images across development, production, and multi-region environments.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {imsDeploymentScenarios.map(({ icon: Icon, title, description, examples, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-card-list">
+                <span>Examples</span>
+                <ul>
+                  {examples.map((example) => (
+                    <li key={example}>{example}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <ImsArchitectureWorkflow />
 
       <ImsFaq />
       <ImsCta />
@@ -960,57 +2690,114 @@ function ImageManagementServicePage() {
 function ImsHeroVisual() {
   return (
     <div className="ecs-visual">
-      <img src="/images/products/ims/ims-hero.png" alt="" />
+      <img src="/images/products/ims/ims-golden-repository.png" alt="" />
     </div>
   );
 }
 
-function ImsCapabilityIllustration({ index }) {
-  if (index === 0) {
-    return (
-      <div className="ims-capability-visual ims-visual-1" aria-hidden="true">
-        <span className="ims-success"><CircleCheck size={13} /></span>
-        <span className="ims-server-card">
-          <small>Server provisioned successfully</small>
-          <strong>Ubuntu</strong>
-          <b>22.04</b>
-          <em>Standardized environment</em>
-        </span>
-      </div>
-    );
-  }
-
-  if (index === 1) {
-    return (
-      <div className="ims-capability-visual ims-visual-2" aria-hidden="true">
-        <span className="ims-import-label">Image Import</span>
-        <span className="ims-migration-rings" />
-        <span className="ims-migration-line" />
-        <span className="ims-migration-button">Cloud Migration</span>
-      </div>
-    );
-  }
-
-  if (index === 2) {
-    return (
-      <div className="ims-capability-visual ims-visual-3" aria-hidden="true">
-        <span className="ims-flow-top"><small>Private Image</small><i /> <small>Cloud</small></span>
-        <span className="ims-provision-card">
-          <small>Provisioning</small>
-          <em>6 servers</em>
-          <strong>Server 1</strong>
-          <b>Running 4/6</b>
-        </span>
-      </div>
-    );
-  }
-
+function ImsArchitectureWorkflow() {
   return (
-    <div className="ims-capability-visual ims-visual-4" aria-hidden="true">
-      <span className="ims-share-card left"><small>Private image</small><strong>img-base-2</strong></span>
-      <span className="ims-share-card right"><strong>4 teams</strong></span>
-      <span className="ims-share-icon"><HardDrive size={20} /></span>
-    </div>
+    <section className="ecs-section ims-architecture-section">
+      <div className="ecs-section-heading centered ims-architecture-heading">
+        <h2>How IMS Works</h2>
+        <p>Import, manage, and deploy standardized cloud images across ECS environments.</p>
+      </div>
+      <div className="ims-architecture-layout">
+        <div className="ims-architecture-diagram" aria-label="Image Management Service architecture workflow">
+          <svg className="ims-architecture-svg" viewBox="0 0 1000 620" role="img" aria-labelledby="ims-architecture-title">
+            <title id="ims-architecture-title">Image file to OBS, IMS, ECS, and Auto Scaling workflow</title>
+            <defs>
+              <marker id="imsArrow" markerWidth="10" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
+                <path d="M 0 1 L 10 6 L 0 11 z" fill="#9aa0a6" />
+              </marker>
+            </defs>
+
+            <g className="ims-svg-lines" fill="none" stroke="#9aa0a6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9">
+              <path d="M138 220 L138 278" markerEnd="url(#imsArrow)" />
+              <path d="M212 340 L335 340" markerEnd="url(#imsArrow)" />
+              <path d="M452 340 L575 340" markerEnd="url(#imsArrow)" />
+              <path d="M452 340 C545 340 532 176 592 176 L612 176" markerEnd="url(#imsArrow)" />
+              <path d="M452 340 C545 340 532 504 592 504 L612 504" markerEnd="url(#imsArrow)" />
+              <path d="M886 340 L845 340" markerEnd="url(#imsArrow)" />
+            </g>
+
+            <g className="ims-svg-node image-file">
+              <rect x="106" y="84" width="64" height="64" rx="12" fill="#ff9825" />
+              <path d="M129 103 h22 l9 9 v28 h-31 z" fill="none" stroke="#fff" strokeWidth="4" strokeLinejoin="round" />
+              <path d="M150 103 v11 h10" fill="none" stroke="#fff" strokeWidth="4" strokeLinejoin="round" />
+              <path d="M136 118 h17 M136 129 h17" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+              <text x="138" y="194" textAnchor="middle">Image File</text>
+            </g>
+
+            <g className="ims-svg-node obs">
+              <rect x="100" y="303" width="76" height="76" rx="15" fill="#24bf5d" />
+              <path d="M117 347 c0 -13 11 -23 24 -20 c4 -10 19 -10 25 0 c10 1 18 9 18 20 c0 12 -9 21 -23 21 h-36 c-5 0 -8 -4 -8 -10 z" fill="#fff" />
+              <path d="M139 363 v-25 M139 338 l-13 13 M139 338 l13 13" fill="none" stroke="#24bf5d" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+              <text x="138" y="426" textAnchor="middle">Object Storage</text>
+              <text x="138" y="458" textAnchor="middle">Service (OBS)</text>
+            </g>
+
+            <g className="ims-svg-node ims">
+              <rect x="364" y="303" width="76" height="76" rx="15" fill="#9551e6" />
+              <rect x="386" y="321" width="35" height="41" rx="4" fill="#fff" />
+              <path d="M393 321 h32 c5 0 9 4 9 9 v33" fill="none" stroke="#fff" strokeWidth="4" />
+              <path d="M399 321 h32 c5 0 9 4 9 9 v33" fill="none" stroke="#fff" strokeWidth="4" opacity="0.55" />
+              <path d="M395 349 c0 -7 6 -12 12 -11 c2 -5 9 -5 12 0 c5 1 9 5 9 11 c0 6 -5 10 -11 10 h-17 c-3 0 -5 -2 -5 -5 z" fill="#9551e6" />
+              <text x="402" y="426" textAnchor="middle">Image Management</text>
+              <text x="402" y="458" textAnchor="middle">Service (IMS)</text>
+            </g>
+
+            <g className="ims-svg-ecs-panel">
+              <rect x="612" y="48" width="235" height="540" rx="15" fill="#fafbfb" />
+              <path d="M664 48 h183 v46 h-183 c-11 0 -20 -9 -20 -20 v-26 z" fill="#eef6ff" />
+              <text x="756" y="80" textAnchor="middle" className="panel-title">Enterprise apps</text>
+
+              {[132, 302, 472].map((y) => (
+                <g className="ims-svg-ecs" key={y}>
+                  <rect x="692" y={y} width="76" height="76" rx="15" fill="#ff5638" />
+                  <path d={`M710 ${y + 47} c0 -10 8 -18 18 -16 c3 -8 14 -8 18 0 c8 1 15 7 15 16 c0 9 -7 16 -18 16 h-27 c-4 0 -7 -3 -7 -8 z`} fill="#fff" />
+                  <path d={`M720 ${y + 51} h28 M720 ${y + 60} h37`} stroke="#ff5638" strokeWidth="4" strokeLinecap="round" />
+                  <text x="730" y={y + 120} textAnchor="middle">Elastic Cloud Server</text>
+                  <text x="730" y={y + 152} textAnchor="middle">(ECS)</text>
+                </g>
+              ))}
+            </g>
+
+            <g className="ims-svg-node scaling">
+              <rect x="890" y="303" width="76" height="76" rx="15" fill="#11aee5" />
+              <path d="M906 354 c12 -35 18 -35 30 0 s18 35 30 0" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+              <path d="M906 326 c12 35 18 35 30 0 s18 -35 30 0" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+              <text x="928" y="426" textAnchor="middle">Auto Scaling</text>
+            </g>
+          </svg>
+        </div>
+
+        <div className="ims-architecture-copy">
+          <div>
+            <h3>Introduction</h3>
+            <p>
+              By importing existing images, you can quickly migrate your data and applications to the cloud.
+              A variety of image file formats are supported, including VHD, VMDK, QCOW2, and RAW.
+            </p>
+          </div>
+          <div>
+            <h3>Advantages</h3>
+            <article>
+              <h4>Easy Import</h4>
+              <p>Private images can be easily imported to migrate workloads.</p>
+            </article>
+            <article>
+              <h4>Unified Deployment</h4>
+              <p>Using identical images across servers allows you to deploy workloads in batches.</p>
+            </article>
+            <article>
+              <h4>High Durability</h4>
+              <p>Redundant storage of your images ensures 99.999999999% data durability.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1057,7 +2844,6 @@ function ImsCta() {
     </section>
   );
 }
-
 
 function PricingPage() {
   const [activeTab, setActiveTab] = useState("Compute");
@@ -1923,300 +3709,6 @@ function PricingCta() {
     </section>
   );
 }
-
-const ecsBenefits = [
-  {
-    icon: SlidersVertical,
-    title: "High Performance",
-    text: "Powered by latest-generation processors and NVMe SSDs for lightning-fast computing and storage."
-  },
-  {
-    icon: Maximize2,
-    title: "Automatic Scaling",
-    text: "Adjust compute resources to changing demand."
-  },
-  {
-    icon: Shield,
-    title: "Secure and Reliable",
-    text: "Enterprise-grade cloud infrastructure built for performance, scalability, and peace of mind."
-  },
-  {
-    icon: MousePointerClick,
-    title: "Flexible Customization",
-    text: "Choose CPU, memory, storage, and networking options to fit your workload."
-  }
-];
-
-const ecsWorkloadCards = [
-  {
-    icon: Globe2,
-    title: "Web Applications",
-    description:
-      "Deploy modern websites, APIs, and SaaS platforms with reliable performance and scalable infrastructure.",
-    examples: ["WordPress", "React Applications", "Node.js APIs", "Laravel Applications"],
-    capabilities: ["Auto Scaling", "SSD Storage", "Public Networking"]
-  },
-  {
-    icon: Code2,
-    title: "Development & Testing",
-    description:
-      "Create isolated environments for development, QA, staging, and continuous integration workflows.",
-    examples: ["CI/CD Pipelines", "QA Environments", "Staging Servers", "Sandbox Projects"],
-    capabilities: ["Fast Provisioning", "Snapshots", "Flexible Scaling"]
-  },
-  {
-    icon: Shield,
-    title: "Enterprise Systems",
-    description:
-      "Run business-critical applications requiring security, reliability, and high availability.",
-    examples: ["ERP Systems", "CRM Platforms", "Internal Applications", "Databases"],
-    capabilities: ["High Availability", "Private Networks", "Security Groups"]
-  },
-  {
-    icon: Server,
-    title: "Batch Processing",
-    description:
-      "Process scheduled workloads, reports, analytics jobs, and automation tasks efficiently.",
-    examples: ["ETL Jobs", "Scheduled Reports", "Automation Tasks", "Data Processing"],
-    capabilities: ["Large Compute Capacity", "Scheduled Execution", "Cost Efficient"]
-  }
-];
-
-const ecsEnterpriseKpis = [
-  ["99.99%", "Enterprise SLA"],
-  ["Multi-AZ", "Architecture"],
-  ["NVMe SSD", "Storage"],
-  ["Auto Scaling", "Enabled"]
-];
-
-const ecsEnterpriseCapabilities = [
-  {
-    title: "Performance",
-    points: ["Latest-generation CPUs", "Optimized networking", "Predictable compute performance"]
-  },
-  {
-    title: "Availability",
-    points: ["Multi-AZ deployment", "Automatic recovery", "Snapshot protection"]
-  },
-  {
-    title: "Security",
-    points: ["Security groups", "VPC isolation", "Encrypted storage"]
-  },
-  {
-    title: "Scalability",
-    points: ["Auto scaling", "Load balancing", "API-driven provisioning"]
-  }
-];
-
-const ecsFaqs = [
-  {
-    question: "What is Elastic Cloud Server?",
-    answer: "Elastic Cloud Server provides scalable virtual servers with configurable CPU, memory, storage, and networking for production workloads."
-  },
-  {
-    question: "Can I resize ECS resources later?",
-    answer: "Yes. ECS is designed for flexible scaling, allowing teams to adjust compute resources as workload requirements change."
-  },
-  {
-    question: "Does ECS support persistent storage?",
-    answer: "Yes. ECS works with scalable block storage so data can persist independently from server lifecycle operations."
-  },
-  {
-    question: "Is ECS suitable for enterprise systems?",
-    answer: "Yes. ECS supports network isolation, high availability options, security controls, and enterprise-grade reliability."
-  },
-  {
-    question: "How is ECS pricing calculated?",
-    answer: "ECS pricing is based on the selected flavor, billing period, and number of server instances."
-  }
-];
-
-function ElasticCloudServerPage() {
-  return (
-    <main className="product-page ecs-page">
-      <Navigation />
-      <section className="ecs-hero">
-        <div className="ecs-hero-copy">
-          <div className="ecs-kicker">
-            <span>Products</span> Elastic Compute Service
-          </div>
-          <h1>Elastic Cloud Server (ECS)</h1>
-          <p>
-            Flexible, scalable cloud server solutions designed to power your
-            applications with enterprise-grade performance and reliability.
-          </p>
-          <div className="ecs-trust-chips" aria-label="ECS platform capabilities">
-            {["Enterprise Grade", "Auto Scaling", "NVMe SSD", "API Driven", "Multi AZ"].map((chip) => (
-              <span key={chip}>{chip}</span>
-            ))}
-          </div>
-          <div className="ecs-actions">
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
-              Get a Demo
-            </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
-              Contact Sales
-            </a>
-          </div>
-          <div className="ecs-stats">
-            <div>
-              <strong>99.99%</strong>
-              <span>Enterprise SLA</span>
-            </div>
-            <div>
-              <strong>ISO 27001</strong>
-              <span>Certified</span>
-            </div>
-            <div>
-              <strong>24/7</strong>
-              <span>Support</span>
-            </div>
-          </div>
-        </div>
-        <EcsHeroVisual />
-      </section>
-
-      <section className="ecs-section ecs-benefits-section">
-        <div className="ecs-section-heading">
-          <h2>Why Choose ECS?</h2>
-          <p>Enterprise-grade cloud infrastructure built for performance, scalability, and peace of mind.</p>
-        </div>
-        <div className="ecs-benefit-grid">
-          {ecsBenefits.map(({ icon: Icon, title, text }) => (
-            <article key={title}>
-              <span>
-                <Icon size={18} />
-              </span>
-              <h3>{title}</h3>
-              <p>{text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="ecs-section ecs-workloads">
-        <div className="ecs-section-heading centered">
-          <h2>Built for Every Workload</h2>
-          <p>Deploy, scale, and manage cloud infrastructure for web applications, enterprise systems, development environments, and batch processing workloads.</p>
-        </div>
-        <div className="ecs-workload-grid">
-          {ecsWorkloadCards.map(({ icon: Icon, title, description, examples, capabilities }) => (
-            <article className="ecs-workload-card" key={title}>
-              <div className="ecs-workload-card-icon">
-                <Icon size={22} />
-              </div>
-              <h3>{title}</h3>
-              <p>{description}</p>
-              <div className="ecs-workload-card-list">
-                <span>Examples</span>
-                <ul>
-                  {examples.map((example) => (
-                    <li key={example}>{example}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="ecs-workload-capabilities">
-                {capabilities.map((capability) => (
-                  <span key={capability}>
-                    <CircleCheck size={14} />
-                    {capability}
-                  </span>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="ecs-section ecs-enterprise-proof">
-        <div className="ecs-section-heading centered">
-          <h2>Why Enterprises Choose HTGClouds ECS</h2>
-          <p>Enterprise-grade compute infrastructure designed for performance, availability, security, and scale.</p>
-        </div>
-        <div className="ecs-kpi-strip">
-          {ecsEnterpriseKpis.map(([value, label]) => (
-            <div key={value}>
-              <strong>{value}</strong>
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-        <div className="ecs-capability-panel">
-          {ecsEnterpriseCapabilities.map((capability) => (
-            <article key={capability.title}>
-              <h3>{capability.title}</h3>
-              <ul>
-                {capability.points.map((point) => (
-                  <li key={point}>
-                    <CircleCheck size={15} />
-                    {point}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <EcsFaq />
-      <EcsCta />
-      <Footer />
-    </main>
-  );
-}
-
-function EcsHeroVisual() {
-  return (
-    <div className="ecs-visual">
-      <img src="/images/products/ecs/ecs-hero.png" alt="" />
-    </div>
-  );
-}
-
-function EcsFaq() {
-  return (
-    <section className="pricing-faq ecs-faq">
-      <div>
-        <h2>Frequently Asked Questions</h2>
-        <p>Everything you need to know about HTGCloud ECS.</p>
-      </div>
-      <div className="pricing-faq-list">
-        {ecsFaqs.map((item, index) => (
-          <details key={item.question} open={index === 0}>
-            <summary>{item.question}</summary>
-            <p>{item.answer}</p>
-          </details>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function EcsCta() {
-  return (
-    <section className="pricing-cta ecs-cta">
-      <div>
-        <h2>Ready to Optimize Your Infrastructure?</h2>
-      </div>
-      <div>
-        <p>
-          HTGClouds empowers businesses with scalable compute infrastructure,
-          secure networking, and reliable performance.
-        </p>
-        <a
-          href="/signup"
-          onClick={(event) => {
-            event.preventDefault();
-            navigateTo("/signup");
-          }}
-        >
-          Start Free Trial
-        </a>
-      </div>
-    </section>
-  );
-}
-
 
 function DocumentationPreview() {
   return (
