@@ -145,9 +145,11 @@ const productMenuItems = {
     { name: "Volume Backup Service", text: "Disk-level backup and point-in-time recovery.", path: "/products/storage/volume-backup-service" }
   ],
   Network: [
-    { name: "Virtual Private Cloud", text: "Private isolated networks for cloud resources.", path: "#" },
-    { name: "Elastic IP", text: "Public IP connectivity for internet-facing workloads.", path: "#" },
-    { name: "Elastic Load Balance", text: "Traffic distribution for resilient applications.", path: "#" }
+    { name: "Virtual Private Cloud", text: "Private isolated networks for cloud resources.", path: "/products/network/virtual-private-cloud" },
+    { name: "Elastic IP", text: "Public IP connectivity for internet-facing workloads.", path: "/products/network/elastic-ip" },
+    { name: "Elastic Load Balance", text: "Traffic distribution for resilient applications.", path: "/products/network/elastic-load-balance" },
+    { name: "Virtual Private Network", text: "Encrypted connectivity for hybrid cloud networks.", path: "/products/network/virtual-private-network" },
+    { name: "Domain Name Service", text: "Authoritative DNS hosting and domain resolution.", path: "/products/network/domain-name-service" }
   ],
   Databases: [
     { name: "Relational Database Service", text: "Managed relational databases with backup and recovery.", path: "#" },
@@ -181,7 +183,7 @@ const productFeaturedServices = {
   Network: {
     icon: Globe2,
     name: "Virtual Private Cloud (VPC)",
-    path: "#"
+    path: "/products/network/virtual-private-cloud"
   },
   Databases: {
     icon: Database,
@@ -560,6 +562,11 @@ function App() {
   if (path === "/products/storage/scalable-file-service") return <ScalableFileServicePage />;
   if (path === "/products/storage/cloud-server-backup-service") return <CloudServerBackupServicePage />;
   if (path === "/products/storage/volume-backup-service") return <VolumeBackupServicePage />;
+  if (path === "/products/network/virtual-private-cloud") return <VirtualPrivateCloudPage />;
+  if (path === "/products/network/elastic-ip") return <ElasticIpPage />;
+  if (path === "/products/network/elastic-load-balance") return <ElasticLoadBalancePage />;
+  if (path === "/products/network/virtual-private-network") return <VirtualPrivateNetworkPage />;
+  if (path === "/products/network/domain-name-service") return <DomainNameServicePage />;
   if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
@@ -3865,6 +3872,2045 @@ function VbsCta() {
             }}
           >
             Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const vpcHeroFeatures = [
+  {
+    icon: ShieldCheck,
+    title: "Secure Network Isolation",
+    text: "Deploy applications inside dedicated virtual networks with complete separation from other cloud environments."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Flexible Architecture",
+    text: "Create custom CIDR ranges, subnets, route tables, and gateways that match your infrastructure requirements."
+  },
+  {
+    icon: Zap,
+    title: "High-Speed Connectivity",
+    text: "Connect cloud workloads, Internet-facing services, and private environments through reliable networking services."
+  }
+];
+
+const vpcBenefits = [
+  {
+    icon: ShieldCheck,
+    title: "Complete Network Isolation",
+    text: "Create logically isolated virtual networks with independent routing and access controls to securely separate workloads."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Flexible Network Design",
+    text: "Build custom network topologies using configurable CIDR blocks, subnets, route tables, and gateways."
+  },
+  {
+    icon: Globe2,
+    title: "Enterprise Connectivity",
+    text: "Connect cloud resources to the Internet, private networks, and hybrid environments through secure networking services."
+  },
+  {
+    icon: Radio,
+    title: "Production-Ready Performance",
+    text: "Support business-critical workloads with reliable, scalable, and high-performance cloud networking."
+  }
+];
+
+const vpcOverviewHighlights = [
+  "Build isolated virtual networks",
+  "Create public and private subnets",
+  "Configure routing policies",
+  "Manage inbound and outbound traffic",
+  "Segment applications across multiple tiers",
+  "Integrate networking with cloud security services"
+];
+
+const vpcCapabilities = [
+  {
+    icon: Cloud,
+    title: "Isolated Virtual Networks",
+    description: "Deploy resources inside dedicated virtual cloud networks with complete logical separation."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Custom Address Management",
+    description: "Define CIDR blocks and subnet structures that align with application and organizational requirements."
+  },
+  {
+    icon: Radio,
+    title: "Advanced Routing Control",
+    description: "Configure route tables and gateways to manage traffic flow between cloud resources and external networks."
+  },
+  {
+    icon: Boxes,
+    title: "Network Segmentation",
+    description: "Separate application tiers, databases, and services using subnet-based architectures."
+  },
+  {
+    icon: Globe2,
+    title: "Cloud Service Integration",
+    description: "Integrate seamlessly with EIP, NAT Gateway, ELB, Security Groups, and Network ACLs."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Visualized Network Management",
+    description: "Manage and monitor networking resources through intuitive cloud management tools."
+  }
+];
+
+const vpcUseCases = [
+  {
+    icon: ShieldCheck,
+    title: "Secure Application Environments",
+    description: "Deploy backend systems and databases in isolated private subnets while controlling access through security policies.",
+    capabilities: ["Private Subnets", "Security Policies", "Protected Backends"]
+  },
+  {
+    icon: Globe2,
+    title: "Web Application Hosting",
+    description: "Expose public applications through Internet gateways and load balancing services while protecting internal resources.",
+    capabilities: ["Public Apps", "Internet Gateway", "Load Balancing"]
+  },
+  {
+    icon: Boxes,
+    title: "Multi-Tier Architectures",
+    description: "Separate web, application, and database layers using segmented networking environments.",
+    capabilities: ["Web Tier", "App Tier", "Database Tier"]
+  },
+  {
+    icon: Zap,
+    title: "High-Traffic Workloads",
+    description: "Support scalable applications by integrating VPC with Auto Scaling and Load Balancing services.",
+    capabilities: ["Auto Scaling", "Traffic Control", "Scalable Apps"]
+  }
+];
+
+const vpcFaqs = [
+  {
+    question: "What is a Virtual Private Cloud?",
+    answer: "A Virtual Private Cloud is a logically isolated virtual network where cloud resources can be securely deployed and managed."
+  },
+  {
+    question: "Can I create multiple subnets?",
+    answer: "Yes. VPC supports flexible subnet creation and network segmentation."
+  },
+  {
+    question: "How does VPC improve security?",
+    answer: "VPC combines network isolation, routing control, security groups, and network ACLs to help protect cloud resources."
+  },
+  {
+    question: "Can VPC connect to the Internet?",
+    answer: "Yes. VPC integrates with Elastic IPs, NAT Gateways, and routing services to enable Internet connectivity."
+  },
+  {
+    question: "Is VPC suitable for production workloads?",
+    answer: "Yes. VPC is designed to support secure, scalable, and production-ready cloud architectures."
+  }
+];
+
+function VirtualPrivateCloudPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Build isolated virtual networks with secure connectivity, subnet design, routing control, and cloud-native networking from HTGClouds Virtual Private Cloud.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Virtual Private Cloud (VPC) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page network-product-page vpc-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Cloud Networking</span>
+          </div>
+          <h1>Virtual Private Cloud (VPC)</h1>
+          <p>
+            Build secure cloud environments with complete control over networking,
+            connectivity, and traffic management. Virtual Private Cloud (VPC)
+            provides isolated virtual networks where applications, databases, and
+            cloud resources can operate securely while remaining connected to the
+            services and users that matter most.
+          </p>
+          <div className="ecs-trust-chips" aria-label="VPC platform capabilities">
+            {["Network Isolation", "Flexible Subnet Design", "Secure Connectivity", "Intelligent Routing", "Cloud-Native Networking"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {vpcHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <VpcHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose VPC?</h2>
+          <p>Virtual Private Cloud provides the networking foundation for modern cloud applications. Whether you're deploying web applications, databases, enterprise systems, or multi-tier architectures, VPC delivers the isolation, flexibility, and connectivity required for production environments.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {vpcBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section vpc-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Networking Foundation for Cloud Infrastructure</h2>
+          <p>Virtual Private Cloud enables organizations to create secure and isolated cloud networking environments while maintaining full control over traffic management and resource communication.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {vpcOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Cloud networking capabilities for isolated environments, custom addressing, routing control, segmentation, service integration, and visualized management.</p>
+        </div>
+        <div className="as-capability-card-grid vpc-capability-card-grid">
+          {vpcCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Secure networking foundations for application environments, public services, multi-tier systems, and scalable high-traffic workloads.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {vpcUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <VpcHowItWorks />
+      <VpcFaq />
+      <VpcCta />
+      <Footer />
+    </main>
+  );
+}
+
+function VpcHeroVisual() {
+  return (
+    <div className="ecs-visual vpc-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Virtual Private Cloud networking illustration">
+        <defs>
+          <linearGradient id="vpcCloudGradient" x1="120" y1="90" x2="420" y2="420" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#e8fbfb" />
+            <stop offset="1" stopColor="#ffffff" />
+          </linearGradient>
+        </defs>
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="url(#vpcCloudGradient)" stroke="#d4eef1" strokeWidth="3" />
+        <path d="M160 186 C176 144, 216 146, 235 176 C260 148, 316 164, 318 210 C356 214, 380 238, 380 270 C380 308, 348 330, 300 330 H180 C136 330, 112 306, 116 270 C120 230, 136 206, 160 186 Z" fill="#ffffff" stroke="#bde7eb" strokeWidth="4" />
+        <text x="248" y="210" textAnchor="middle" fill="#126f73" fontSize="22" fontWeight="500">VPC</text>
+
+        <rect x="126" y="238" width="116" height="72" rx="18" fill="#e7f8f8" stroke="#9fdfe4" strokeWidth="3" />
+        <text x="184" y="264" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">Public Subnet</text>
+        <rect x="152" y="276" width="26" height="20" rx="5" fill="#23b8be" />
+        <rect x="190" y="276" width="26" height="20" rx="5" fill="#23b8be" opacity="0.75" />
+
+        <rect x="278" y="238" width="116" height="72" rx="18" fill="#f7fbfb" stroke="#d7edf0" strokeWidth="3" />
+        <text x="336" y="264" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">Private Subnet</text>
+        <ellipse cx="322" cy="288" rx="20" ry="8" fill="#23b8be" opacity="0.35" />
+        <path d="M302 288 v14 c0 5 9 9 20 9 s20 -4 20 -9 v-14" fill="#dff8f8" stroke="#23b8be" strokeWidth="3" />
+        <rect x="354" y="276" width="22" height="22" rx="6" fill="#11161b" opacity="0.92" />
+
+        <rect x="116" y="126" width="92" height="48" rx="16" fill="#ffffff" stroke="#d7edf0" />
+        <text x="162" y="156" textAnchor="middle" fill="#11161b" fontSize="13" fontWeight="500">Gateway</text>
+        <path d="M208 150 h48" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="302" y="126" width="104" height="48" rx="16" fill="#ffffff" stroke="#d7edf0" />
+        <text x="354" y="156" textAnchor="middle" fill="#11161b" fontSize="13" fontWeight="500">Route Table</text>
+        <path d="M318 174 l-32 40 M354 174 v42" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <circle cx="260" cy="374" r="34" fill="#e7f8f8" stroke="#9fdfe4" strokeWidth="3" />
+        <path d="M260 346 l24 10 v18 c0 19 -10 31 -24 38 c-14 -7 -24 -19 -24 -38 v-18 z" fill="#23b8be" />
+        <path d="M249 374 l8 8 l17 -22" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <text x="260" y="430" textAnchor="middle" fill="#126f73" fontSize="16" fontWeight="500">Security Controls</text>
+
+        <path d="M184 310 C188 346, 218 366, 226 374 M336 310 C332 346, 302 366, 294 374" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="8 8" />
+      </svg>
+    </div>
+  );
+}
+
+function VpcHowItWorks() {
+  return (
+    <section className="ecs-section vpc-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Create isolated virtual networks, divide resources into subnets, and control traffic through route tables, gateways, and security mechanisms.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization creates a Virtual Private Cloud and divides resources into multiple subnets.</p>
+          <p>Public-facing applications are deployed within public subnets while databases and backend services remain protected in private subnets. Traffic flows through configurable route tables, security groups, and gateways, providing secure communication between users, applications, and cloud resources.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Complete Isolation</h4>
+            <p>Protect workloads through dedicated virtual networking environments.</p>
+          </article>
+          <article>
+            <h4>Flexible Architecture</h4>
+            <p>Design networking layouts that support both simple and complex cloud deployments.</p>
+          </article>
+          <article>
+            <h4>Secure Connectivity</h4>
+            <p>Control communication through routing policies, gateways, and layered security mechanisms.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function VpcFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Virtual Private Cloud (VPC).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {vpcFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function VpcCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Build Secure Cloud Networks with HTGCloud</h2>
+      </div>
+      <div>
+        <p>Create isolated, scalable, and high-performance cloud networking environments designed for modern applications and enterprise workloads.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const elbHeroFeatures = [
+  {
+    icon: ShieldCheck,
+    title: "High Availability by Design",
+    text: "Automatically detect unhealthy backend servers and route traffic to healthy instances to maintain service continuity."
+  },
+  {
+    icon: Zap,
+    title: "Elastic Traffic Handling",
+    text: "Scale application delivery seamlessly during traffic surges without manual traffic management."
+  },
+  {
+    icon: Radio,
+    title: "Enterprise-Grade Performance",
+    text: "Support high-concurrency workloads with fast traffic distribution and reliable backend connectivity."
+  }
+];
+
+const elbBenefits = [
+  {
+    icon: ShieldCheck,
+    title: "High Availability Architecture",
+    text: "Cluster-based deployment combined with health monitoring ensures traffic is always directed to healthy backend resources."
+  },
+  {
+    icon: Zap,
+    title: "Elastic Scalability",
+    text: "Automatically adapt to traffic fluctuations and growing workloads without disrupting application availability."
+  },
+  {
+    icon: Radio,
+    title: "Intelligent Failover",
+    text: "Detect backend failures in real time and redirect traffic automatically to maintain service continuity."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Cost-Efficient Operations",
+    text: "Integrate with Auto Scaling to optimize infrastructure utilization and reduce unnecessary resource costs."
+  }
+];
+
+const elbOverviewHighlights = [
+  "Distribute traffic across multiple backend servers",
+  "Improve application availability",
+  "Increase fault tolerance",
+  "Support traffic spikes",
+  "Simplify traffic management",
+  "Improve user experience consistency"
+];
+
+const elbCapabilities = [
+  {
+    icon: Globe2,
+    title: "Intelligent Traffic Distribution",
+    description: "Automatically distribute requests across multiple backend servers to optimize application performance."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Health Monitoring & Automatic Failover",
+    description: "Continuously monitor backend health and reroute traffic away from unhealthy instances."
+  },
+  {
+    icon: Zap,
+    title: "Elastic Scaling Integration",
+    description: "Work seamlessly with Auto Scaling services to adjust backend capacity based on workload demand."
+  },
+  {
+    icon: Cloud,
+    title: "High Availability Deployment",
+    description: "Provide resilient application delivery through distributed and cluster-based load balancing architecture."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Fast Service Deployment",
+    description: "Accelerate application launches and infrastructure updates with simplified traffic management."
+  },
+  {
+    icon: Radio,
+    title: "Centralized Traffic Management",
+    description: "Monitor, manage, and optimize traffic distribution through a unified cloud management experience."
+  }
+];
+
+const elbUseCases = [
+  {
+    icon: Globe2,
+    title: "High-Traffic Websites",
+    description: "Distribute large volumes of traffic across multiple backend resources to improve performance and reliability.",
+    capabilities: ["Large Traffic", "Backend Pools", "Reliable Delivery"]
+  },
+  {
+    icon: Boxes,
+    title: "E-Commerce Platforms",
+    description: "Maintain responsive shopping experiences during seasonal spikes, promotions, and peak demand periods.",
+    capabilities: ["Peak Demand", "Promotions", "Responsive Apps"]
+  },
+  {
+    icon: Radio,
+    title: "Video & Media Platforms",
+    description: "Handle unpredictable traffic patterns while delivering consistent performance to users.",
+    capabilities: ["Traffic Spikes", "Media Delivery", "Consistent Performance"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Enterprise & Government Systems",
+    description: "Ensure stable service delivery for mission-critical business applications through automated fault handling and resilient traffic distribution.",
+    capabilities: ["Mission Critical", "Fault Handling", "Resilient Routing"]
+  }
+];
+
+const elbFaqs = [
+  {
+    question: "What is Elastic Load Balance (ELB)?",
+    answer: "Elastic Load Balance is a cloud service that distributes incoming traffic across multiple backend servers to improve availability, scalability, and performance."
+  },
+  {
+    question: "Does ELB support automatic failover?",
+    answer: "Yes. ELB continuously monitors backend health and automatically routes traffic away from unhealthy instances."
+  },
+  {
+    question: "Can ELB handle traffic spikes?",
+    answer: "Yes. ELB is designed to distribute traffic efficiently and works with Auto Scaling to support sudden traffic increases."
+  },
+  {
+    question: "Does ELB integrate with Auto Scaling?",
+    answer: "Yes. ELB integrates with Auto Scaling services to dynamically adjust backend capacity based on workload demand."
+  },
+  {
+    question: "Is ELB suitable for production workloads?",
+    answer: "Yes. ELB is designed for high-availability production environments requiring resilient and scalable traffic management."
+  }
+];
+
+function ElasticLoadBalancePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Distribute application traffic across backend servers with high availability, automatic failover, and elastic scalability from HTGClouds Elastic Load Balance.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Elastic Load Balance (ELB) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page network-product-page elb-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Application Traffic Management</span>
+          </div>
+          <h1>Elastic Load Balance (ELB)</h1>
+          <p>
+            Deliver reliable application performance, maintain service availability,
+            and scale seamlessly with intelligent traffic distribution. Elastic Load
+            Balance (ELB) automatically distributes incoming traffic across multiple
+            backend servers, helping applications handle traffic spikes, improve
+            fault tolerance, and maintain consistent user experiences.
+          </p>
+          <div className="ecs-trust-chips" aria-label="ELB platform capabilities">
+            {["Intelligent Traffic Distribution", "High Availability Architecture", "Automatic Failover", "Elastic Scalability", "Production-Ready Performance"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {elbHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <ElbHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose ELB?</h2>
+          <p>Elastic Load Balance helps organizations deliver highly available applications by intelligently distributing traffic across multiple backend services. Whether supporting customer-facing platforms, enterprise systems, or large-scale digital services, ELB provides the performance, scalability, and fault tolerance needed for production workloads.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {elbBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section elb-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Reliable Traffic Distribution for Modern Applications</h2>
+          <p>Elastic Load Balance separates user traffic from backend infrastructure, creating a flexible and resilient application delivery layer.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {elbOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Load balancing capabilities for intelligent traffic distribution, health monitoring, failover, scaling integration, and centralized traffic operations.</p>
+        </div>
+        <div className="as-capability-card-grid elb-capability-card-grid">
+          {elbCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Resilient traffic distribution for websites, commerce platforms, media workloads, and enterprise systems.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {elbUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <ElbHowItWorks />
+      <ElbFaq />
+      <ElbCta />
+      <Footer />
+    </main>
+  );
+}
+
+function ElbHeroVisual() {
+  return (
+    <div className="ecs-visual elb-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Elastic Load Balance traffic distribution illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <circle cx="260" cy="246" r="62" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M228 250 h64 M260 218 v64 M238 232 l44 36 M282 232 l-44 36" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <text x="260" y="330" textAnchor="middle" fill="#126f73" fontSize="20" fontWeight="500">ELB</text>
+
+        <rect x="104" y="130" width="100" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="154" y="164" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">Users</text>
+        <path d="M204 158 C238 158 238 214 218 224" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        {[126, 220, 314].map((y, index) => (
+          <g key={y}>
+            <rect x="328" y={y} width="94" height="58" rx="18" fill={index === 1 ? "#e7f8f8" : "#ffffff"} stroke="#d7edf0" />
+            <rect x="354" y={y + 18} width="42" height="24" rx="7" fill="#23b8be" opacity={index === 2 ? "0.7" : "1"} />
+            <path d={`M322 ${y + 29} C300 ${y + 29} 294 246 326 246`} stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+          </g>
+        ))}
+
+        <rect x="104" y="316" width="118" height="62" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <path d="M134 346 h58 M163 326 v40" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <text x="163" y="404" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Health Checks</text>
+
+        <path d="M222 346 C238 336 244 316 250 294" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+      </svg>
+    </div>
+  );
+}
+
+function ElbHowItWorks() {
+  return (
+    <section className="ecs-section elb-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Distribute application requests across healthy backend servers while automated health checks maintain resilient service delivery.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization deploys multiple backend application servers behind Elastic Load Balance.</p>
+          <p>As users access the application, ELB automatically distributes requests across available backend resources. Health checks continuously monitor server status and automatically redirect traffic if a backend instance becomes unavailable.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Continuous Availability</h4>
+            <p>Maintain service uptime through intelligent traffic routing and automated failover.</p>
+          </article>
+          <article>
+            <h4>Seamless Scalability</h4>
+            <p>Handle traffic growth efficiently without redesigning application architecture.</p>
+          </article>
+          <article>
+            <h4>Operational Simplicity</h4>
+            <p>Reduce infrastructure complexity by automating traffic distribution and backend resource management.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ElbFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Elastic Load Balance (ELB).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {elbFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ElbCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Deliver Reliable Application Performance at Scale</h2>
+      </div>
+      <div>
+        <p>Improve application availability, simplify traffic management, and support business growth with intelligent cloud load balancing.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const eipHeroFeatures = [
+  {
+    icon: Globe2,
+    title: "Dedicated Public Connectivity",
+    text: "Assign stable public IP addresses to cloud resources and maintain reliable Internet access."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Flexible Bandwidth Control",
+    text: "Scale bandwidth up or down instantly to match application traffic and business demand."
+  },
+  {
+    icon: Radio,
+    title: "Cost-Efficient Networking",
+    text: "Optimize network costs through shared bandwidth and flexible billing options."
+  }
+];
+
+const eipBenefits = [
+  {
+    icon: Globe2,
+    title: "Independent Public IP Resources",
+    text: "Allocate and manage public IP addresses independently from cloud resources, enabling greater operational flexibility."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Elastic Bandwidth Management",
+    text: "Adjust bandwidth dynamically to support changing application requirements without service interruptions."
+  },
+  {
+    icon: Boxes,
+    title: "Shared Bandwidth Efficiency",
+    text: "Improve utilization and reduce costs by allowing multiple Elastic IPs to share a common bandwidth pool."
+  },
+  {
+    icon: Radio,
+    title: "Flexible Cost Control",
+    text: "Choose billing models that align with application usage patterns and business requirements."
+  }
+];
+
+const eipOverviewHighlights = [
+  "Enable Internet access for cloud resources",
+  "Expose applications and services publicly",
+  "Support remote administration",
+  "Centralize Internet connectivity",
+  "Manage public networking resources efficiently",
+  "Optimize bandwidth utilization"
+];
+
+const eipCapabilities = [
+  {
+    icon: Globe2,
+    title: "Static Public IP Allocation",
+    description: "Provide dedicated public IP addresses that remain stable and reliable for cloud workloads."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Flexible Resource Association",
+    description: "Bind and unbind Elastic IPs from supported cloud resources as business requirements evolve."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Elastic Bandwidth Scaling",
+    description: "Increase or decrease bandwidth capacity dynamically without service disruption."
+  },
+  {
+    icon: Boxes,
+    title: "Shared Bandwidth Pools",
+    description: "Allow multiple Elastic IPs to share available bandwidth for greater efficiency and cost savings."
+  },
+  {
+    icon: Zap,
+    title: "Rapid Service Activation",
+    description: "Deploy and configure public connectivity quickly through the cloud management platform."
+  },
+  {
+    icon: Radio,
+    title: "Centralized Network Management",
+    description: "Manage IP resources, bandwidth, and connectivity settings through a unified cloud interface."
+  }
+];
+
+const eipUseCases = [
+  {
+    icon: Server,
+    title: "Internet Access for Cloud Servers",
+    description: "Provide secure Internet connectivity for Elastic Cloud Servers and cloud-hosted applications.",
+    capabilities: ["Cloud Servers", "Internet Access", "Secure Connectivity"]
+  },
+  {
+    icon: Globe2,
+    title: "Public Application Exposure",
+    description: "Expose web applications, APIs, and digital services through dedicated public IP addresses.",
+    capabilities: ["Web Apps", "APIs", "Public Services"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Centralized Internet Egress",
+    description: "Use Elastic IP together with NAT Gateway services to provide controlled Internet access across private cloud environments.",
+    capabilities: ["NAT Gateway", "Controlled Egress", "Private Networks"]
+  },
+  {
+    icon: Boxes,
+    title: "Multi-Service Connectivity",
+    description: "Support multiple applications and cloud services through flexible public networking resources.",
+    capabilities: ["Multiple Apps", "Cloud Services", "Flexible Networking"]
+  }
+];
+
+const eipFaqs = [
+  {
+    question: "What is Elastic IP (EIP)?",
+    answer: "Elastic IP is a cloud networking service that provides static public IP addresses for cloud resources."
+  },
+  {
+    question: "Which resources can an EIP be associated with?",
+    answer: "Elastic IPs can be associated with Elastic Cloud Servers, Load Balancers, and NAT Gateways."
+  },
+  {
+    question: "Can bandwidth be adjusted after allocation?",
+    answer: "Yes. Bandwidth can be increased or decreased dynamically based on business requirements."
+  },
+  {
+    question: "Does EIP support shared bandwidth?",
+    answer: "Yes. Multiple Elastic IPs can share a common bandwidth pool to improve efficiency and reduce costs."
+  },
+  {
+    question: "Is EIP suitable for production environments?",
+    answer: "Yes. Elastic IP is designed for production workloads that require reliable and stable public connectivity."
+  }
+];
+
+function ElasticIpPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Deliver stable public Internet connectivity for cloud workloads with static IP addresses, elastic bandwidth, and flexible resource binding from HTGClouds Elastic IP.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Elastic IP (EIP) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page network-product-page eip-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Public Cloud Connectivity</span>
+          </div>
+          <h1>Elastic IP (EIP)</h1>
+          <p>
+            Deliver secure, stable, and flexible Internet connectivity for cloud
+            workloads with dedicated public IP addresses designed for modern cloud
+            environments. Elastic IP (EIP) provides static public IP addresses
+            that can be independently allocated and dynamically associated with
+            cloud resources.
+          </p>
+          <div className="ecs-trust-chips" aria-label="EIP platform capabilities">
+            {["Static Public IP Addresses", "Elastic Bandwidth Scaling", "Flexible Resource Binding", "Shared Bandwidth Support", "Production-Ready Connectivity"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {eipHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <EipHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose EIP?</h2>
+          <p>Elastic IP provides a flexible and reliable way to connect cloud workloads to the Internet. By separating public IP addresses from underlying resources, organizations gain greater control over connectivity, resource management, and network costs.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {eipBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section eip-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Stable Internet Access for Cloud Resources</h2>
+          <p>Elastic IP enables cloud workloads to communicate securely with users, applications, and services across the Internet.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {eipOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Public connectivity capabilities for static addressing, elastic bandwidth, shared bandwidth pools, flexible binding, and centralized network management.</p>
+        </div>
+        <div className="as-capability-card-grid eip-capability-card-grid">
+          {eipCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Public Internet connectivity for cloud servers, exposed applications, controlled egress, and multi-service networking.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {eipUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <EipHowItWorks />
+      <EipFaq />
+      <EipCta />
+      <Footer />
+    </main>
+  );
+}
+
+function EipHeroVisual() {
+  return (
+    <div className="ecs-visual eip-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Elastic IP public connectivity illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <circle cx="260" cy="238" r="70" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M230 238 h60 M260 208 v60" stroke="#23b8be" strokeWidth="8" strokeLinecap="round" />
+        <rect x="208" y="312" width="104" height="44" rx="22" fill="#e7f8f8" />
+        <text x="260" y="340" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">EIP</text>
+
+        <rect x="102" y="130" width="108" height="64" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="156" y="167" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">Internet</text>
+        <path d="M210 162 C238 170 232 214 214 224" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="318" y="130" width="108" height="64" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <rect x="344" y="152" width="56" height="24" rx="7" fill="#23b8be" />
+        <text x="372" y="214" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Cloud Server</text>
+        <path d="M318 162 C290 172 292 214 306 226" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="102" y="338" width="118" height="60" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <path d="M132 368 h58" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <text x="161" y="422" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Bandwidth</text>
+        <path d="M220 368 C242 356 250 342 254 356" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="318" y="338" width="118" height="60" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <path d="M348 368 h58 M377 348 v40" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <text x="377" y="422" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">NAT Gateway</text>
+        <path d="M318 368 C294 356 276 344 266 354" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+      </svg>
+    </div>
+  );
+}
+
+function EipHowItWorks() {
+  return (
+    <section className="ecs-section eip-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Allocate a static public IP address, associate it with a supported cloud resource, and adjust bandwidth as connectivity requirements evolve.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization allocates an Elastic IP and associates it with a cloud resource such as an Elastic Cloud Server, Load Balancer, or NAT Gateway.</p>
+          <p>The resource immediately gains public Internet connectivity through the assigned static IP address. As networking requirements evolve, bandwidth can be adjusted dynamically and the Elastic IP can be reassigned to other cloud resources when needed.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Stable Public Access</h4>
+            <p>Maintain consistent Internet connectivity through dedicated static public IP addresses.</p>
+          </article>
+          <article>
+            <h4>Flexible Resource Management</h4>
+            <p>Move public connectivity between supported cloud resources without redesigning infrastructure.</p>
+          </article>
+          <article>
+            <h4>Optimized Network Costs</h4>
+            <p>Improve bandwidth utilization through shared bandwidth capabilities and flexible billing models.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EipFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Elastic IP (EIP).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {eipFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EipCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Connect Cloud Resources to the Internet with Confidence</h2>
+      </div>
+      <div>
+        <p>Deliver reliable public connectivity, optimize bandwidth utilization, and simplify cloud networking with Elastic IP.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const vpnHeroFeatures = [
+  {
+    icon: ShieldCheck,
+    title: "Secure Encrypted Communication",
+    text: "Protect data in transit using industry-standard encryption and authentication technologies."
+  },
+  {
+    icon: Cloud,
+    title: "Hybrid Cloud Integration",
+    text: "Connect on-premises infrastructure and cloud resources through secure networking tunnels."
+  },
+  {
+    icon: Globe2,
+    title: "Cross-Region Connectivity",
+    text: "Enable secure communication between distributed cloud environments and regional deployments."
+  }
+];
+
+const vpnBenefits = [
+  {
+    icon: ShieldCheck,
+    title: "Enterprise-Grade Security",
+    text: "Protect communication using strong encryption, authentication, and industry-standard security protocols."
+  },
+  {
+    icon: Cloud,
+    title: "Hybrid Cloud Connectivity",
+    text: "Extend existing data centers and enterprise networks into the cloud while maintaining secure communication channels."
+  },
+  {
+    icon: Globe2,
+    title: "Cross-Region Interconnection",
+    text: "Enable secure communication between geographically distributed cloud environments and workloads."
+  },
+  {
+    icon: Zap,
+    title: "Fast and Cost-Efficient Deployment",
+    text: "Establish secure connectivity quickly using Internet-based encrypted tunnels without the complexity of dedicated network circuits."
+  }
+];
+
+const vpnOverviewHighlights = [
+  "Connect cloud and on-premises environments",
+  "Build hybrid cloud architectures",
+  "Enable secure cross-region communication",
+  "Protect sensitive business traffic",
+  "Extend enterprise applications into the cloud",
+  "Simplify secure network integration"
+];
+
+const vpnCapabilities = [
+  {
+    icon: ShieldCheck,
+    title: "IPsec-Based Secure Connectivity",
+    description: "Establish encrypted VPN tunnels using industry-standard IPsec protocols."
+  },
+  {
+    icon: Cloud,
+    title: "Hybrid Cloud Networking",
+    description: "Connect cloud workloads with on-premises infrastructure through secure communication channels."
+  },
+  {
+    icon: Globe2,
+    title: "Cross-Region VPC Connectivity",
+    description: "Enable private communication between VPCs located in different geographic regions."
+  },
+  {
+    icon: Shield,
+    title: "Advanced Encryption & Authentication",
+    description: "Protect data using enterprise-grade encryption and authentication mechanisms."
+  },
+  {
+    icon: Boxes,
+    title: "Flexible Network Topologies",
+    description: "Support one-to-one and one-to-many connectivity models for diverse deployment requirements."
+  },
+  {
+    icon: Radio,
+    title: "Centralized VPN Management",
+    description: "Provision, manage, and monitor VPN gateways and connections through a unified cloud platform."
+  }
+];
+
+const vpnUseCases = [
+  {
+    icon: Cloud,
+    title: "Hybrid Cloud Integration",
+    description: "Extend enterprise infrastructure into the cloud while maintaining secure communication with on-premises environments.",
+    capabilities: ["Hybrid Cloud", "Data Centers", "Secure Channels"]
+  },
+  {
+    icon: Globe2,
+    title: "Cross-Region Application Connectivity",
+    description: "Connect applications and services deployed across multiple cloud regions.",
+    capabilities: ["Multi-Region", "Private Access", "Distributed Apps"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure Branch Connectivity",
+    description: "Enable secure communication between branch offices and cloud-hosted applications.",
+    capabilities: ["Branch Offices", "Cloud Apps", "Encrypted Tunnels"]
+  },
+  {
+    icon: Boxes,
+    title: "Enterprise Application Extension",
+    description: "Extend internal business applications into cloud environments without exposing services directly to the public Internet.",
+    capabilities: ["Internal Apps", "Private Services", "Enterprise Access"]
+  }
+];
+
+const vpnFaqs = [
+  {
+    question: "What type of VPN is supported?",
+    answer: "HTGCloud VPN supports secure IPsec-based VPN connectivity."
+  },
+  {
+    question: "Can VPN connect a VPC to an on-premises data center?",
+    answer: "Yes. VPN enables secure communication between cloud environments and local infrastructure."
+  },
+  {
+    question: "Can VPN connect two VPCs?",
+    answer: "Yes. VPN supports secure communication between VPCs located in different regions."
+  },
+  {
+    question: "Is VPN suitable for enterprise workloads?",
+    answer: "Yes. VPN uses enterprise-grade encryption and authentication technologies suitable for production environments."
+  },
+  {
+    question: "How quickly can VPN be deployed?",
+    answer: "VPN connections can be provisioned and activated rapidly through the cloud platform."
+  }
+];
+
+function VirtualPrivateNetworkPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Create secure IPsec VPN connectivity between cloud resources, data centers, branch offices, and distributed environments with HTGClouds Virtual Private Network.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Virtual Private Network (VPN) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page network-product-page vpn-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Secure Hybrid Connectivity</span>
+          </div>
+          <h1>Virtual Private Network (VPN)</h1>
+          <p>
+            Extend your network securely across cloud and on-premises environments
+            with encrypted connectivity designed for enterprise workloads. Virtual
+            Private Network (VPN) provides secure, encrypted communication between
+            your Virtual Private Cloud (VPC), on-premises infrastructure, branch
+            offices, and cloud environments.
+          </p>
+          <div className="ecs-trust-chips" aria-label="VPN platform capabilities">
+            {["Secure IPsec Encryption", "Hybrid Cloud Connectivity", "Cross-Region Networking", "Enterprise-Grade Security", "Rapid Deployment"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {vpnHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <VpnHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose VPN?</h2>
+          <p>Virtual Private Network provides a secure and cost-effective way to connect cloud resources with external environments. Whether supporting hybrid cloud architectures, branch connectivity, or cross-region communication, VPN delivers enterprise-grade security without requiring dedicated network infrastructure.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {vpnBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section vpn-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Connect Cloud and Enterprise Networks Securely</h2>
+          <p>Virtual Private Network enables organizations to create encrypted communication paths between cloud resources and external networks.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {vpnOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Secure networking capabilities for IPsec tunnels, hybrid connectivity, cross-region communication, encryption, flexible topologies, and centralized VPN operations.</p>
+        </div>
+        <div className="as-capability-card-grid vpn-capability-card-grid">
+          {vpnCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Secure encrypted connectivity for hybrid cloud, cross-region workloads, branch offices, and enterprise application extension.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {vpnUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <VpnHowItWorks />
+      <VpnFaq />
+      <VpnCta />
+      <Footer />
+    </main>
+  );
+}
+
+function VpnHeroVisual() {
+  return (
+    <div className="ecs-visual vpn-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Virtual Private Network encrypted connectivity illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <rect x="116" y="140" width="112" height="90" rx="24" fill="#ffffff" stroke="#d7edf0" />
+        <text x="172" y="178" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">Data Center</text>
+        <rect x="146" y="192" width="52" height="22" rx="6" fill="#23b8be" />
+        <rect x="292" y="140" width="112" height="90" rx="24" fill="#ffffff" stroke="#d7edf0" />
+        <text x="348" y="178" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">VPC</text>
+        <rect x="322" y="192" width="52" height="22" rx="6" fill="#23b8be" opacity="0.8" />
+        <path d="M228 186 C258 156 292 156 322 186" stroke="#23b8be" strokeWidth="6" fill="none" strokeLinecap="round" strokeDasharray="10 10" />
+        <path d="M228 200 C258 230 292 230 322 200" stroke="#23b8be" strokeWidth="6" fill="none" strokeLinecap="round" strokeDasharray="10 10" />
+
+        <circle cx="260" cy="292" r="46" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M260 254 l32 14 v25 c0 25 -14 42 -32 52 c-18 -10 -32 -27 -32 -52 v-25 z" fill="#23b8be" />
+        <path d="M247 292 l9 9 l20 -26" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+        <text x="260" y="370" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Encrypted Tunnel</text>
+
+        <rect x="116" y="360" width="112" height="54" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="172" y="392" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Branch Office</text>
+        <rect x="292" y="360" width="112" height="54" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="348" y="392" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Region</text>
+        <path d="M172 360 C190 330 220 310 226 302 M348 360 C330 330 300 310 294 302" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+      </svg>
+    </div>
+  );
+}
+
+function VpnHowItWorks() {
+  return (
+    <section className="ecs-section vpn-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Deploy a VPN gateway and establish encrypted tunnels between VPCs, data centers, branch offices, and distributed cloud environments.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization deploys a VPN gateway within its Virtual Private Cloud and establishes an encrypted tunnel to an on-premises data center or another VPC.</p>
+          <p>Traffic between environments is encrypted before transmission and securely delivered through the VPN connection, enabling protected communication across public networks.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Secure Data Transmission</h4>
+            <p>Protect sensitive information through encrypted communication channels.</p>
+          </article>
+          <article>
+            <h4>Seamless Hybrid Integration</h4>
+            <p>Connect cloud and on-premises environments as part of a unified network architecture.</p>
+          </article>
+          <article>
+            <h4>Rapid Deployment</h4>
+            <p>Establish enterprise-grade secure connectivity quickly without deploying dedicated infrastructure.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function VpnFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Virtual Private Network (VPN).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {vpnFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function VpnCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Build Secure Hybrid Cloud Connectivity</h2>
+      </div>
+      <div>
+        <p>Connect cloud resources, data centers, and distributed environments with secure, encrypted networking designed for modern enterprises.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const dnsHeroFeatures = [
+  {
+    icon: Globe2,
+    title: "Reliable Domain Resolution",
+    text: "Ensure applications and cloud services remain reachable through highly available DNS infrastructure."
+  },
+  {
+    icon: Zap,
+    title: "High-Performance Query Processing",
+    text: "Deliver low-latency DNS responses for websites, applications, and cloud services worldwide."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure DNS Architecture",
+    text: "Protect critical DNS infrastructure through isolated services and built-in DDoS protection."
+  }
+];
+
+const dnsBenefits = [
+  {
+    icon: Cloud,
+    title: "Highly Available Resolution",
+    text: "Distributed DNS infrastructure ensures stable and continuous domain resolution for business-critical applications."
+  },
+  {
+    icon: Zap,
+    title: "High Performance at Scale",
+    text: "Handle large volumes of DNS requests with fast query processing and low-latency responses."
+  },
+  {
+    icon: Shield,
+    title: "Internal DNS Services",
+    text: "Enable secure and efficient name resolution for resources operating inside private cloud environments."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Built-In Security Protection",
+    text: "Protect DNS services against large-scale attacks through integrated security and DDoS protection mechanisms."
+  }
+];
+
+const dnsOverviewHighlights = [
+  "Host and manage domain names",
+  "Configure DNS records",
+  "Enable public and private name resolution",
+  "Improve application availability",
+  "Simplify service discovery",
+  "Enhance user access reliability"
+];
+
+const dnsCapabilities = [
+  {
+    icon: Globe2,
+    title: "Authoritative DNS Hosting",
+    description: "Host and manage domain names through highly available authoritative DNS infrastructure."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Advanced Record Management",
+    description: "Create and manage DNS records through an intuitive cloud management platform."
+  },
+  {
+    icon: Zap,
+    title: "High-Performance Resolution",
+    description: "Support large-scale DNS workloads with low-latency query processing."
+  },
+  {
+    icon: Shield,
+    title: "Internal DNS Services",
+    description: "Provide secure name resolution for cloud resources operating within private networks."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Built-In DDoS Protection",
+    description: "Protect DNS infrastructure from large-scale attacks and service disruptions."
+  },
+  {
+    icon: Radio,
+    title: "Centralized DNS Management",
+    description: "Manage domains, records, and DNS configurations from a unified cloud console."
+  }
+];
+
+const dnsUseCases = [
+  {
+    icon: Globe2,
+    title: "Public Website Hosting",
+    description: "Ensure websites and customer-facing applications remain accessible through reliable DNS resolution.",
+    capabilities: ["Public Domains", "Websites", "Reliable Access"]
+  },
+  {
+    icon: Shield,
+    title: "Internal Service Discovery",
+    description: "Enable cloud resources to communicate securely through private DNS resolution within virtual networks.",
+    capabilities: ["Private DNS", "Service Discovery", "Internal Networks"]
+  },
+  {
+    icon: Boxes,
+    title: "Multi-Environment Operations",
+    description: "Manage development, testing, and production environments through centralized DNS management.",
+    capabilities: ["Development", "Testing", "Production"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Service Failover & Business Continuity",
+    description: "Redirect traffic to backup services during outages and maintain application availability without changing IP addresses.",
+    capabilities: ["Failover", "Continuity", "Availability"]
+  }
+];
+
+const dnsFaqs = [
+  {
+    question: "What is Domain Name Service (DNS)?",
+    answer: "DNS is a cloud service that provides authoritative domain name resolution and DNS management."
+  },
+  {
+    question: "Can DNS be used for internal cloud resources?",
+    answer: "Yes. DNS supports private name resolution for cloud resources operating within internal networks."
+  },
+  {
+    question: "Does DNS support high availability?",
+    answer: "Yes. DNS uses distributed infrastructure to deliver highly available domain resolution."
+  },
+  {
+    question: "Is DNS protected against attacks?",
+    answer: "Yes. DNS includes built-in DDoS protection and security mechanisms to help maintain service stability."
+  },
+  {
+    question: "Is DNS suitable for production environments?",
+    answer: "Yes. DNS is designed for enterprise and production workloads requiring reliable and secure domain resolution."
+  }
+];
+
+function DomainNameServicePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Deliver fast, secure, and highly available domain name resolution for cloud applications and infrastructure with HTGClouds Domain Name Service.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Domain Name Service (DNS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page network-product-page dns-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Cloud DNS Management</span>
+          </div>
+          <h1>Domain Name Service (DNS)</h1>
+          <p>
+            Deliver fast, secure, and highly available domain name resolution for
+            cloud applications, services, and infrastructure. Domain Name Service
+            (DNS) provides authoritative DNS hosting and intelligent domain
+            resolution, enabling users and applications to reliably access cloud
+            resources through domain names.
+          </p>
+          <div className="ecs-trust-chips" aria-label="DNS platform capabilities">
+            {["Authoritative DNS Hosting", "High Availability Resolution", "Low-Latency Performance", "Internal DNS Support", "Built-In DDoS Protection"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {dnsHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <DnsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose DNS?</h2>
+          <p>Domain Name Service provides the foundation for reliable application access by ensuring users and systems can consistently locate cloud resources. Whether managing public websites, internal services, or enterprise environments, DNS delivers performance, security, and operational simplicity.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {dnsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section dns-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Enterprise DNS for Cloud Applications</h2>
+          <p>Domain Name Service enables organizations to host domains, manage DNS records, and provide reliable access to applications and cloud resources.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {dnsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>DNS capabilities for authoritative hosting, record management, low-latency resolution, internal DNS, DDoS protection, and centralized operations.</p>
+        </div>
+        <div className="as-capability-card-grid dns-capability-card-grid">
+          {dnsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Reliable name resolution for public websites, internal services, multi-environment operations, and service failover.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {dnsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <DnsHowItWorks />
+      <DnsFaq />
+      <DnsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function DnsHeroVisual() {
+  return (
+    <div className="ecs-visual dns-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Domain Name Service resolution illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <circle cx="260" cy="244" r="72" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M220 244 h80 M260 204 v80" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <circle cx="260" cy="244" r="28" fill="#e7f8f8" stroke="#23b8be" strokeWidth="4" />
+        <text x="260" y="344" textAnchor="middle" fill="#126f73" fontSize="20" fontWeight="500">DNS</text>
+
+        <rect x="92" y="130" width="126" height="56" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="155" y="164" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">example.com</text>
+        <path d="M218 158 C244 166 234 212 218 224" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="308" y="130" width="118" height="56" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="367" y="164" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">Records</text>
+        <path d="M308 158 C282 166 286 212 302 224" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="104" y="348" width="116" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="162" y="382" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Private DNS</text>
+        <path d="M220 377 C240 354 248 326 252 306" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="302" y="348" width="116" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="360" y="382" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Cloud Apps</text>
+        <path d="M302 377 C282 354 272 326 268 306" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <path d="M260 214 l18 8 v16 c0 14 -7 24 -18 30 c-11 -6 -18 -16 -18 -30 v-16 z" fill="#23b8be" opacity="0.92" />
+      </svg>
+    </div>
+  );
+}
+
+function DnsHowItWorks() {
+  return (
+    <section className="ecs-section dns-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Host domains, create DNS records, and direct users to the right cloud resources through reliable distributed resolution.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization hosts its domains using HTGCloud DNS and creates DNS records that point users to cloud applications and services.</p>
+          <p>When users access a domain name, DNS resolves the request and directs traffic to the appropriate cloud resource. Distributed DNS infrastructure ensures fast, reliable, and highly available resolution even during traffic spikes or infrastructure events.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Reliable Application Access</h4>
+            <p>Ensure users can consistently reach websites, applications, and services.</p>
+          </article>
+          <article>
+            <h4>Faster Service Discovery</h4>
+            <p>Improve response times through optimized DNS resolution infrastructure.</p>
+          </article>
+          <article>
+            <h4>Operational Simplicity</h4>
+            <p>Manage domains and DNS records from a centralized cloud platform.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DnsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Domain Name Service (DNS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {dnsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DnsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Keep Applications Reachable Around the Clock</h2>
+      </div>
+      <div>
+        <p>Deliver reliable domain resolution, improve application accessibility, and simplify DNS management with HTGCloud DNS.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
           </a>
         </div>
       </div>
