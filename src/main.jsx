@@ -138,9 +138,11 @@ const productMenuItems = {
     }
   ],
   Storage: [
-    { name: "Elastic Volume Service", text: "Persistent block storage for cloud servers.", path: "#" },
-    { name: "Object Storage Service", text: "Durable object storage for cloud-native data.", path: "#" },
-    { name: "Scalable File Service", text: "Shared file storage for distributed workloads.", path: "#" }
+    { name: "Elastic Volume Service", text: "Persistent block storage for cloud servers.", path: "/products/storage/elastic-volume-service" },
+    { name: "Object Storage Service", text: "Durable object storage for cloud-native data.", path: "/products/storage/object-storage-service" },
+    { name: "Scalable File Service", text: "Shared file storage for distributed workloads.", path: "/products/storage/scalable-file-service" },
+    { name: "Cloud Server Backup Service", text: "Online backup and recovery for cloud servers.", path: "/products/storage/cloud-server-backup-service" },
+    { name: "Volume Backup Service", text: "Disk-level backup and point-in-time recovery.", path: "/products/storage/volume-backup-service" }
   ],
   Network: [
     { name: "Virtual Private Cloud", text: "Private isolated networks for cloud resources.", path: "#" },
@@ -553,6 +555,11 @@ function App() {
   if (path === "/products/compute/image-management-service") return <ImageManagementServicePage />;
   if (path === "/products/compute/bare-metal-server") return <BareMetalServerPage />;
   if (path === "/products/compute/auto-scaling") return <AutoScalingPage />;
+  if (path === "/products/storage/elastic-volume-service") return <ElasticVolumeServicePage />;
+  if (path === "/products/storage/object-storage-service") return <ObjectStorageServicePage />;
+  if (path === "/products/storage/scalable-file-service") return <ScalableFileServicePage />;
+  if (path === "/products/storage/cloud-server-backup-service") return <CloudServerBackupServicePage />;
+  if (path === "/products/storage/volume-backup-service") return <VolumeBackupServicePage />;
   if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
@@ -1994,6 +2001,1852 @@ function BmsCta() {
       </div>
       <div>
         <p>Get started with Bare Metal Server and combine dedicated hardware performance with cloud-based control and management.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const evsBenefits = [
+  {
+    icon: HardDrive,
+    title: "Persistent Storage",
+    text: "Keep data available regardless of server lifecycle events. Volumes remain attached to your business, not individual compute instances."
+  },
+  {
+    icon: Maximize2,
+    title: "Capacity Expansion",
+    text: "Expand storage capacity as requirements grow without rebuilding infrastructure or migrating workloads."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Data Protection",
+    text: "Reduce operational risk with snapshots, backup integration, and encryption capabilities designed for production environments."
+  },
+  {
+    icon: Radio,
+    title: "Enterprise Reliability",
+    text: "Built for production workloads with dependable performance, durability, and operational stability."
+  }
+];
+
+const evsOverviewHighlights = [
+  "Reliable block storage for cloud workloads",
+  "Flexible capacity management",
+  "Secure data protection",
+  "Snapshot and backup integration",
+  "Centralized monitoring and lifecycle management"
+];
+
+const evsCapabilities = [
+  {
+    icon: HardDrive,
+    title: "Persistent Block Storage",
+    description: "Deliver reliable storage volumes for applications, databases, and production systems."
+  },
+  {
+    icon: Maximize2,
+    title: "Flexible Capacity Expansion",
+    description: "Increase storage capacity as business requirements evolve without disrupting workloads."
+  },
+  {
+    icon: Server,
+    title: "System and Data Disk Support",
+    description: "Use EVS volumes for operating systems, application data, and business-critical information."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Snapshot & Backup Protection",
+    description: "Create recovery points and integrate with backup services to improve resilience."
+  },
+  {
+    icon: Shield,
+    title: "Enterprise Security",
+    description: "Protect sensitive information using encryption and security controls."
+  },
+  {
+    icon: Radio,
+    title: "Lifecycle Management",
+    description: "Monitor, manage, and optimize storage resources through a centralized management experience."
+  }
+];
+
+const evsUseCases = [
+  {
+    icon: Cloud,
+    title: "Cloud Application Storage",
+    description: "Provide persistent storage for applications running on Elastic Cloud Servers.",
+    capabilities: ["Persistent Storage", "Cloud Workloads", "Application Data"]
+  },
+  {
+    icon: Database,
+    title: "Database Workloads",
+    description: "Store structured and transactional data with reliable block-level performance.",
+    capabilities: ["Block Performance", "Transactional Data", "Reliable Storage"]
+  },
+  {
+    icon: Boxes,
+    title: "Business Systems",
+    description: "Support ERP, CRM, financial systems, and internal business applications.",
+    capabilities: ["Enterprise Apps", "Business Critical", "Operational Control"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Backup & Recovery",
+    description: "Protect critical workloads through snapshots and backup integration.",
+    capabilities: ["Snapshots", "Backup Integration", "Recovery Points"]
+  }
+];
+
+const evsFaqs = [
+  {
+    question: "What is Elastic Volume Service (EVS)?",
+    answer: "EVS is a persistent block storage service designed for cloud servers and enterprise workloads."
+  },
+  {
+    question: "Can EVS be used for operating systems and application data?",
+    answer: "Yes. EVS supports both system disks and data disks."
+  },
+  {
+    question: "Can storage capacity be expanded?",
+    answer: "Yes. EVS supports capacity expansion to accommodate growing workloads."
+  },
+  {
+    question: "How is data protected?",
+    answer: "EVS supports snapshots, backup integration, and optional encryption."
+  },
+  {
+    question: "Which services integrate with EVS?",
+    answer: "EVS integrates with Elastic Cloud Servers, Bare Metal Servers, backup services, monitoring services, and cloud management tools."
+  }
+];
+
+function ElasticVolumeServicePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Deploy persistent block storage for cloud applications, databases, and business-critical workloads with HTGClouds Elastic Volume Service.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Elastic Volume Service (EVS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page evs-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Enterprise Block Storage</span>
+          </div>
+          <h1>Elastic Volume Service (EVS)</h1>
+          <p>
+            Persistent block storage built for cloud applications, databases, and
+            business-critical workloads. Elastic Volume Service delivers reliable,
+            high-performance storage for <a href="/products/compute/elastic-cloud-server" onClick={(event) => { event.preventDefault(); navigateTo("/products/compute/elastic-cloud-server"); }}>Elastic Cloud Servers</a> and <a href="/products/compute/bare-metal-server" onClick={(event) => { event.preventDefault(); navigateTo("/products/compute/bare-metal-server"); }}>Bare Metal Servers</a>.
+            Scale capacity on demand, protect data with snapshots and backups, and
+            maintain operational flexibility as workloads grow.
+          </p>
+          <div className="ecs-trust-chips" aria-label="EVS platform capabilities">
+            {["Persistent Storage", "Capacity Expansion", "Snapshot Protection", "Disk Encryption"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <EvsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered evs-benefits-heading">
+          <h2>Why Choose EVS?</h2>
+          <p>Reliable block storage designed to support cloud infrastructure, enterprise applications, and data-intensive workloads.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {evsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section evs-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Storage Built for Modern Cloud Infrastructure</h2>
+          <p>Elastic Volume Service provides persistent block storage for virtual machines and dedicated servers. Whether supporting operating systems, databases, business applications, or critical production workloads, EVS delivers the flexibility, durability, and operational control required by modern cloud environments. Estimate capacity costs with the <a href="/pricing/calculator" onClick={(event) => { event.preventDefault(); navigateTo("/pricing/calculator"); }}>pricing calculator</a>.</p>
+        </div>
+        <div className="ecs-workload-capabilities evs-overview-highlights">
+          {evsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Reliable storage services for persistent data, capacity growth, data protection, security, and lifecycle operations.</p>
+        </div>
+        <div className="as-capability-card-grid evs-capability-card-grid">
+          {evsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Persistent block storage for applications, databases, business systems, and protected recovery workflows.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {evsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <EvsHowItWorks />
+      <EvsFaq />
+      <EvsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function EvsHeroVisual() {
+  return (
+    <div className="ecs-visual evs-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Elastic Volume Service persistent storage illustration">
+        <rect x="70" y="76" width="380" height="368" rx="34" fill="#f4fbfb" />
+        <rect x="142" y="124" width="236" height="272" rx="28" fill="#ffffff" stroke="#d7edf0" strokeWidth="3" />
+        <rect x="178" y="164" width="164" height="56" rx="14" fill="#11161b" />
+        <text x="260" y="199" textAnchor="middle" fill="#ffffff" fontSize="20" fontWeight="500">EVS Volume</text>
+        {[246, 296, 346].map((y, index) => (
+          <g key={y}>
+            <rect x="166" y={y} width="188" height="32" rx="16" fill={index === 1 ? "#dcf7f7" : "#eefafa"} stroke="#ccebee" />
+            <circle cx="188" cy={y + 16} r="6" fill="#23b8be" />
+            <path d={`M208 ${y + 16} h118`} stroke="#8bd5d9" strokeWidth="5" strokeLinecap="round" />
+          </g>
+        ))}
+        <path d="M118 252 h-42 M444 252 h-42 M260 396 v46" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" strokeDasharray="9 10" />
+        <rect x="44" y="214" width="86" height="76" rx="18" fill="#e7f8f8" stroke="#ccebee" />
+        <path d="M66 252 h42 M87 231 v42" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <rect x="390" y="214" width="86" height="76" rx="18" fill="#e7f8f8" stroke="#ccebee" />
+        <path d="M414 250 h38 M414 266 h30 M414 234 h22" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <rect x="192" y="424" width="136" height="42" rx="21" fill="#e7f8f8" />
+        <text x="260" y="451" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Protected Data</text>
+      </svg>
+    </div>
+  );
+}
+
+function EvsHowItWorks() {
+  return (
+    <section className="ecs-section evs-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Attach persistent EVS volumes to cloud servers, expand capacity as workloads grow, and protect critical information with snapshots and backups.</p>
+      </div>
+      <div className="evs-how-layout">
+        <div className="evs-scenario-panel">
+          <h3>Scenario</h3>
+          <p>Organizations attach EVS volumes to cloud servers to provide persistent storage for operating systems, applications, and business data.</p>
+          <p>As workloads grow, storage capacity can be expanded while snapshots and backup services provide protection against failures and operational mistakes.</p>
+        </div>
+        <div className="evs-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Independent Data Persistence</h4>
+            <p>Storage remains available even when compute resources change.</p>
+          </article>
+          <article>
+            <h4>Elastic Capacity</h4>
+            <p>Scale storage as business requirements evolve.</p>
+          </article>
+          <article>
+            <h4>Reliable Protection</h4>
+            <p>Use snapshots, backups, and encryption to secure critical information.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EvsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Elastic Volume Service (EVS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {evsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EvsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Reliable Storage for Modern Cloud Workloads</h2>
+      </div>
+      <div>
+        <p>Deploy scalable, secure, and persistent block storage for applications, databases, and business-critical systems.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const obsBenefits = [
+  {
+    icon: Cloud,
+    title: "Massive Scale Without Limits",
+    text: "Store billions of objects and petabytes of data without managing infrastructure or storage capacity planning."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure by Design",
+    text: "Protect business-critical data using identity controls, secure access policies, and encrypted transmission."
+  },
+  {
+    icon: Database,
+    title: "Cost-Efficient Storage",
+    text: "Pay only for what you store while optimizing storage costs across active, backup, and archive workloads."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Simplified Data Management",
+    text: "Manage data through the cloud console, APIs, SDKs, and lifecycle policies that automate storage operations."
+  }
+];
+
+const obsOverviewHighlights = [
+  "Virtually unlimited storage capacity",
+  "Secure object access",
+  "Lifecycle automation",
+  "Distributed architecture",
+  "Cost-efficient data storage",
+  "API-driven operations"
+];
+
+const obsCapabilities = [
+  {
+    icon: Cloud,
+    title: "Massive Object Storage",
+    description: "Store large volumes of unstructured data without capacity constraints."
+  },
+  {
+    icon: Maximize2,
+    title: "Elastic Scalability",
+    description: "Automatically scale storage capacity as applications and data requirements grow."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure Access Control",
+    description: "Protect data using authentication, permissions, and encrypted communications."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Lifecycle Management",
+    description: "Automate retention, movement, and management of stored data throughout its lifecycle."
+  },
+  {
+    icon: Code2,
+    title: "Multi-Interface Access",
+    description: "Access and manage data through APIs, SDKs, CLI tools, and the cloud console."
+  },
+  {
+    icon: Shield,
+    title: "High Durability",
+    description: "Built on distributed storage architecture designed to protect and preserve data."
+  }
+];
+
+const obsUseCases = [
+  {
+    icon: Boxes,
+    title: "Enterprise Data Storage",
+    description: "Store files, application assets, and business content for enterprise systems and cloud applications.",
+    capabilities: ["Business Content", "Application Assets", "Enterprise Files"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Backup & Archiving",
+    description: "Protect critical information using cost-efficient storage for backup and long-term retention.",
+    capabilities: ["Backup Storage", "Archive Workloads", "Retention"]
+  },
+  {
+    icon: Globe2,
+    title: "Media Storage & Distribution",
+    description: "Store images, videos, audio files, and digital assets for websites, applications, and content platforms.",
+    capabilities: ["Images", "Videos", "Digital Assets"]
+  },
+  {
+    icon: Code2,
+    title: "Application Data Repositories",
+    description: "Provide scalable storage for modern cloud-native applications and business services.",
+    capabilities: ["Cloud Native", "Application Data", "Scalable Storage"]
+  }
+];
+
+const obsFaqs = [
+  {
+    question: "What is Object Storage Service (OBS)?",
+    answer: "OBS is a cloud storage service that provides scalable object storage for unstructured data."
+  },
+  {
+    question: "What types of data can be stored in OBS?",
+    answer: "Images, videos, backups, archives, documents, application data, logs, and other unstructured content."
+  },
+  {
+    question: "Is OBS suitable for backup and archiving?",
+    answer: "Yes. OBS is commonly used for backup, long-term retention, and archive workloads."
+  },
+  {
+    question: "How is data accessed?",
+    answer: "Data can be accessed securely using APIs, SDKs, command-line tools, or the cloud console."
+  },
+  {
+    question: "Does OBS support secure data transmission?",
+    answer: "Yes. OBS supports secure communication using HTTPS."
+  }
+];
+
+function ObjectStorageServicePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Store, protect, and access massive volumes of data with secure, durable, and highly scalable HTGClouds Object Storage Service.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Object Storage Service (OBS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page obs-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Scalable Object Storage</span>
+          </div>
+          <h1>Object Storage Service (OBS)</h1>
+          <p>
+            Store, protect, and access massive volumes of data with secure,
+            durable, and highly scalable object storage. Object Storage Service
+            (OBS) provides cloud-native storage for images, videos, backups,
+            archives, application data, and business content. Scale seamlessly
+            as data grows while maintaining security, durability, and cost efficiency.
+          </p>
+          <div className="ecs-trust-chips" aria-label="OBS platform capabilities">
+            {["Massive Scalability", "High Durability", "Secure Access", "Lifecycle Management"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <ObsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose OBS?</h2>
+          <p>Built for organizations that need secure, scalable, and cost-efficient storage for growing data volumes.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {obsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section obs-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Store Any Amount of Data</h2>
+          <p>Object Storage Service is designed for unstructured data such as documents, images, videos, backups, application content, logs, and archives. Using a distributed storage architecture, OBS provides elastic scalability, high durability, and reliable access for modern cloud applications and enterprise workloads.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {obsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Secure, scalable, and durable object storage for growing cloud-native and enterprise data requirements.</p>
+        </div>
+        <div className="as-capability-card-grid obs-capability-card-grid">
+          {obsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Object storage for enterprise content, backups, media assets, and application data repositories.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {obsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <ObsHowItWorks />
+      <ObsFaq />
+      <ObsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function ObsHeroVisual() {
+  return (
+    <div className="ecs-visual obs-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Object Storage Service scalable object storage illustration">
+        <rect x="70" y="76" width="380" height="368" rx="34" fill="#f4fbfb" />
+        <rect x="132" y="128" width="256" height="238" rx="30" fill="#ffffff" stroke="#d7edf0" strokeWidth="3" />
+        <path d="M180 206 C194 170, 226 170, 240 198 C260 184, 294 198, 296 228 C298 260, 272 276, 240 276 H190 C162 276, 148 248, 180 206 Z" fill="#dff8f8" stroke="#23b8be" strokeWidth="4" />
+        {[178, 222, 266].map((x, index) => (
+          <g key={x}>
+            <rect x={x} y={304 + index * 14} width="74" height="32" rx="10" fill={index === 1 ? "#dcf7f7" : "#eefafa"} stroke="#ccebee" />
+            <circle cx={x + 18} cy={320 + index * 14} r="5" fill="#23b8be" />
+            <path d={`M${x + 32} ${320 + index * 14} h28`} stroke="#8bd5d9" strokeWidth="4" strokeLinecap="round" />
+          </g>
+        ))}
+        <path d="M150 390 h220" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" strokeDasharray="9 10" />
+        <rect x="108" y="386" width="84" height="54" rx="18" fill="#e7f8f8" stroke="#ccebee" />
+        <rect x="218" y="386" width="84" height="54" rx="18" fill="#e7f8f8" stroke="#ccebee" />
+        <rect x="328" y="386" width="84" height="54" rx="18" fill="#e7f8f8" stroke="#ccebee" />
+        <text x="150" y="420" textAnchor="middle" fill="#126f73" fontSize="16" fontWeight="500">Images</text>
+        <text x="260" y="420" textAnchor="middle" fill="#126f73" fontSize="16" fontWeight="500">Backups</text>
+        <text x="370" y="420" textAnchor="middle" fill="#126f73" fontSize="16" fontWeight="500">Archives</text>
+        <rect x="164" y="104" width="192" height="42" rx="21" fill="#e7f8f8" />
+        <text x="260" y="131" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Object Storage</text>
+      </svg>
+    </div>
+  );
+}
+
+function ObsHowItWorks() {
+  return (
+    <section className="ecs-section obs-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Upload data into storage buckets where it is securely stored, managed, and accessed through APIs, applications, or cloud management tools.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>Organizations upload data into storage buckets where it is securely stored, managed, and accessed through APIs, applications, or cloud management tools.</p>
+          <p>As data volumes grow, storage scales automatically without infrastructure planning or capacity management.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Unlimited Growth</h4>
+            <p>Scale storage seamlessly as business requirements evolve.</p>
+          </article>
+          <article>
+            <h4>Secure Data Access</h4>
+            <p>Control access through authentication, permissions, and encrypted communication.</p>
+          </article>
+          <article>
+            <h4>Operational Simplicity</h4>
+            <p>Manage large-scale storage environments without maintaining storage infrastructure.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ObsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Object Storage Service (OBS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {obsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ObsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Store and Scale Data with Confidence</h2>
+      </div>
+      <div>
+        <p>Build applications, protect business data, and manage growing storage requirements with secure, durable, and cost-efficient object storage.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const sfsBenefits = [
+  {
+    icon: Boxes,
+    title: "Shared Access Without Complexity",
+    text: "Enable multiple cloud servers to access the same files simultaneously without deploying or managing storage infrastructure."
+  },
+  {
+    icon: Maximize2,
+    title: "Scale as Data Grows",
+    text: "Expand file system capacity seamlessly as storage requirements increase, without disrupting applications."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Built for High Availability",
+    text: "Support business-critical workloads with resilient storage architecture designed for continuous access and operational reliability."
+  },
+  {
+    icon: Radio,
+    title: "Fully Managed Operations",
+    text: "Focus on applications and data while HTGClouds manages storage infrastructure, availability, and operational complexity."
+  }
+];
+
+const sfsOverviewHighlights = [
+  "Shared access across multiple servers",
+  "Elastic storage growth",
+  "High availability architecture",
+  "Simplified operations",
+  "Centralized file management",
+  "Cloud-native scalability"
+];
+
+const sfsCapabilities = [
+  {
+    icon: Boxes,
+    title: "Shared File Systems",
+    description: "Provide centralized storage that can be accessed by multiple servers simultaneously."
+  },
+  {
+    icon: Server,
+    title: "Multi-Server Access",
+    description: "Enable concurrent read and write operations across distributed application environments."
+  },
+  {
+    icon: Maximize2,
+    title: "Elastic Capacity Scaling",
+    description: "Expand storage resources as business and application requirements evolve."
+  },
+  {
+    icon: ShieldCheck,
+    title: "High Availability Architecture",
+    description: "Maintain access to critical data through resilient and distributed storage infrastructure."
+  },
+  {
+    icon: Code2,
+    title: "Standard File Protocol Support",
+    description: "Use industry-standard file access methods for application compatibility and integration."
+  },
+  {
+    icon: Radio,
+    title: "Centralized Management",
+    description: "Create, mount, manage, and monitor file systems through a unified cloud platform."
+  }
+];
+
+const sfsUseCases = [
+  {
+    icon: Cloud,
+    title: "Shared Application Storage",
+    description: "Provide centralized storage for applications running across multiple cloud servers.",
+    capabilities: ["Shared Storage", "Multiple Servers", "Application Data"]
+  },
+  {
+    icon: Globe2,
+    title: "Content Management & Media Processing",
+    description: "Store, process, and share images, videos, and digital content across teams and applications.",
+    capabilities: ["Media Workflows", "Team Sharing", "Digital Content"]
+  },
+  {
+    icon: Code2,
+    title: "Development & Analytics Platforms",
+    description: "Support development environments, testing systems, and analytics workloads requiring shared file access.",
+    capabilities: ["Dev Environments", "Analytics", "Shared Files"]
+  },
+  {
+    icon: Database,
+    title: "Enterprise Collaboration Workloads",
+    description: "Enable departments, services, and business applications to access common datasets efficiently.",
+    capabilities: ["Collaboration", "Common Datasets", "Business Apps"]
+  }
+];
+
+const sfsFaqs = [
+  {
+    question: "What is Scalable File Service (SFS)?",
+    answer: "SFS is a fully managed file storage service that provides shared file systems for cloud workloads."
+  },
+  {
+    question: "Can multiple servers access the same file system?",
+    answer: "Yes. Multiple Elastic Cloud Servers can mount and access the same file system concurrently."
+  },
+  {
+    question: "Does SFS support capacity expansion?",
+    answer: "Yes. Storage capacity can be expanded as requirements grow."
+  },
+  {
+    question: "What protocol does SFS support?",
+    answer: "SFS supports standard NFS-based file access."
+  },
+  {
+    question: "Is SFS suitable for production workloads?",
+    answer: "Yes. SFS is designed for business-critical workloads requiring shared access and high availability."
+  }
+];
+
+function ScalableFileServicePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Enable shared file storage for applications, teams, and workloads with HTGClouds Scalable File Service.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Scalable File Service (SFS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page sfs-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Managed Shared File Storage</span>
+          </div>
+          <h1>Scalable File Service (SFS)</h1>
+          <p>
+            Fully managed shared file storage built for applications, teams, and
+            workloads that require concurrent access to the same data. Scalable
+            File Service (SFS) provides elastic file systems that can be mounted
+            by multiple cloud servers simultaneously, enabling shared storage for
+            enterprise applications, content platforms, analytics workloads, and
+            collaborative environments.
+          </p>
+          <div className="ecs-trust-chips" aria-label="SFS platform capabilities">
+            {["Shared File Access", "Elastic Capacity", "High Availability", "Managed Service"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <SfsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose SFS?</h2>
+          <p>Shared file storage designed for organizations that need scalable, highly available, and easy-to-manage storage across multiple servers and applications.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {sfsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section sfs-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Shared Storage for Modern Applications</h2>
+          <p>Scalable File Service provides centralized file storage that can be accessed concurrently by multiple cloud servers. Whether supporting business applications, media workflows, development environments, or analytics platforms, SFS delivers the flexibility of shared storage with the simplicity of a fully managed cloud service.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {sfsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Managed shared file storage for distributed access, elastic growth, high availability, and centralized operations.</p>
+        </div>
+        <div className="as-capability-card-grid sfs-capability-card-grid">
+          {sfsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Shared file storage for applications, media workflows, development platforms, analytics, and enterprise collaboration.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {sfsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <SfsHowItWorks />
+      <SfsFaq />
+      <SfsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function SfsHeroVisual() {
+  return (
+    <div className="ecs-visual sfs-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Scalable File Service shared file storage illustration">
+        <rect x="70" y="76" width="380" height="368" rx="34" fill="#f4fbfb" />
+        <rect x="160" y="150" width="200" height="150" rx="28" fill="#ffffff" stroke="#d7edf0" strokeWidth="3" />
+        <path d="M190 202 h140 M190 236 h104" stroke="#23b8be" strokeWidth="8" strokeLinecap="round" />
+        <path d="M190 176 h58 l18 22 h64" fill="none" stroke="#11161b" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M260 300 v48 M164 348 h192" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" strokeDasharray="9 10" />
+        {[116, 224, 332].map((x) => (
+          <g key={x}>
+            <rect x={x} y="344" width="72" height="64" rx="16" fill="#e7f8f8" stroke="#ccebee" />
+            <path d={`M${x + 18} 370 h36 M${x + 18} 386 h26`} stroke="#23b8be" strokeWidth="5" strokeLinecap="round" />
+          </g>
+        ))}
+        <rect x="154" y="104" width="212" height="42" rx="21" fill="#e7f8f8" />
+        <text x="260" y="131" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Shared File System</text>
+      </svg>
+    </div>
+  );
+}
+
+function SfsHowItWorks() {
+  return (
+    <section className="ecs-section sfs-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Create shared file systems that can be mounted by multiple cloud servers while capacity scales as requirements grow.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>Organizations create shared file systems that can be mounted by multiple cloud servers simultaneously.</p>
+          <p>Applications, users, and services access the same data repository while storage capacity scales automatically as requirements grow.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Shared Data Access</h4>
+            <p>Enable multiple servers and applications to access the same files at the same time.</p>
+          </article>
+          <article>
+            <h4>Seamless Scalability</h4>
+            <p>Increase storage capacity without rebuilding infrastructure or interrupting workloads.</p>
+          </article>
+          <article>
+            <h4>Simplified Management</h4>
+            <p>Eliminate storage infrastructure complexity with a fully managed file storage service.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SfsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Scalable File Service (SFS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {sfsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SfsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Shared Storage for Scalable Applications</h2>
+      </div>
+      <div>
+        <p>Enable collaboration, simplify operations, and provide reliable shared storage for cloud-native and enterprise workloads.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const csbsBenefits = [
+  {
+    icon: ShieldCheck,
+    title: "Backup Without Downtime",
+    text: "Create consistent backups while applications and services remain online, eliminating the need for maintenance windows or service interruptions."
+  },
+  {
+    icon: Zap,
+    title: "Recover Faster",
+    text: "Reduce downtime with efficient backup and recovery workflows designed to restore systems and data quickly."
+  },
+  {
+    icon: Shield,
+    title: "Built-In Data Protection",
+    text: "Protect backup data through encryption, durable storage, and secure retention practices."
+  },
+  {
+    icon: Radio,
+    title: "Strengthen Business Continuity",
+    text: "Improve operational resilience by ensuring critical systems can recover from accidental deletion, failures, or unexpected disruptions."
+  }
+];
+
+const csbsOverviewHighlights = [
+  "Online backup without downtime",
+  "Fast recovery capabilities",
+  "Incremental backup efficiency",
+  "Secure encrypted storage",
+  "Business continuity support",
+  "Simplified backup management"
+];
+
+const csbsCapabilities = [
+  {
+    icon: ShieldCheck,
+    title: "Online Backup Protection",
+    description: "Create consistent backups while cloud servers continue running normally."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Incremental Backup & Recovery",
+    description: "Reduce backup windows and accelerate recovery using incremental technologies."
+  },
+  {
+    icon: Zap,
+    title: "Fast Data Restoration",
+    description: "Recover workloads quickly when failures, corruption, or data loss occur."
+  },
+  {
+    icon: Shield,
+    title: "Encrypted Backup Storage",
+    description: "Protect sensitive information through secure backup encryption."
+  },
+  {
+    icon: Database,
+    title: "Durable Backup Infrastructure",
+    description: "Store backup data across resilient storage infrastructure designed for long-term reliability."
+  },
+  {
+    icon: Radio,
+    title: "Centralized Backup Management",
+    description: "Manage backup operations, recovery processes, and protection policies through a unified platform."
+  }
+];
+
+const csbsUseCases = [
+  {
+    icon: ShieldCheck,
+    title: "Data Backup & Recovery",
+    description: "Protect business data and rapidly restore services after accidental deletion, corruption, or infrastructure failures.",
+    capabilities: ["Data Backup", "Fast Restore", "Failure Recovery"]
+  },
+  {
+    icon: Radio,
+    title: "Business Continuity",
+    description: "Support operational resilience by maintaining recoverable copies of critical systems and workloads.",
+    capabilities: ["Recoverable Copies", "Critical Systems", "Continuity"]
+  },
+  {
+    icon: Shield,
+    title: "Disaster Recovery Readiness",
+    description: "Improve preparedness for unexpected disruptions through reliable backup and restoration capabilities.",
+    capabilities: ["Preparedness", "Restoration", "Resilience"]
+  },
+  {
+    icon: Server,
+    title: "Rapid Environment Provisioning",
+    description: "Use backup data to create images and accelerate deployment of new cloud servers.",
+    capabilities: ["Backup Images", "New Servers", "Faster Deployment"]
+  }
+];
+
+const csbsFaqs = [
+  {
+    question: "What is Cloud Server Backup Service (CSBS)?",
+    answer: "CSBS is a cloud service that provides online backup and recovery for cloud server workloads."
+  },
+  {
+    question: "Does CSBS require shutting down cloud servers?",
+    answer: "No. Backups can be created while cloud servers and applications remain online."
+  },
+  {
+    question: "Does CSBS support incremental backups?",
+    answer: "Yes. CSBS supports incremental backup and incremental recovery."
+  },
+  {
+    question: "Is backup data encrypted?",
+    answer: "Yes. Backup data for encrypted disks is automatically encrypted and securely stored."
+  },
+  {
+    question: "Can backups be used to deploy new cloud servers?",
+    answer: "Yes. Backup data can be used to create images and accelerate deployment of new cloud servers."
+  }
+];
+
+function CloudServerBackupServicePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Protect critical cloud workloads with automated backup, rapid recovery, and business continuity from HTGClouds Cloud Server Backup Service.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Cloud Server Backup Service (CSBS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page csbs-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Cloud Backup & Recovery</span>
+          </div>
+          <h1>Cloud Server Backup Service (CSBS)</h1>
+          <p>
+            Protect critical cloud workloads with automated backup, rapid recovery,
+            and business continuity built into your infrastructure. Cloud Server
+            Backup Service (CSBS) helps organizations safeguard cloud server data
+            through consistent online backups, secure storage, and efficient recovery
+            capabilities without disrupting running applications or business operations.
+          </p>
+          <div className="ecs-trust-chips" aria-label="CSBS platform capabilities">
+            {["Online Backup", "Fast Recovery", "Encrypted Protection", "Business Continuity"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <CsbsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose CSBS?</h2>
+          <p>Built for organizations that need reliable backup, rapid recovery, and continuous protection for business-critical workloads.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {csbsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section csbs-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Reliable Backup for Cloud Infrastructure</h2>
+          <p>Cloud Server Backup Service provides online backup and recovery for cloud servers, helping organizations protect data, improve recoverability, and maintain operational continuity. Whether safeguarding production workloads, development environments, or business applications, CSBS delivers dependable backup protection without disrupting operations.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {csbsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Cloud backup and recovery capabilities for online protection, fast restoration, encrypted storage, and centralized backup operations.</p>
+        </div>
+        <div className="as-capability-card-grid csbs-capability-card-grid">
+          {csbsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Backup and recovery services for data protection, continuity, disaster readiness, and rapid provisioning.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {csbsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <CsbsHowItWorks />
+      <CsbsFaq />
+      <CsbsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function CsbsHeroVisual() {
+  return (
+    <div className="ecs-visual csbs-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Cloud Server Backup Service backup and recovery illustration">
+        <rect x="70" y="76" width="380" height="368" rx="34" fill="#f4fbfb" />
+        <rect x="154" y="132" width="212" height="146" rx="28" fill="#ffffff" stroke="#d7edf0" strokeWidth="3" />
+        <path d="M200 204 C212 172, 242 174, 254 198 C274 184, 308 198, 308 230 C308 252, 288 264, 262 264 H210 C184 264, 172 236, 200 204 Z" fill="#dff8f8" stroke="#23b8be" strokeWidth="4" />
+        <path d="M238 228 h46 M261 205 v46" stroke="#23b8be" strokeWidth="8" strokeLinecap="round" />
+        <path d="M260 278 v52" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" strokeDasharray="9 10" />
+        <rect x="166" y="330" width="188" height="68" rx="20" fill="#e7f8f8" stroke="#ccebee" />
+        <path d="M196 364 h92 M196 382 h122" stroke="#23b8be" strokeWidth="6" strokeLinecap="round" />
+        <circle cx="326" cy="364" r="16" fill="#11161b" />
+        <path d="M319 364 l5 5 l10 -12" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="154" y="104" width="212" height="42" rx="21" fill="#e7f8f8" />
+        <text x="260" y="131" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Backup Recovery</text>
+      </svg>
+    </div>
+  );
+}
+
+function CsbsHowItWorks() {
+  return (
+    <section className="ecs-section csbs-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Create automated backups of cloud server disks while applications remain online, then restore data quickly when recovery is needed.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>Organizations create automated backups of cloud server disks while applications remain online.</p>
+          <p>Backup data is securely stored and can be restored quickly when recovery is needed, helping minimize downtime and maintain business continuity.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Continuous Protection</h4>
+            <p>Safeguard workloads without disrupting business operations.</p>
+          </article>
+          <article>
+            <h4>Rapid Recovery</h4>
+            <p>Restore systems and data efficiently after failures or data loss events.</p>
+          </article>
+          <article>
+            <h4>Operational Resilience</h4>
+            <p>Improve business continuity through reliable backup and recovery workflows.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CsbsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Cloud Server Backup Service (CSBS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {csbsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CsbsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Protect Data and Recover with Confidence</h2>
+      </div>
+      <div>
+        <p>Reduce downtime, strengthen business continuity, and safeguard critical workloads with automated cloud backup and recovery.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const vbsBenefits = [
+  {
+    icon: ShieldCheck,
+    title: "Backup Without Interruption",
+    text: "Create backups while systems remain online, avoiding downtime and maintaining application availability."
+  },
+  {
+    icon: Zap,
+    title: "Recover to Any Backup Point",
+    text: "Restore data from available backup points to minimize disruption and accelerate recovery."
+  },
+  {
+    icon: Shield,
+    title: "Built for Data Resilience",
+    text: "Protect critical workloads through encrypted storage, durable backup infrastructure, and cross-availability-zone protection."
+  },
+  {
+    icon: Radio,
+    title: "Simplified Recovery Operations",
+    text: "Reduce operational complexity with centralized backup management and streamlined recovery workflows."
+  }
+];
+
+const vbsOverviewHighlights = [
+  "Online backup without downtime",
+  "Point-in-time recovery",
+  "Incremental backup efficiency",
+  "Cross-AZ protection",
+  "Secure encrypted storage",
+  "Simplified management"
+];
+
+const vbsCapabilities = [
+  {
+    icon: HardDrive,
+    title: "Online Disk Backup",
+    description: "Protect cloud disks while applications and services remain available."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Incremental Backup & Recovery",
+    description: "Reduce backup windows and accelerate restoration using incremental technologies."
+  },
+  {
+    icon: Zap,
+    title: "Point-in-Time Recovery",
+    description: "Restore data to available backup points to recover from failures and operational errors."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Cross-AZ Protection",
+    description: "Improve resilience through backup storage and recovery capabilities across availability zones."
+  },
+  {
+    icon: Shield,
+    title: "Encrypted Backup Storage",
+    description: "Protect sensitive data using secure encryption and storage mechanisms."
+  },
+  {
+    icon: Radio,
+    title: "Centralized Backup Management",
+    description: "Manage protection policies, backup operations, and recovery workflows from a unified platform."
+  }
+];
+
+const vbsUseCases = [
+  {
+    icon: ShieldCheck,
+    title: "Data Backup & Recovery",
+    description: "Protect cloud disk data and restore systems quickly after failures, corruption, or accidental deletion.",
+    capabilities: ["Disk Backup", "Fast Restore", "Failure Recovery"]
+  },
+  {
+    icon: Radio,
+    title: "Business Continuity",
+    description: "Maintain reliable data protection without impacting production operations.",
+    capabilities: ["Online Protection", "Production Ready", "Continuity"]
+  },
+  {
+    icon: Shield,
+    title: "Disaster Recovery Preparedness",
+    description: "Strengthen resilience through secure backups and rapid restoration capabilities.",
+    capabilities: ["Secure Backups", "Rapid Restore", "Resilience"]
+  },
+  {
+    icon: HardDrive,
+    title: "Rapid Environment Replication",
+    description: "Create new volumes and replicate cloud environments using backup data.",
+    capabilities: ["New Volumes", "Backup Data", "Environment Replication"]
+  }
+];
+
+const vbsFaqs = [
+  {
+    question: "What is Volume Backup Service (VBS)?",
+    answer: "VBS is a cloud service that provides online backup and recovery for cloud storage volumes."
+  },
+  {
+    question: "Does VBS require stopping cloud servers?",
+    answer: "No. Backups are performed while services remain online."
+  },
+  {
+    question: "Does VBS support incremental backups?",
+    answer: "Yes. VBS supports incremental backup and incremental recovery."
+  },
+  {
+    question: "Can I restore data to a previous backup point?",
+    answer: "Yes. VBS supports restoration from available backup points."
+  },
+  {
+    question: "Is backup data securely protected?",
+    answer: "Yes. Encrypted backups are automatically secured and protected across availability zones."
+  }
+];
+
+function VolumeBackupServicePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Protect cloud storage volumes with disk-level backup, point-in-time recovery, and encrypted cross-AZ resilience from HTGClouds Volume Backup Service.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Volume Backup Service (VBS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page vbs-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Disk Backup & Recovery</span>
+          </div>
+          <h1>Volume Backup Service (VBS)</h1>
+          <p>
+            Protect cloud disks with automated backups, rapid recovery, and
+            point-in-time restoration designed for business-critical workloads.
+            Volume Backup Service (VBS) provides online backup and recovery for
+            cloud storage volumes, helping organizations protect data from
+            accidental deletion, system failures, malware, and operational
+            mistakes without disrupting running services.
+          </p>
+          <div className="ecs-trust-chips" aria-label="VBS platform capabilities">
+            {["Online Backup", "Point-in-Time Recovery", "Cross-AZ Protection", "Encrypted Storage"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <VbsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose VBS?</h2>
+          <p>Disk-level data protection built for reliability, recovery, and operational resilience.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {vbsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section vbs-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Reliable Protection for Cloud Storage Volumes</h2>
+          <p>Volume Backup Service provides backup and recovery for cloud disks, helping organizations maintain data integrity, recover quickly from failures, and strengthen business continuity strategies. Whether protecting production systems, development environments, or critical business applications, VBS delivers dependable recovery capabilities with minimal operational overhead.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {vbsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Disk-level backup and recovery capabilities for online protection, point-in-time restoration, encrypted storage, and centralized backup operations.</p>
+        </div>
+        <div className="as-capability-card-grid vbs-capability-card-grid">
+          {vbsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Volume backup services for disk recovery, continuity, disaster preparedness, and rapid environment replication.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {vbsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <VbsHowItWorks />
+      <VbsFaq />
+      <VbsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function VbsHeroVisual() {
+  return (
+    <div className="ecs-visual vbs-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Volume Backup Service disk backup and recovery illustration">
+        <rect x="74" y="76" width="372" height="368" rx="34" fill="#f4fbfb" />
+        <rect x="140" y="120" width="240" height="116" rx="26" fill="#ffffff" stroke="#d7edf0" strokeWidth="3" />
+        <rect x="184" y="152" width="152" height="52" rx="18" fill="#e7f8f8" />
+        <path d="M212 176 h74 M212 194 h54" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <circle cx="318" cy="178" r="18" fill="#11161b" />
+        <path d="M311 178 l5 5 l11 -13" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M260 236 v54" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" strokeDasharray="9 10" />
+        <rect x="154" y="292" width="212" height="92" rx="24" fill="#ffffff" stroke="#d7edf0" strokeWidth="3" />
+        <ellipse cx="260" cy="326" rx="58" ry="18" fill="#dff8f8" stroke="#23b8be" strokeWidth="4" />
+        <path d="M202 326 v24 c0 10 26 18 58 18 s58 -8 58 -18 v-24" fill="#dff8f8" stroke="#23b8be" strokeWidth="4" />
+        <path d="M194 406 h132" stroke="#23b8be" strokeWidth="6" strokeLinecap="round" />
+        <path d="M260 390 v32" stroke="#23b8be" strokeWidth="6" strokeLinecap="round" />
+        <rect x="178" y="92" width="164" height="42" rx="21" fill="#e7f8f8" />
+        <text x="260" y="119" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Point-in-Time Backup</text>
+      </svg>
+    </div>
+  );
+}
+
+function VbsHowItWorks() {
+  return (
+    <section className="ecs-section vbs-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Create online backups of cloud storage volumes while applications remain operational, then restore data to available recovery points when needed.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>Organizations create online backups of cloud storage volumes while applications remain operational.</p>
+          <p>Backup data is securely stored and can be restored to available recovery points whenever recovery is required.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Continuous Data Protection</h4>
+            <p>Safeguard critical storage volumes without disrupting workloads.</p>
+          </article>
+          <article>
+            <h4>Flexible Recovery</h4>
+            <p>Restore data quickly using available backup points and recovery options.</p>
+          </article>
+          <article>
+            <h4>Improved Resilience</h4>
+            <p>Strengthen operational continuity through secure and durable backup infrastructure.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function VbsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Volume Backup Service (VBS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {vbsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function VbsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Protect Storage Volumes with Confidence</h2>
+      </div>
+      <div>
+        <p>Reduce risk, accelerate recovery, and strengthen data resilience with secure cloud volume backup and recovery.</p>
         <div className="as-cta-actions">
           <a
             href="/signup"

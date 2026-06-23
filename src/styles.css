@@ -1514,10 +1514,71 @@ blockquote {
   background: linear-gradient(135deg, rgba(35, 184, 190, 0.12), rgba(255, 255, 255, 0.94));
 }
 
+.evs-hero-visual,
+.obs-hero-visual,
+.sfs-hero-visual,
+.csbs-hero-visual,
+.vbs-hero-visual {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(35, 184, 190, 0.12), rgba(255, 255, 255, 0.94));
+}
+
 .bms-hero-visual svg {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.evs-hero-visual svg,
+.obs-hero-visual svg,
+.sfs-hero-visual svg,
+.csbs-hero-visual svg,
+.vbs-hero-visual svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.storage-product-page .ecs-hero,
+.evs-page .ecs-hero {
+  min-height: 500px;
+  grid-template-columns: minmax(610px, 0.92fr) minmax(500px, 600px);
+  gap: 64px;
+}
+
+.storage-product-page .ecs-hero-copy,
+.evs-page .ecs-hero-copy {
+  max-width: 760px;
+}
+
+.storage-product-page .ecs-hero h1,
+.evs-page .ecs-hero h1 {
+  max-width: 760px;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.storage-product-page .ecs-hero p,
+.evs-page .ecs-hero p {
+  max-width: 620px;
+}
+
+.storage-product-page .ecs-hero p a,
+.storage-product-page .ecs-section-heading p a,
+.evs-page .ecs-hero p a,
+.evs-page .ecs-section-heading p a {
+  color: var(--brand-dark);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.storage-product-page .ecs-hero p a:hover,
+.storage-product-page .ecs-section-heading p a:hover,
+.evs-page .ecs-hero p a:hover,
+.evs-page .ecs-section-heading p a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .bms-page .ecs-stats strong {
@@ -1532,21 +1593,33 @@ blockquote {
   font-weight: 400;
 }
 
-.bms-page .ecs-section-heading p {
+.bms-page .ecs-section-heading p,
+.storage-product-page .ecs-section-heading p,
+.evs-page .ecs-section-heading p {
   max-width: 760px;
   margin-right: auto;
   margin-left: auto;
   text-align: center;
 }
 
-.bms-overview-highlights {
+.storage-benefits-heading p,
+.evs-benefits-heading p {
+  max-width: 680px;
+  margin-top: 20px;
+}
+
+.bms-overview-highlights,
+.storage-overview-highlights,
+.evs-overview-highlights {
   justify-content: center;
   max-width: 920px;
   margin: 28px auto 0;
   padding-top: 0;
 }
 
-.bms-how-layout {
+.bms-how-layout,
+.storage-how-layout,
+.evs-how-layout {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   gap: 30px;
@@ -1559,12 +1632,18 @@ blockquote {
 }
 
 .bms-scenario-panel,
-.bms-advantages-panel {
+.bms-advantages-panel,
+.storage-scenario-panel,
+.storage-advantages-panel,
+.evs-scenario-panel,
+.evs-advantages-panel {
   display: grid;
   align-content: start;
 }
 
-.bms-scenario-panel {
+.bms-scenario-panel,
+.storage-scenario-panel,
+.evs-scenario-panel {
   align-content: center;
   min-height: 0;
   padding: 28px;
@@ -1573,7 +1652,9 @@ blockquote {
   border: 1px solid #e4edf0;
 }
 
-.bms-how-layout h3 {
+.bms-how-layout h3,
+.storage-how-layout h3,
+.evs-how-layout h3 {
   margin: 0 0 18px;
   color: #11161b;
   font-size: 26px;
@@ -1581,7 +1662,9 @@ blockquote {
   font-weight: 500;
 }
 
-.bms-how-layout p {
+.bms-how-layout p,
+.storage-how-layout p,
+.evs-how-layout p {
   margin: 0;
   color: #56616b;
   font-size: 16px;
@@ -1589,16 +1672,27 @@ blockquote {
   font-weight: 400;
 }
 
-.bms-advantages-panel article {
+.storage-scenario-panel p + p,
+.evs-scenario-panel p + p {
+  margin-top: 14px;
+}
+
+.bms-advantages-panel article,
+.storage-advantages-panel article,
+.evs-advantages-panel article {
   padding: 18px 0;
   border-top: 1px solid #edf2f4;
 }
 
-.bms-advantages-panel article:last-child {
+.bms-advantages-panel article:last-child,
+.storage-advantages-panel article:last-child,
+.evs-advantages-panel article:last-child {
   padding-bottom: 0;
 }
 
-.bms-advantages-panel h4 {
+.bms-advantages-panel h4,
+.storage-advantages-panel h4,
+.evs-advantages-panel h4 {
   margin: 0 0 8px;
   color: #11161b;
   font-size: 22px;
@@ -5544,7 +5638,9 @@ blockquote {
     padding: 0;
   }
 
-  .bms-how-layout {
+  .bms-how-layout,
+  .storage-how-layout,
+  .evs-how-layout {
     grid-template-columns: 1fr;
     gap: 28px;
     padding: 28px;
@@ -6107,32 +6203,44 @@ blockquote {
     font-size: 20px;
   }
 
-  .bms-overview-highlights {
+  .bms-overview-highlights,
+  .storage-overview-highlights,
+  .evs-overview-highlights {
     justify-content: flex-start;
   }
 
-  .bms-how-layout {
+  .bms-how-layout,
+  .storage-how-layout,
+  .evs-how-layout {
     gap: 18px;
     margin-top: 32px;
     padding: 16px;
     border-radius: 22px;
   }
 
-  .bms-scenario-panel {
+  .bms-scenario-panel,
+  .storage-scenario-panel,
+  .evs-scenario-panel {
     padding: 22px;
     border-radius: 18px;
   }
 
-  .bms-how-layout h3 {
+  .bms-how-layout h3,
+  .storage-how-layout h3,
+  .evs-how-layout h3 {
     font-size: 26px;
   }
 
-  .bms-how-layout p {
+  .bms-how-layout p,
+  .storage-how-layout p,
+  .evs-how-layout p {
     font-size: 15px;
     line-height: 1.55;
   }
 
-  .bms-advantages-panel h4 {
+  .bms-advantages-panel h4,
+  .storage-advantages-panel h4,
+  .evs-advantages-panel h4 {
     font-size: 20px;
   }
 
