@@ -9,6 +9,7 @@ import {
   Database,
   Globe2,
   HardDrive,
+  Lock,
   Maximize2,
   Menu,
   MousePointerClick,
@@ -152,20 +153,21 @@ const productMenuItems = {
     { name: "Domain Name Service", text: "Authoritative DNS hosting and domain resolution.", path: "/products/network/domain-name-service" }
   ],
   Databases: [
-    { name: "Relational Database Service", text: "Managed relational databases with backup and recovery.", path: "#" },
-    { name: "GaussDB", text: "Enterprise-grade managed database service.", path: "#" }
+    { name: "RDS for MySQL", text: "Fully managed MySQL-compatible database service.", path: "/products/database/rds-for-mysql" },
+    { name: "Data Replication Service", text: "Database migration, synchronization, and replication.", path: "/products/database/data-replication-service" },
+    { name: "GaussDB", text: "Enterprise-grade distributed database service.", path: "/products/database/gaussdb" }
   ],
   Application: [
-    { name: "Simple Message Notification", text: "Reliable message delivery for applications.", path: "#" },
-    { name: "ROMA Connect", text: "Integration service for enterprise applications.", path: "#" }
+    { name: "Simple Message Notification", text: "Reliable message delivery for applications.", path: "/products/application/simple-message-notification" },
+    { name: "ROMA Connect", text: "Integration service for enterprise applications.", path: "/products/application/roma-connect" }
   ],
   "Management Tools": [
     { name: "Log Tank Service", text: "Centralized log collection, search, and retention.", path: "#" },
     { name: "Application Operation Management", text: "Observe and operate production workloads.", path: "#" }
   ],
   "Security and Compliance": [
-    { name: "Web Application Firewall", text: "Protect web applications from common attacks.", path: "#" },
-    { name: "Cloud Bastion Host", text: "Secure administrative access and audit controls.", path: "#" }
+    { name: "Web Application Firewall", text: "Protect web applications from common attacks.", path: "/products/security/web-application-firewall" },
+    { name: "Cloud Bastion Host", text: "Secure administrative access and audit controls.", path: "/products/security/cloud-bastion-host" }
   ]
 };
 
@@ -188,7 +190,7 @@ const productFeaturedServices = {
   Databases: {
     icon: Database,
     name: "Relational Database Service (RDS)",
-    path: "#"
+    path: "/products/database/rds-for-mysql"
   },
   Application: {
     icon: Boxes,
@@ -567,6 +569,13 @@ function App() {
   if (path === "/products/network/elastic-load-balance") return <ElasticLoadBalancePage />;
   if (path === "/products/network/virtual-private-network") return <VirtualPrivateNetworkPage />;
   if (path === "/products/network/domain-name-service") return <DomainNameServicePage />;
+  if (path === "/products/database/rds-for-mysql") return <RdsForMysqlPage />;
+  if (path === "/products/database/data-replication-service") return <DataReplicationServicePage />;
+  if (path === "/products/database/gaussdb") return <GaussDbPage />;
+  if (path === "/products/application/simple-message-notification") return <SimpleMessageNotificationPage />;
+  if (path === "/products/application/roma-connect") return <RomaConnectPage />;
+  if (path === "/products/security/web-application-firewall") return <WebApplicationFirewallPage />;
+  if (path === "/products/security/cloud-bastion-host") return <CloudBastionHostPage />;
   if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
@@ -5893,6 +5902,2867 @@ function DnsCta() {
       </div>
       <div>
         <p>Deliver reliable domain resolution, improve application accessibility, and simplify DNS management with HTGCloud DNS.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const rdsHeroFeatures = [
+  {
+    icon: ShieldCheck,
+    title: "Production-Ready Reliability",
+    text: "Deploy highly available MySQL databases with automatic failover and built-in redundancy."
+  },
+  {
+    icon: Radio,
+    title: "Intelligent Operations",
+    text: "Reduce administrative effort through automated monitoring, diagnostics, and optimization tools."
+  },
+  {
+    icon: Maximize2,
+    title: "Scale with Confidence",
+    text: "Expand compute and storage resources as application workloads grow without disrupting operations."
+  }
+];
+
+const rdsBenefits = [
+  {
+    icon: ShieldCheck,
+    title: "High Availability & Reliability",
+    text: "Multi-copy storage and hot standby architecture help ensure business continuity and rapid recovery from failures."
+  },
+  {
+    icon: Zap,
+    title: "High Performance at Scale",
+    text: "An enhanced MySQL engine is optimized for high concurrency, fast response times, and demanding workloads."
+  },
+  {
+    icon: Radio,
+    title: "Automated Operations & Maintenance",
+    text: "Built-in management tools provide monitoring, diagnostics, capacity analysis, and optimization recommendations."
+  },
+  {
+    icon: Shield,
+    title: "Enterprise Security",
+    text: "Protect critical business data through encryption, access controls, and enterprise-grade security capabilities."
+  }
+];
+
+const rdsOverviewHighlights = [
+  "Deploy databases in minutes",
+  "Scale resources on demand",
+  "Automate backups",
+  "Enable automatic failover",
+  "Simplify monitoring and maintenance",
+  "Improve database reliability"
+];
+
+const rdsCapabilities = [
+  {
+    icon: Database,
+    title: "Fully Managed MySQL Compatibility",
+    description: "Run existing MySQL applications without code modifications."
+  },
+  {
+    icon: ShieldCheck,
+    title: "High Availability Architecture",
+    description: "Maintain application continuity through automatic failover and standby database deployment."
+  },
+  {
+    icon: Shield,
+    title: "Automated Backup & Recovery",
+    description: "Protect data with automated backups and point-in-time recovery capabilities."
+  },
+  {
+    icon: Zap,
+    title: "High-Concurrency Performance",
+    description: "Support demanding workloads through an optimized MySQL engine and scalable infrastructure."
+  },
+  {
+    icon: Radio,
+    title: "Intelligent DBA Assistant",
+    description: "Monitor performance, analyze slow queries, and identify optimization opportunities automatically."
+  },
+  {
+    icon: Lock,
+    title: "Enterprise Data Protection",
+    description: "Protect business data through encryption, secure access controls, and operational safeguards."
+  }
+];
+
+const rdsUseCases = [
+  {
+    icon: Boxes,
+    title: "E-Commerce Platforms",
+    description: "Support transaction-heavy applications with stable performance during traffic peaks.",
+    capabilities: ["Transactions", "Traffic Peaks", "Stable Performance"]
+  },
+  {
+    icon: Cloud,
+    title: "SaaS Applications",
+    description: "Deliver reliable database services for multi-tenant cloud applications.",
+    capabilities: ["Multi-Tenant", "Cloud Apps", "Reliable Service"]
+  },
+  {
+    icon: Zap,
+    title: "Mobile Applications & Games",
+    description: "Provide fast response times and scalable database infrastructure for growing user bases.",
+    capabilities: ["Fast Response", "User Growth", "Scalable Database"]
+  },
+  {
+    icon: Globe2,
+    title: "IoT Platforms",
+    description: "Handle large numbers of concurrent connections and continuously growing data volumes.",
+    capabilities: ["Concurrent Connections", "Growing Data", "IoT Workloads"]
+  }
+];
+
+const rdsFaqs = [
+  {
+    question: "What is RDS for MySQL?",
+    answer: "RDS for MySQL is a fully managed relational database service compatible with native MySQL."
+  },
+  {
+    question: "Is RDS compatible with existing MySQL applications?",
+    answer: "Yes. Applications can migrate without requiring code changes."
+  },
+  {
+    question: "Does RDS support automatic failover?",
+    answer: "Yes. High availability architecture includes automatic failover capabilities."
+  },
+  {
+    question: "Can data be restored to a specific point in time?",
+    answer: "Yes. Point-in-time recovery is supported."
+  },
+  {
+    question: "Is RDS suitable for production workloads?",
+    answer: "Yes. RDS is designed for enterprise-grade production environments."
+  }
+];
+
+function RdsForMysqlPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Deploy fully managed MySQL-compatible databases with high availability, automated backups, intelligent operations, and enterprise security from HTGClouds RDS.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "RDS for MySQL | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page database-product-page rds-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Managed Relational Database</span>
+          </div>
+          <h1>RDS for MySQL</h1>
+          <p>
+            Build reliable, scalable, and highly available applications with a
+            fully managed MySQL-compatible database service. RDS for MySQL removes
+            the complexity of database administration by automating deployment,
+            backup, monitoring, maintenance, and scaling.
+          </p>
+          <div className="ecs-trust-chips" aria-label="RDS for MySQL platform capabilities">
+            {["Fully Managed MySQL", "High Availability Architecture", "Automated Backup & Recovery", "Intelligent Database Operations", "Enterprise-Grade Security"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {rdsHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <RdsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose RDS for MySQL?</h2>
+          <p>RDS for MySQL eliminates routine database management tasks, allowing teams to focus on building applications instead of maintaining infrastructure.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {rdsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section rds-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Managed MySQL Designed for Growth</h2>
+          <p>RDS for MySQL provides a fully managed database environment that simplifies deployment, operation, scaling, and protection of MySQL workloads.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {rdsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Managed database capabilities for MySQL compatibility, high availability, automated recovery, performance, intelligent operations, and enterprise data protection.</p>
+        </div>
+        <div className="as-capability-card-grid rds-capability-card-grid">
+          {rdsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Managed MySQL for e-commerce platforms, SaaS products, mobile applications, games, and IoT data platforms.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {rdsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <RdsHowItWorks />
+      <RdsFaq />
+      <RdsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function RdsHeroVisual() {
+  return (
+    <div className="ecs-visual rds-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="RDS for MySQL managed database illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <ellipse cx="260" cy="194" rx="84" ry="28" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M176 194 v92 c0 16 38 30 84 30 s84 -14 84 -30 v-92" fill="#e7f8f8" stroke="#9fdfe4" strokeWidth="4" />
+        <ellipse cx="260" cy="286" rx="84" ry="28" fill="#dff8f8" stroke="#23b8be" strokeWidth="4" />
+        <text x="260" y="248" textAnchor="middle" fill="#126f73" fontSize="28" fontWeight="500">MySQL</text>
+
+        <rect x="106" y="124" width="104" height="54" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="158" y="157" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">Backup</text>
+        <path d="M210 152 C228 160 230 180 218 194" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="310" y="124" width="104" height="54" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="362" y="157" textAnchor="middle" fill="#11161b" fontSize="14" fontWeight="500">Failover</text>
+        <path d="M310 152 C292 160 290 180 302 194" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="116" y="354" width="118" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="175" y="388" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Monitoring</text>
+        <path d="M234 382 C250 360 254 336 256 314" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <rect x="286" y="354" width="118" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+        <text x="345" y="388" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Security</text>
+        <path d="M286 382 C270 360 266 336 264 314" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+
+        <path d="M260 326 l24 10 v18 c0 18 -10 30 -24 38 c-14 -8 -24 -20 -24 -38 v-18 z" fill="#23b8be" />
+        <path d="M249 354 l8 8 l17 -22" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+function RdsHowItWorks() {
+  return (
+    <section className="ecs-section rds-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Deploy a managed MySQL database instance while HTGCloud automates provisioning, backups, monitoring, failover, and maintenance.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization deploys a managed MySQL database instance through HTGCloud RDS.</p>
+          <p>The platform automatically handles provisioning, backups, monitoring, failover, and maintenance while applications connect using standard MySQL protocols.</p>
+          <p>As demand grows, compute and storage resources can be scaled with minimal operational effort.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Reduced Administrative Overhead</h4>
+            <p>Automate routine database management tasks.</p>
+          </article>
+          <article>
+            <h4>Increased Availability</h4>
+            <p>Protect applications through built-in redundancy and failover capabilities.</p>
+          </article>
+          <article>
+            <h4>Faster Growth</h4>
+            <p>Scale database resources as business requirements evolve.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RdsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds RDS for MySQL.</p>
+      </div>
+      <div className="pricing-faq-list">
+        {rdsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RdsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Run MySQL Without the Operational Complexity</h2>
+      </div>
+      <div>
+        <p>Deploy reliable, scalable, and secure MySQL databases while HTGCloud manages the infrastructure behind the scenes.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const drsHeroFeatures = [
+  {
+    icon: Zap,
+    title: "Migrate Without Business Disruption",
+    text: "Move databases to the cloud using online migration technologies that keep applications running."
+  },
+  {
+    icon: Radio,
+    title: "Real-Time Synchronization",
+    text: "Maintain near real-time data consistency across systems, regions, and environments."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Disaster Recovery Readiness",
+    text: "Replicate critical databases continuously to support business continuity and rapid recovery."
+  }
+];
+
+const drsBenefits = [
+  {
+    icon: Zap,
+    title: "Online Migration with Minimal Downtime",
+    text: "Reduce migration risk through incremental replication technologies that allow production services to remain available during migration."
+  },
+  {
+    icon: Radio,
+    title: "Real-Time Data Synchronization",
+    text: "Keep databases synchronized with low-latency replication designed for modern business applications."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Continuous Monitoring & Visibility",
+    text: "Monitor migration progress, replication latency, logs, and consistency metrics from a unified platform."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Lower Operational Complexity",
+    text: "Reduce manual DBA effort and infrastructure management through automated migration and replication services."
+  }
+];
+
+const drsOverviewHighlights = [
+  "Migrate databases to the cloud",
+  "Synchronize data between systems",
+  "Build disaster recovery environments",
+  "Monitor replication centrally",
+  "Validate consistency automatically",
+  "Minimize operational risk"
+];
+
+const drsCapabilities = [
+  {
+    icon: Database,
+    title: "Online Database Migration",
+    description: "Move databases with minimal service interruption through incremental replication technology."
+  },
+  {
+    icon: Radio,
+    title: "Real-Time Data Synchronization",
+    description: "Maintain continuous synchronization between production, analytics, and disaster recovery systems."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Disaster Recovery Replication",
+    description: "Create standby database environments that support rapid recovery and business continuity."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Database Recording & Playback",
+    description: "Capture production workloads and replay them in target environments for validation and testing."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Advanced Monitoring & Validation",
+    description: "Track replication latency, migration progress, and consistency through centralized monitoring tools."
+  },
+  {
+    icon: Shield,
+    title: "Secure Data Movement",
+    description: "Protect sensitive information using auditing, filtering, and controlled replication workflows."
+  }
+];
+
+const drsUseCases = [
+  {
+    icon: Cloud,
+    title: "Cloud Migration",
+    description: "Move databases from on-premises environments or external platforms into HTGCloud with minimal downtime.",
+    capabilities: ["Cloud Adoption", "Minimal Downtime", "Online Migration"]
+  },
+  {
+    icon: Radio,
+    title: "Real-Time Data Synchronization",
+    description: "Maintain consistent data across operational, reporting, and analytics systems.",
+    capabilities: ["Low Latency", "Analytics", "Consistent Data"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Disaster Recovery",
+    description: "Replicate business-critical databases to standby environments for rapid recovery during outages.",
+    capabilities: ["Standby Database", "Rapid Recovery", "Continuity"]
+  },
+  {
+    icon: MousePointerClick,
+    title: "Database Testing & Validation",
+    description: "Replay production workloads in testing environments to validate upgrades, migrations, and performance.",
+    capabilities: ["Replay", "Validation", "Performance Testing"]
+  }
+];
+
+const drsFaqs = [
+  {
+    question: "What is Data Replication Service (DRS)?",
+    answer: "DRS is a managed service that provides database migration, synchronization, and replication capabilities."
+  },
+  {
+    question: "Can DRS migrate databases without downtime?",
+    answer: "Yes. DRS supports online migration using incremental replication technologies to minimize business interruption."
+  },
+  {
+    question: "Does DRS support real-time synchronization?",
+    answer: "Yes. DRS supports low-latency real-time synchronization between databases."
+  },
+  {
+    question: "Can DRS be used for disaster recovery?",
+    answer: "Yes. DRS supports continuous replication to standby databases for disaster recovery scenarios."
+  },
+  {
+    question: "Does DRS provide monitoring and visibility?",
+    answer: "Yes. DRS provides centralized monitoring of migration progress, latency, logs, and consistency."
+  }
+];
+
+function DataReplicationServicePage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Migrate databases, synchronize data in real time, and build disaster recovery replication with HTGClouds Data Replication Service.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Data Replication Service (DRS) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page database-product-page drs-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Database Migration & Replication</span>
+          </div>
+          <h1>Data Replication Service (DRS)</h1>
+          <p>
+            Accelerate cloud adoption, maintain data consistency, and simplify
+            disaster recovery with a fully managed database migration and replication
+            platform. Data Replication Service (DRS) enables organizations to migrate
+            databases, synchronize data in real time, and build resilient disaster
+            recovery architectures with minimal business disruption.
+          </p>
+          <div className="ecs-trust-chips" aria-label="DRS platform capabilities">
+            {["Online Database Migration", "Real-Time Data Synchronization", "Disaster Recovery Replication", "Minimal Downtime", "Enterprise Data Consistency"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {drsHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <DrsHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose DRS?</h2>
+          <p>Data Replication Service removes the complexity of database migration, synchronization, and disaster recovery by providing a centralized platform for secure and controlled data movement.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {drsBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section drs-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Enterprise Data Movement Made Simple</h2>
+          <p>Data Replication Service enables organizations to move, synchronize, and protect data across cloud and on-premises environments while maintaining consistency and availability.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {drsOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Database replication capabilities for online migration, real-time synchronization, disaster recovery, workload replay, monitoring, and secure data movement.</p>
+        </div>
+        <div className="as-capability-card-grid drs-capability-card-grid">
+          {drsCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Managed data movement for cloud migration, real-time synchronization, disaster recovery, and database testing.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {drsUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <DrsHowItWorks />
+      <DrsFaq />
+      <DrsCta />
+      <Footer />
+    </main>
+  );
+}
+
+function DrsHeroVisual() {
+  return (
+    <div className="ecs-visual drs-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Data Replication Service database migration and synchronization illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <ellipse cx="166" cy="210" rx="58" ry="22" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M108 210 v72 c0 13 26 24 58 24 s58 -11 58 -24 v-72" fill="#e7f8f8" stroke="#9fdfe4" strokeWidth="4" />
+        <text x="166" y="262" textAnchor="middle" fill="#126f73" fontSize="16" fontWeight="500">Source</text>
+        <ellipse cx="354" cy="210" rx="58" ry="22" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M296 210 v72 c0 13 26 24 58 24 s58 -11 58 -24 v-72" fill="#dff8f8" stroke="#23b8be" strokeWidth="4" />
+        <text x="354" y="262" textAnchor="middle" fill="#126f73" fontSize="16" fontWeight="500">Target</text>
+
+        <path d="M228 232 C258 204 292 204 322 232" stroke="#23b8be" strokeWidth="6" fill="none" strokeLinecap="round" strokeDasharray="10 10" />
+        <path d="M322 232 l-14 -2 l8 -12" fill="none" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M292 288 C262 318 228 318 198 288" stroke="#23b8be" strokeWidth="6" fill="none" strokeLinecap="round" strokeDasharray="10 10" />
+        <path d="M198 288 l14 2 l-8 12" fill="none" stroke="#23b8be" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+
+        <circle cx="260" cy="352" r="38" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M244 352 h32 M260 336 v32" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <text x="260" y="416" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Replication</text>
+
+        <rect x="146" y="118" width="228" height="46" rx="23" fill="#e7f8f8" />
+        <text x="260" y="147" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Real-Time Sync</text>
+      </svg>
+    </div>
+  );
+}
+
+function DrsHowItWorks() {
+  return (
+    <section className="ecs-section drs-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Connect source and target databases, perform initial transfer, and continuously replicate incremental changes in real time.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization configures DRS to connect a source database and a target database.</p>
+          <p>DRS performs an initial data transfer and then continuously replicates incremental changes in real time. During migration, applications remain online while data consistency and replication progress are monitored automatically.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Reduced Downtime</h4>
+            <p>Keep applications available during migration and synchronization activities.</p>
+          </article>
+          <article>
+            <h4>Improved Data Consistency</h4>
+            <p>Ensure source and target systems remain synchronized through continuous replication.</p>
+          </article>
+          <article>
+            <h4>Lower Migration Risk</h4>
+            <p>Monitor and validate replication processes through built-in consistency and auditing tools.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DrsFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Data Replication Service (DRS).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {drsFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DrsCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Migrate and Synchronize Data with Confidence</h2>
+      </div>
+      <div>
+        <p>Accelerate cloud adoption, simplify database modernization, and maintain business continuity with intelligent data replication services.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const gaussDbHeroFeatures = [
+  {
+    icon: Database,
+    title: "Built for Enterprise Scale",
+    text: "Support mission-critical applications with distributed architecture designed for growth and resilience."
+  },
+  {
+    icon: Zap,
+    title: "High-Concurrency Performance",
+    text: "Handle demanding transactional workloads with strong consistency and optimized performance."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Security by Design",
+    text: "Protect sensitive business data through advanced security controls, encryption, and access management."
+  }
+];
+
+const gaussDbBenefits = [
+  {
+    icon: Maximize2,
+    title: "Distributed Scalability",
+    text: "Expand database capacity horizontally as workloads grow while maintaining consistent performance."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Enterprise Reliability",
+    text: "Deploy across multiple availability zones to improve resilience and support business continuity."
+  },
+  {
+    icon: Zap,
+    title: "High-Concurrency Processing",
+    text: "Support demanding transactional systems with distributed transaction capabilities and optimized query performance."
+  },
+  {
+    icon: Shield,
+    title: "Advanced Security Controls",
+    text: "Protect data through encryption, dynamic masking, row-level access control, and confidential computing technologies."
+  }
+];
+
+const gaussDbOverviewHighlights = [
+  "Run mission-critical applications",
+  "Scale infrastructure elastically",
+  "Support distributed transactions",
+  "Store and analyze massive datasets",
+  "Improve application availability",
+  "Strengthen data security and governance"
+];
+
+const gaussDbCapabilities = [
+  {
+    icon: Database,
+    title: "Distributed Relational Architecture",
+    description: "Support enterprise applications through a distributed database architecture designed for scale and resilience."
+  },
+  {
+    icon: Radio,
+    title: "Distributed Transactions",
+    description: "Maintain strong consistency across distributed workloads while supporting complex business operations."
+  },
+  {
+    icon: Maximize2,
+    title: "Elastic Horizontal Scaling",
+    description: "Expand database capacity seamlessly as applications and data volumes grow."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Cross-Availability Zone Deployment",
+    description: "Improve resilience and availability through multi-zone deployment capabilities."
+  },
+  {
+    icon: Lock,
+    title: "Enterprise Security Framework",
+    description: "Protect sensitive information through encryption, dynamic masking, row-level access controls, and confidential computing support."
+  },
+  {
+    icon: Code2,
+    title: "Open Ecosystem Integration",
+    description: "Integrate with DRS and modern database tooling while maintaining compatibility with mainstream open-source ecosystems."
+  }
+];
+
+const gaussDbUseCases = [
+  {
+    icon: ShieldCheck,
+    title: "Enterprise Core Systems",
+    description: "Support banking, government, telecom, ERP, CRM, and other business-critical platforms.",
+    capabilities: ["Core Systems", "Mission Critical", "Business Platforms"]
+  },
+  {
+    icon: Zap,
+    title: "High-Concurrency Transaction Processing",
+    description: "Run large-scale transactional applications requiring strong consistency and reliable performance.",
+    capabilities: ["Transactions", "Strong Consistency", "High Concurrency"]
+  },
+  {
+    icon: Database,
+    title: "Large-Scale Data Platforms",
+    description: "Store and query massive datasets across rapidly growing business environments.",
+    capabilities: ["Massive Data", "Query Scale", "Growth"]
+  },
+  {
+    icon: Cloud,
+    title: "Digital Transformation Initiatives",
+    description: "Modernize legacy database infrastructure with a distributed cloud-native database platform.",
+    capabilities: ["Modernization", "Cloud Native", "Legacy Migration"]
+  }
+];
+
+const gaussDbFaqs = [
+  {
+    question: "What is GaussDB?",
+    answer: "GaussDB is a distributed relational database designed for enterprise-scale, high-concurrency, and mission-critical workloads."
+  },
+  {
+    question: "Does GaussDB support distributed transactions?",
+    answer: "Yes. GaussDB supports distributed transactions while maintaining strong consistency across nodes."
+  },
+  {
+    question: "Can GaussDB scale as data volume grows?",
+    answer: "Yes. GaussDB supports elastic horizontal scaling and massive storage growth."
+  },
+  {
+    question: "Is GaussDB suitable for enterprise core systems?",
+    answer: "Yes. GaussDB is designed for finance, government, telecom, e-commerce, and other mission-critical environments."
+  },
+  {
+    question: "What security features does GaussDB provide?",
+    answer: "GaussDB includes encryption, dynamic data masking, row-level access control, and confidential computing capabilities."
+  }
+];
+
+function GaussDbPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Run mission-critical applications on HTGClouds GaussDB, a distributed relational database built for enterprise scale, strong consistency, and security.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "GaussDB | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page database-product-page gaussdb-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Enterprise Distributed Database</span>
+          </div>
+          <h1>GaussDB</h1>
+          <p>
+            Power high-concurrency workloads, massive data growth, and
+            business-critical systems with a distributed relational database
+            engineered for enterprise scale. GaussDB is a cloud-native distributed
+            relational database designed for organizations that demand performance,
+            scalability, security, and reliability at scale.
+          </p>
+          <div className="ecs-trust-chips" aria-label="GaussDB platform capabilities">
+            {["Distributed Database Architecture", "Elastic Horizontal Scaling", "Enterprise-Grade Security", "Cross-Availability Zone Resilience", "Massive Data Capacity"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {gaussDbHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <GaussDbHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose GaussDB?</h2>
+          <p>GaussDB combines distributed architecture, strong consistency, and enterprise security to help organizations run large-scale applications without sacrificing performance or reliability.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {gaussDbBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section gaussdb-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Distributed Database for Modern Enterprises</h2>
+          <p>GaussDB provides a distributed relational database platform capable of supporting high-volume transactions, large-scale data storage, and enterprise application modernization.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {gaussDbOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Enterprise database capabilities for distributed architecture, strong consistency, elastic scaling, multi-zone resilience, security, and ecosystem integration.</p>
+        </div>
+        <div className="as-capability-card-grid gaussdb-capability-card-grid">
+          {gaussDbCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Distributed relational database services for core systems, high-concurrency transaction processing, large-scale data platforms, and digital transformation.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {gaussDbUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <GaussDbHowItWorks />
+      <GaussDbFaq />
+      <GaussDbCta />
+      <Footer />
+    </main>
+  );
+}
+
+function GaussDbHeroVisual() {
+  return (
+    <div className="ecs-visual gaussdb-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="GaussDB distributed enterprise database illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <circle cx="260" cy="250" r="58" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <ellipse cx="260" cy="230" rx="42" ry="14" fill="#e7f8f8" stroke="#23b8be" strokeWidth="4" />
+        <path d="M218 230 v38 c0 9 19 16 42 16 s42 -7 42 -16 v-38" fill="#dff8f8" stroke="#23b8be" strokeWidth="4" />
+        <text x="260" y="328" textAnchor="middle" fill="#126f73" fontSize="20" fontWeight="500">GaussDB</text>
+
+        {[
+          [150, 150, "Node A"],
+          [370, 150, "Node B"],
+          [150, 354, "Node C"],
+          [370, 354, "Node D"]
+        ].map(([cx, cy, label]) => (
+          <g key={label}>
+            <rect x={cx - 50} y={cy - 30} width="100" height="60" rx="18" fill="#ffffff" stroke="#d7edf0" />
+            <circle cx={cx} cy={cy - 5} r="12" fill="#23b8be" opacity="0.9" />
+            <text x={cx} y={cy + 22} textAnchor="middle" fill="#56616b" fontSize="13" fontWeight="500">{label}</text>
+            <path d={`M${cx < 260 ? cx + 50 : cx - 50} ${cy} C ${cx < 260 ? cx + 88 : cx - 88} ${cy} ${cx < 260 ? 214 : 306} 250 ${cx < 260 ? 218 : 302} 250`} stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+          </g>
+        ))}
+
+        <path d="M260 188 l26 11 v20 c0 20 -11 34 -26 42 c-15 -8 -26 -22 -26 -42 v-20 z" fill="#11161b" opacity="0.92" />
+        <path d="M248 220 l8 8 l18 -24" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+function GaussDbHowItWorks() {
+  return (
+    <section className="ecs-section gaussdb-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Deploy GaussDB as a distributed relational database foundation, then scale capacity as enterprise workloads and data volumes grow.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization deploys GaussDB as the database foundation for a large-scale enterprise application.</p>
+          <p>The distributed architecture automatically spreads workloads across multiple nodes while maintaining transaction consistency and data reliability. As business demand grows, additional capacity can be added through elastic scaling without disrupting operations.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Enterprise Scalability</h4>
+            <p>Support growing workloads through distributed architecture and elastic expansion.</p>
+          </article>
+          <article>
+            <h4>Strong Consistency</h4>
+            <p>Maintain reliable transactional integrity across distributed environments.</p>
+          </article>
+          <article>
+            <h4>Long-Term Growth</h4>
+            <p>Handle increasing data volumes and user demand without requiring major architectural changes.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function GaussDbFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds GaussDB.</p>
+      </div>
+      <div className="pricing-faq-list">
+        {gaussDbFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GaussDbCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Build the Future on an Enterprise-Scale Database</h2>
+      </div>
+      <div>
+        <p>Run mission-critical applications with confidence using a distributed database platform designed for performance, security, and long-term growth.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const smnHeroFeatures = [
+  {
+    icon: Radio,
+    title: "Notify Multiple Recipients Instantly",
+    text: "Publish a message once and deliver it to multiple subscribers across different communication channels."
+  },
+  {
+    icon: Globe2,
+    title: "Multi-Channel Communication",
+    text: "Reach users through email, SMS, and HTTPS endpoints using a single notification service."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Built for Reliability",
+    text: "Ensure critical notifications are delivered through resilient messaging infrastructure and retry mechanisms."
+  }
+];
+
+const smnBenefits = [
+  {
+    icon: Radio,
+    title: "Topic-Based Message Distribution",
+    text: "Simplify communication by publishing messages once and automatically distributing them to multiple subscribers."
+  },
+  {
+    icon: Globe2,
+    title: "Multi-Protocol Delivery",
+    text: "Deliver notifications through email, SMS, and HTTPS integrations without maintaining separate communication systems."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Reliable Notification Infrastructure",
+    text: "Reduce the risk of missed notifications through built-in delivery reliability and retry mechanisms."
+  },
+  {
+    icon: Code2,
+    title: "Fast Application Integration",
+    text: "Integrate notification capabilities into applications and cloud services through lightweight APIs and management tools."
+  }
+];
+
+const smnOverviewHighlights = [
+  "Create notification topics",
+  "Manage subscribers centrally",
+  "Deliver alerts and events",
+  "Send notifications through multiple channels",
+  "Automate operational communications",
+  "Integrate messaging into applications"
+];
+
+const smnCapabilities = [
+  {
+    icon: Radio,
+    title: "Topic-Based Messaging",
+    description: "Organize notifications using topics and distribute messages efficiently to multiple subscribers."
+  },
+  {
+    icon: Globe2,
+    title: "Multi-Channel Delivery",
+    description: "Deliver notifications through email, SMS, and HTTPS endpoints using a single platform."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Message Templates",
+    description: "Create reusable notification templates to standardize communication and simplify message management."
+  },
+  {
+    icon: Code2,
+    title: "Application & Cloud Integration",
+    description: "Integrate notification workflows into cloud services, business applications, and automation systems."
+  },
+  {
+    icon: Shield,
+    title: "Access Control & Permissions",
+    description: "Manage publishing permissions and topic access through centralized security controls."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Reliable Message Delivery",
+    description: "Improve notification success rates through resilient delivery infrastructure and retry capabilities."
+  }
+];
+
+const smnUseCases = [
+  {
+    icon: Code2,
+    title: "Application Notifications",
+    description: "Send user alerts, status updates, and system notifications directly from applications.",
+    capabilities: ["User Alerts", "Status Updates", "System Notices"]
+  },
+  {
+    icon: Radio,
+    title: "Cloud Operations Alerts",
+    description: "Notify administrators about infrastructure events, incidents, and operational changes.",
+    capabilities: ["Incidents", "Events", "Operations"]
+  },
+  {
+    icon: Boxes,
+    title: "Business Process Automation",
+    description: "Trigger automated notifications for approvals, transactions, and workflow events.",
+    capabilities: ["Approvals", "Transactions", "Workflows"]
+  },
+  {
+    icon: Globe2,
+    title: "Third-Party Service Integration",
+    description: "Connect external systems and services through HTTPS-based notification delivery.",
+    capabilities: ["HTTPS Delivery", "External Systems", "Service Integration"]
+  }
+];
+
+const smnFaqs = [
+  {
+    question: "What is Simple Message Notification (SMN)?",
+    answer: "SMN is a cloud notification service that delivers messages to multiple subscribers through topic-based messaging."
+  },
+  {
+    question: "Which delivery channels are supported?",
+    answer: "SMN supports email, SMS, and HTTPS notification delivery."
+  },
+  {
+    question: "How does message distribution work?",
+    answer: "Messages are published to topics and automatically delivered to all confirmed subscribers."
+  },
+  {
+    question: "Can SMN use reusable message templates?",
+    answer: "Yes. SMN supports message templates for consistent and repeatable notifications."
+  },
+  {
+    question: "Is SMN suitable for production applications?",
+    answer: "Yes. SMN is designed for reliable notification delivery in enterprise and production environments."
+  }
+];
+
+function SimpleMessageNotificationPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Send reliable multi-channel notifications through topics, email, SMS, and HTTPS endpoints with HTGClouds Simple Message Notification.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Simple Message Notification (SMN) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page application-product-page smn-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Application Messaging</span>
+          </div>
+          <h1>Simple Message Notification (SMN)</h1>
+          <p>
+            Keep users informed, automate communication, and respond to events in
+            real time with a scalable cloud notification service. Simple Message
+            Notification (SMN) enables applications, cloud services, and business
+            systems to send notifications to multiple recipients through a unified
+            messaging platform.
+          </p>
+          <div className="ecs-trust-chips" aria-label="SMN platform capabilities">
+            {["Multi-Channel Notifications", "Topic-Based Messaging", "Email, SMS & HTTPS Delivery", "Reliable Event Distribution", "Application & Cloud Integration"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {smnHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <SmnHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose SMN?</h2>
+          <p>Simple Message Notification provides a centralized notification platform that helps applications and cloud services communicate important events in real time. Whether sending operational alerts, business notifications, or system updates, SMN delivers messages quickly, reliably, and at scale.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {smnBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section smn-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Unified Notification Platform for Modern Applications</h2>
+          <p>SMN provides a scalable messaging platform that enables applications, cloud services, and enterprise systems to deliver notifications through multiple communication channels.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {smnOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Notification capabilities for topic-based messaging, multi-channel delivery, templates, integrations, access control, and reliable message delivery.</p>
+        </div>
+        <div className="as-capability-card-grid smn-capability-card-grid">
+          {smnCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Use Cases</h2>
+          <p>Reliable notifications for applications, operations, business processes, and third-party service integrations.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {smnUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <SmnHowItWorks />
+      <SmnFaq />
+      <SmnCta />
+      <Footer />
+    </main>
+  );
+}
+
+function SmnHeroVisual() {
+  return (
+    <div className="ecs-visual smn-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Simple Message Notification topic and subscriber illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <circle cx="260" cy="246" r="58" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M230 246 h60 M260 216 v60" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <text x="260" y="330" textAnchor="middle" fill="#126f73" fontSize="20" fontWeight="500">Topic</text>
+
+        {[
+          [150, 150, "Email"],
+          [370, 150, "SMS"],
+          [150, 360, "HTTPS"],
+          [370, 360, "Apps"]
+        ].map(([cx, cy, label]) => (
+          <g key={label}>
+            <rect x={cx - 50} y={cy - 30} width="100" height="60" rx="18" fill="#ffffff" stroke="#d7edf0" />
+            <circle cx={cx} cy={cy - 6} r="12" fill="#23b8be" opacity="0.9" />
+            <text x={cx} y={cy + 22} textAnchor="middle" fill="#56616b" fontSize="13" fontWeight="500">{label}</text>
+            <path d={`M${cx < 260 ? cx + 50 : cx - 50} ${cy} C ${cx < 260 ? cx + 86 : cx - 86} ${cy} ${cx < 260 ? 204 : 316} 246 ${cx < 260 ? 202 : 318} 246`} stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+          </g>
+        ))}
+
+        <rect x="174" y="106" width="172" height="44" rx="22" fill="#e7f8f8" />
+        <text x="260" y="134" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Publish Once</text>
+      </svg>
+    </div>
+  );
+}
+
+function SmnHowItWorks() {
+  return (
+    <section className="ecs-section smn-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How It Works</h2>
+        <p>Publish messages to an SMN topic and automatically distribute them to subscribed recipients across supported delivery channels.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An application publishes a notification to an SMN topic whenever an important event occurs.</p>
+          <p>SMN automatically distributes the message to all subscribed recipients through email, SMS, or HTTPS endpoints. Administrators can manage subscriptions, monitor delivery, and update notification workflows through a centralized platform.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Faster Communication</h4>
+            <p>Deliver important information instantly across multiple communication channels.</p>
+          </article>
+          <article>
+            <h4>Operational Visibility</h4>
+            <p>Keep teams informed about system events, incidents, and business activities in real time.</p>
+          </article>
+          <article>
+            <h4>Simplified Notification Management</h4>
+            <p>Manage messaging, subscribers, and delivery channels from a single service.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SmnFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Simple Message Notification (SMN).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {smnFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SmnCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Deliver Notifications with Confidence</h2>
+      </div>
+      <div>
+        <p>Connect applications, users, and cloud services through a reliable messaging platform designed for modern digital operations.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const romaHeroFeatures = [
+  {
+    icon: Boxes,
+    title: "Connect Everything",
+    text: "Integrate applications, databases, cloud services, and devices through a unified platform."
+  },
+  {
+    icon: Radio,
+    title: "Real-Time Data Exchange",
+    text: "Synchronize information across systems with reliable and scalable integration services."
+  },
+  {
+    icon: Zap,
+    title: "Accelerate Innovation",
+    text: "Reduce custom development effort and launch connected digital services faster."
+  }
+];
+
+const romaBenefits = [
+  {
+    icon: Boxes,
+    title: "Unified Integration Platform",
+    text: "Manage APIs, applications, messages, devices, and data integrations from a single platform."
+  },
+  {
+    icon: Radio,
+    title: "Real-Time Connectivity",
+    text: "Enable reliable communication between cloud services, enterprise systems, and business applications."
+  },
+  {
+    icon: Zap,
+    title: "Accelerated Digital Transformation",
+    text: "Reduce integration complexity and launch connected services faster."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Enterprise Reliability",
+    text: "Support mission-critical integration workloads with secure and scalable infrastructure."
+  }
+];
+
+const romaOverviewHighlights = [
+  "Integrate enterprise applications",
+  "Connect cloud and on-premises systems",
+  "Synchronize data across platforms",
+  "Publish and manage APIs",
+  "Process business events",
+  "Connect IoT devices and gateways",
+  "Automate integration workflows"
+];
+
+const romaCapabilities = [
+  {
+    icon: Database,
+    title: "Data Integration",
+    description: "Connect databases, applications, and business systems to synchronize and transform information across environments."
+  },
+  {
+    icon: Code2,
+    title: "API Integration & Management",
+    description: "Expose, secure, publish, and monitor APIs through a centralized management platform."
+  },
+  {
+    icon: Cloud,
+    title: "Service Integration",
+    description: "Connect distributed applications and business services through reusable integration flows."
+  },
+  {
+    icon: Radio,
+    title: "Message Integration",
+    description: "Support event-driven architectures using messaging and asynchronous communication services."
+  },
+  {
+    icon: Globe2,
+    title: "Device Integration",
+    description: "Connect IoT devices, gateways, sensors, and industrial systems through standardized connectivity frameworks."
+  },
+  {
+    icon: Boxes,
+    title: "Composite Applications",
+    description: "Build integrated business applications that orchestrate multiple systems and services through a unified workflow layer."
+  }
+];
+
+const romaUseCases = [
+  {
+    icon: Boxes,
+    title: "Enterprise System Integration",
+    description: "Connect ERP, CRM, HR, finance, and operational systems to improve business efficiency.",
+    capabilities: ["ERP", "CRM", "Operations"]
+  },
+  {
+    icon: Radio,
+    title: "Payment Platform Integration",
+    description: "Integrate payment services, merchant platforms, reconciliation systems, and business applications.",
+    capabilities: ["Payments", "Merchants", "Reconciliation"]
+  },
+  {
+    icon: Code2,
+    title: "API Economy Platforms",
+    description: "Publish and manage APIs for partners, customers, and internal development teams.",
+    capabilities: ["Partners", "Customers", "API Management"]
+  },
+  {
+    icon: Globe2,
+    title: "IoT and Smart Operations",
+    description: "Connect devices, sensors, and operational systems for monitoring and automation.",
+    capabilities: ["Devices", "Sensors", "Automation"]
+  }
+];
+
+const romaFaqs = [
+  {
+    question: "What is ROMA Connect?",
+    answer: "ROMA Connect is a cloud integration platform that connects applications, APIs, data sources, services, and devices."
+  },
+  {
+    question: "What integration types are supported?",
+    answer: "ROMA Connect supports data integration, API integration, service integration, message integration, and device integration."
+  },
+  {
+    question: "Can ROMA Connect connect cloud and on-premises systems?",
+    answer: "Yes. ROMA Connect supports hybrid integration scenarios across cloud and on-premises environments."
+  },
+  {
+    question: "Is ROMA Connect suitable for enterprise workloads?",
+    answer: "Yes. ROMA Connect is designed for enterprise integration and digital transformation initiatives."
+  },
+  {
+    question: "Can ROMA Connect reduce custom integration development?",
+    answer: "Yes. ROMA Connect provides reusable integration services, centralized governance, and workflow automation capabilities."
+  }
+];
+
+function RomaConnectPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Connect applications, APIs, data, cloud services, and devices through a unified integration platform with HTGCloud ROMA Connect.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "ROMA Connect | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page application-product-page roma-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Enterprise Integration Platform</span>
+          </div>
+          <h1>ROMA Connect</h1>
+          <p>
+            ROMA Connect is a full-stack integration platform that enables
+            organizations to connect applications, APIs, databases, cloud services,
+            and devices through a centralized integration layer. Build integrated
+            digital ecosystems, automate workflows, and accelerate enterprise
+            connectivity with secure and scalable integration services.
+          </p>
+          <div className="ecs-trust-chips" aria-label="ROMA Connect platform capabilities">
+            {["Data Integration", "API Integration", "Service Integration", "Message Integration", "Device Connectivity"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {romaHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <RomaHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose ROMA Connect?</h2>
+          <p>A unified integration platform designed to connect business systems, applications, APIs, data sources, and devices across modern enterprise environments.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {romaBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section roma-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Enterprise Integration Without Complexity</h2>
+          <p>ROMA Connect helps organizations connect business systems, cloud applications, databases, devices, and services through reusable integration assets and centralized management.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {romaOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Enterprise integration capabilities for data, APIs, services, messages, devices, and composite business applications.</p>
+        </div>
+        <div className="as-capability-card-grid roma-capability-card-grid">
+          {romaCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Common Use Cases</h2>
+          <p>Integration services for enterprise systems, payment platforms, API economy platforms, and smart operations.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {romaUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <RomaHowItWorks />
+      <RomaFaq />
+      <RomaCta />
+      <Footer />
+    </main>
+  );
+}
+
+function RomaHeroVisual() {
+  return (
+    <div className="ecs-visual roma-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="ROMA Connect integration hub illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <circle cx="260" cy="250" r="62" fill="#ffffff" stroke="#9fdfe4" strokeWidth="4" />
+        <path d="M232 250 h56 M260 222 v56" stroke="#23b8be" strokeWidth="7" strokeLinecap="round" />
+        <text x="260" y="334" textAnchor="middle" fill="#126f73" fontSize="20" fontWeight="500">Integration Hub</text>
+
+        {[
+          [148, 144, "Apps"],
+          [372, 144, "APIs"],
+          [148, 362, "Data"],
+          [372, 362, "Devices"]
+        ].map(([cx, cy, label]) => (
+          <g key={label}>
+            <rect x={cx - 54} y={cy - 30} width="108" height="60" rx="18" fill="#ffffff" stroke="#d7edf0" />
+            <circle cx={cx} cy={cy - 7} r="12" fill="#23b8be" opacity="0.9" />
+            <text x={cx} y={cy + 22} textAnchor="middle" fill="#56616b" fontSize="13" fontWeight="500">{label}</text>
+            <path d={`M${cx < 260 ? cx + 54 : cx - 54} ${cy} C ${cx < 260 ? cx + 90 : cx - 90} ${cy} ${cx < 260 ? 200 : 320} 250 ${cx < 260 ? 198 : 322} 250`} stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+          </g>
+        ))}
+
+        <rect x="178" y="104" width="164" height="44" rx="22" fill="#e7f8f8" />
+        <text x="260" y="132" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Workflows</text>
+        <path d="M260 148 C260 180 260 190 260 216" stroke="#23b8be" strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="8 8" />
+      </svg>
+    </div>
+  );
+}
+
+function RomaHowItWorks() {
+  return (
+    <section className="ecs-section roma-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How ROMA Connect Works</h2>
+        <p>ROMA Connect acts as the integration layer between applications, APIs, data sources, cloud services, and devices.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>Organizations can manage integrations through a centralized platform while automating workflows and enabling secure communication across systems.</p>
+          <p>Reusable integration assets reduce development effort and help teams connect enterprise applications, APIs, data sources, cloud services, and devices at scale.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Benefits</h3>
+          <article>
+            <h4>Faster Integration Delivery</h4>
+            <p>Reduce development effort through reusable integration services and centralized management.</p>
+          </article>
+          <article>
+            <h4>Centralized Governance</h4>
+            <p>Manage APIs, integrations, assets, connectivity policies, and workflows from a single platform.</p>
+          </article>
+          <article>
+            <h4>Scalable Enterprise Connectivity</h4>
+            <p>Automate workflows and connect business systems across modern enterprise environments.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RomaFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds ROMA Connect.</p>
+      </div>
+      <div className="pricing-faq-list">
+        {romaFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RomaCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Build Connected Digital Experiences</h2>
+      </div>
+      <div>
+        <p>Connect systems, applications, APIs, data, and devices through a unified integration platform designed for modern enterprises.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const wafHeroFeatures = [
+  {
+    icon: ShieldCheck,
+    title: "Stop Attacks Before They Reach Your Applications",
+    text: "Inspect and block malicious HTTP and HTTPS traffic before it impacts your business services."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Adaptive Security Policies",
+    text: "Protect different applications using customizable rules, IP controls, and traffic management policies."
+  },
+  {
+    icon: Lock,
+    title: "Built for Always-On Protection",
+    text: "Deliver continuous application security without changing application code or infrastructure."
+  }
+];
+
+const wafBenefits = [
+  {
+    icon: ShieldCheck,
+    title: "Intelligent Threat Detection",
+    text: "Identify and block common web attacks including SQL injection, cross-site scripting (XSS), malicious requests, and automated threats before they reach application servers."
+  },
+  {
+    icon: Radio,
+    title: "Real-Time Traffic Inspection",
+    text: "Continuously analyze HTTP and HTTPS traffic to detect abnormal behavior and enforce security policies instantly."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Flexible Protection Policies",
+    text: "Customize protection rules, access controls, rate limits, and security policies to meet the needs of different applications and business environments."
+  },
+  {
+    icon: Cloud,
+    title: "Seamless Cloud Security",
+    text: "Deploy transparent protection that integrates with existing cloud infrastructure without requiring application modifications."
+  }
+];
+
+const wafOverviewHighlights = [
+  "Protect websites and web applications",
+  "Secure HTTP and HTTPS APIs",
+  "Block common web attacks",
+  "Monitor application traffic",
+  "Reduce service disruptions",
+  "Improve application availability"
+];
+
+const wafCapabilities = [
+  {
+    icon: Shield,
+    title: "Application-Layer Protection",
+    description: "Protect web applications against SQL injection, cross-site scripting (XSS), malicious requests, and other common application-layer attacks."
+  },
+  {
+    icon: Radio,
+    title: "Intelligent Traffic Inspection",
+    description: "Inspect HTTP and HTTPS requests in real time to identify threats before they reach backend systems."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Custom Security Policies",
+    description: "Create flexible protection rules, IP allowlists, blocklists, and rate-limiting policies tailored to application requirements."
+  },
+  {
+    icon: Code2,
+    title: "API Protection",
+    description: "Secure RESTful APIs and web services against unauthorized access, abuse, and malicious traffic."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Security Monitoring & Attack Visibility",
+    description: "Monitor traffic patterns, review attack logs, and gain visibility into security events through centralized reporting."
+  },
+  {
+    icon: Cloud,
+    title: "Cloud-Native Deployment",
+    description: "Protect applications using a transparent cloud-based security architecture without modifying application code."
+  }
+];
+
+const wafUseCases = [
+  {
+    icon: Globe2,
+    title: "Public Website Protection",
+    description: "Defend corporate websites, customer portals, and online services against common web attacks and malicious traffic.",
+    capabilities: ["Websites", "Customer Portals", "Malicious Traffic"]
+  },
+  {
+    icon: Code2,
+    title: "API Security",
+    description: "Protect business APIs from injection attacks, abuse, and unauthorized requests while maintaining application performance.",
+    capabilities: ["HTTP APIs", "Access Control", "Abuse Prevention"]
+  },
+  {
+    icon: Boxes,
+    title: "Enterprise Business Applications",
+    description: "Secure internal and customer-facing applications that support critical business operations.",
+    capabilities: ["Internal Apps", "Business Systems", "Policy Control"]
+  },
+  {
+    icon: Lock,
+    title: "E-Commerce Platforms",
+    description: "Protect online stores, payment portals, and digital services while maintaining secure and uninterrupted customer experiences.",
+    capabilities: ["Online Stores", "Payment Portals", "Availability"]
+  }
+];
+
+const wafFaqs = [
+  {
+    question: "What is Web Application Firewall (WAF)?",
+    answer: "Web Application Firewall is a cloud security service that protects web applications by inspecting and filtering HTTP and HTTPS traffic."
+  },
+  {
+    question: "What attacks does WAF protect against?",
+    answer: "WAF protects against common application-layer attacks including SQL injection, cross-site scripting (XSS), malicious requests, and other web threats."
+  },
+  {
+    question: "Does WAF require application changes?",
+    answer: "No. WAF provides transparent protection without requiring modifications to application code."
+  },
+  {
+    question: "Can WAF protect APIs?",
+    answer: "Yes. WAF secures HTTP and HTTPS APIs using intelligent traffic inspection and customizable security policies."
+  },
+  {
+    question: "Is WAF suitable for production environments?",
+    answer: "Yes. WAF is designed to protect enterprise and production web applications with scalable cloud-native security."
+  }
+];
+
+function WebApplicationFirewallPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Protect websites, APIs, and business applications from modern cyber threats with HTGClouds Web Application Firewall.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Web Application Firewall (WAF) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page security-product-page waf-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Security and Compliance</span>
+          </div>
+          <h1>Web Application Firewall (WAF)</h1>
+          <p>
+            Web Application Firewall (WAF) is an enterprise-grade security service
+            that protects web applications by inspecting, filtering, and blocking
+            malicious HTTP and HTTPS traffic before it reaches your infrastructure.
+            Designed for modern digital businesses, WAF helps organizations reduce
+            security risks, maintain application availability, and safeguard customer
+            experiences without requiring application code changes.
+          </p>
+          <div className="ecs-trust-chips" aria-label="WAF platform capabilities">
+            {["Intelligent Web Threat Protection", "Real-Time Traffic Inspection", "Advanced Attack Prevention", "Flexible Security Policies", "Cloud-Native Deployment"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {wafHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <WafHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose WAF?</h2>
+          <p>Web Application Firewall delivers intelligent application-layer protection that helps organizations defend against modern cyber threats while maintaining a fast, reliable user experience.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {wafBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section smn-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Enterprise Web Security for Modern Applications</h2>
+          <p>WAF provides centralized protection for websites, APIs, and web applications by inspecting incoming traffic, blocking malicious requests, and helping organizations maintain secure and highly available online services.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {wafOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Cloud-native web protection for application-layer attacks, API abuse, security policies, traffic inspection, monitoring, and transparent deployment.</p>
+        </div>
+        <div className="as-capability-card-grid smn-capability-card-grid">
+          {wafCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Common Use Cases</h2>
+          <p>Protect public websites, APIs, enterprise applications, and e-commerce platforms with centralized application-layer security.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {wafUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <WafHowItWorks />
+      <WafFaq />
+      <WafCta />
+      <Footer />
+    </main>
+  );
+}
+
+function WafHeroVisual() {
+  return (
+    <div className="ecs-visual waf-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Web Application Firewall protection illustration">
+        <rect x="62" y="74" width="396" height="372" rx="38" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <rect x="118" y="134" width="284" height="244" rx="26" fill="#ffffff" stroke="#c8ebee" strokeWidth="3" />
+        <rect x="118" y="134" width="284" height="58" rx="26" fill="#e8f8f9" />
+        <circle cx="152" cy="164" r="7" fill="#23b8be" />
+        <circle cx="176" cy="164" r="7" fill="#9fdfe4" />
+        <circle cx="200" cy="164" r="7" fill="#c8ebee" />
+        <text x="260" y="169" textAnchor="middle" fill="#126f73" fontSize="18" fontWeight="500">Protected App</text>
+
+        <path d="M260 226 C296 238 326 236 350 226 V270 C350 318 318 344 260 362 C202 344 170 318 170 270 V226 C194 236 224 238 260 226Z" fill="#ffffff" stroke="#23b8be" strokeWidth="5" />
+        <path d="M230 274 l22 22 l46 -56" fill="none" stroke="#23b8be" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
+
+        <g opacity="0.95">
+          <rect x="60" y="216" width="92" height="50" rx="16" fill="#fff7f5" stroke="#ffd3c7" />
+          <text x="106" y="247" textAnchor="middle" fill="#ff5630" fontSize="13" fontWeight="500">Blocked</text>
+          <path d="M152 242 H188" stroke="#ff725f" strokeWidth="3" strokeLinecap="round" strokeDasharray="7 8" />
+          <path d="M184 234 l10 8 l-10 8" fill="none" stroke="#ff725f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+
+        <g>
+          <rect x="368" y="216" width="92" height="50" rx="16" fill="#eefafa" stroke="#bdecef" />
+          <text x="414" y="247" textAnchor="middle" fill="#126f73" fontSize="13" fontWeight="500">Allowed</text>
+          <path d="M332 242 H368" stroke="#23b8be" strokeWidth="3" strokeLinecap="round" strokeDasharray="7 8" />
+          <path d="M364 234 l10 8 l-10 8" fill="none" stroke="#23b8be" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+
+        <rect x="154" y="406" width="212" height="44" rx="22" fill="#e7f8f8" />
+        <text x="260" y="434" textAnchor="middle" fill="#126f73" fontSize="17" fontWeight="500">Policy Enforcement</text>
+      </svg>
+    </div>
+  );
+}
+
+function WafHowItWorks() {
+  return (
+    <section className="ecs-section smn-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How WAF Works</h2>
+        <p>All incoming HTTP and HTTPS traffic passes through Web Application Firewall before reaching application servers.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization publishes a website and several APIs through HTGCloud.</p>
+          <p>All incoming HTTP and HTTPS traffic is routed through WAF, where requests are inspected in real time. Malicious traffic is automatically identified and blocked based on predefined and custom security policies before reaching application servers.</p>
+          <p>Administrators monitor attacks, adjust protection rules, and maintain application security through a centralized management platform.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Proactive Threat Prevention</h4>
+            <p>Stop attacks before they impact applications and business operations.</p>
+          </article>
+          <article>
+            <h4>Continuous Visibility</h4>
+            <p>Monitor web traffic, attack activity, and security events from a centralized dashboard.</p>
+          </article>
+          <article>
+            <h4>Simplified Security Operations</h4>
+            <p>Protect multiple applications using centralized policy management without changing application code.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WafFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Web Application Firewall (WAF).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {wafFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WafCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Secure Your Applications with Enterprise-Grade Protection</h2>
+      </div>
+      <div>
+        <p>Protect websites, APIs, and business applications with intelligent web security designed to stop modern cyber threats before they reach your infrastructure.</p>
+        <div className="as-cta-actions">
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started
+          </a>
+          <a
+            href="/pricing"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/pricing");
+            }}
+          >
+            View Pricing
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const cbhHeroFeatures = [
+  {
+    icon: ShieldCheck,
+    title: "Centralize Administrator Access",
+    text: "Provide secure access to cloud infrastructure through a single controlled gateway instead of exposing production servers directly."
+  },
+  {
+    icon: MousePointerClick,
+    title: "Complete Operational Visibility",
+    text: "Monitor, record, and audit every administrative session to improve security and simplify compliance."
+  },
+  {
+    icon: Lock,
+    title: "Protect Critical Infrastructure",
+    text: "Reduce security risks through centralized authentication, controlled permissions, and secure credential management."
+  }
+];
+
+const cbhBenefits = [
+  {
+    icon: ShieldCheck,
+    title: "Centralized Access Management",
+    text: "Control administrator access through a single secure entry point while minimizing direct exposure of production resources."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Fine-Grained Permission Management",
+    text: "Assign users, roles, and permissions to ensure administrators can only access authorized systems and perform approved operations."
+  },
+  {
+    icon: Radio,
+    title: "Complete Audit & Session Recording",
+    text: "Record login activity, administrative commands, and user sessions to support forensic analysis, operational reviews, and compliance reporting."
+  },
+  {
+    icon: Server,
+    title: "Secure Operations at Scale",
+    text: "Enable secure remote administration across multiple cloud servers while protecting credentials and maintaining operational governance."
+  }
+];
+
+const cbhOverviewHighlights = [
+  "Centralize administrator access",
+  "Control privileged operations",
+  "Secure production servers",
+  "Record administrative sessions",
+  "Audit login activity",
+  "Protect administrator credentials",
+  "Improve compliance readiness"
+];
+
+const cbhCapabilities = [
+  {
+    icon: Shield,
+    title: "Centralized Access Gateway",
+    description: "Route all administrator connections through a secure gateway that protects production infrastructure from direct exposure."
+  },
+  {
+    icon: SlidersVertical,
+    title: "Role-Based Access Control",
+    description: "Grant precise permissions based on organizational roles while limiting unnecessary administrative privileges."
+  },
+  {
+    icon: Radio,
+    title: "Session Monitoring & Recording",
+    description: "Monitor active administrator sessions and maintain detailed recordings for security investigations and compliance audits."
+  },
+  {
+    icon: Code2,
+    title: "Operation Command Auditing",
+    description: "Capture administrative commands and operational activities to provide complete visibility into infrastructure changes."
+  },
+  {
+    icon: Lock,
+    title: "Secure Credential Management",
+    description: "Protect sensitive credentials through centralized authentication and controlled access workflows."
+  },
+  {
+    icon: Boxes,
+    title: "Unified Security Management",
+    description: "Manage users, permissions, audit records, and operational policies from a centralized management console."
+  }
+];
+
+const cbhUseCases = [
+  {
+    icon: Server,
+    title: "Production Server Administration",
+    description: "Provide secure administrator access to mission-critical production environments without exposing backend infrastructure.",
+    capabilities: ["Production Access", "Secure Gateway", "Server Operations"]
+  },
+  {
+    icon: ShieldCheck,
+    title: "Regulatory Compliance",
+    description: "Maintain comprehensive audit logs and session records to support regulatory requirements and internal governance policies.",
+    capabilities: ["Audit Trails", "Session Records", "Governance"]
+  },
+  {
+    icon: Boxes,
+    title: "Enterprise IT Operations",
+    description: "Manage administrator access across multiple cloud servers through centralized authentication and authorization.",
+    capabilities: ["Centralized Access", "Role Control", "Cloud Servers"]
+  },
+  {
+    icon: Globe2,
+    title: "Managed Service Operations",
+    description: "Secure operational access for IT teams supporting multiple customers, departments, or business units.",
+    capabilities: ["Multiple Teams", "Customer Operations", "Access Governance"]
+  }
+];
+
+const cbhFaqs = [
+  {
+    question: "What is Cloud Bastion Host (CBH)?",
+    answer: "Cloud Bastion Host is a privileged access management service that provides centralized administrator access, operation control, and auditing for cloud infrastructure."
+  },
+  {
+    question: "How does CBH improve security?",
+    answer: "CBH reduces direct server exposure by routing administrator access through a secure gateway with centralized authentication and authorization."
+  },
+  {
+    question: "Can CBH record administrator activities?",
+    answer: "Yes. CBH records login events, administrator commands, and complete operation sessions for auditing and compliance."
+  },
+  {
+    question: "Is CBH suitable for compliance-driven organizations?",
+    answer: "Yes. CBH provides detailed audit trails, session recording, and centralized access governance to help organizations meet regulatory and internal compliance requirements."
+  },
+  {
+    question: "Can CBH manage access across multiple servers?",
+    answer: "Yes. CBH centrally manages privileged access to multiple cloud servers from a unified management platform."
+  }
+];
+
+function CloudBastionHostPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description = "Secure privileged access to critical cloud infrastructure with HTGClouds Cloud Bastion Host.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "Cloud Bastion Host (CBH) | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <main className="product-page ecs-page storage-product-page security-product-page cbh-page">
+      <Navigation />
+      <section className="ecs-hero">
+        <div className="ecs-hero-copy">
+          <div className="ecs-kicker">
+            <span>Security and Compliance</span>
+          </div>
+          <h1>Cloud Bastion Host (CBH)</h1>
+          <p>
+            Cloud Bastion Host (CBH) is an enterprise privileged access management
+            service that provides secure, centralized access to cloud servers while
+            eliminating direct exposure of critical infrastructure. Through unified
+            authentication, fine-grained authorization, session monitoring, and
+            complete operation auditing, CBH helps organizations strengthen security,
+            simplify operational governance, and meet regulatory compliance
+            requirements.
+          </p>
+          <div className="ecs-trust-chips" aria-label="CBH platform capabilities">
+            {["Centralized Privileged Access", "Fine-Grained Permission Control", "Session Recording & Auditing", "Secure Remote Operations", "Enterprise Compliance"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+          <div className="ecs-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get Started
+            </a>
+            <a href="/pricing" onClick={(event) => { event.preventDefault(); navigateTo("/pricing"); }}>
+              View Pricing
+            </a>
+          </div>
+          <div className="vpc-hero-feature-grid">
+            {cbhHeroFeatures.map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <span>
+                  <Icon size={16} />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <CbhHeroVisual />
+      </section>
+
+      <section className="ecs-section ecs-benefits-section">
+        <div className="ecs-section-heading centered storage-benefits-heading">
+          <h2>Why Choose CBH?</h2>
+          <p>Cloud Bastion Host helps organizations secure privileged access, reduce operational risk, and maintain complete visibility across cloud infrastructure without increasing administrative complexity.</p>
+        </div>
+        <div className="ecs-benefit-grid">
+          {cbhBenefits.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span>
+                <Icon size={18} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section smn-overview-section">
+        <div className="ecs-section-heading centered">
+          <h2>Enterprise Privileged Access Management for Cloud Operations</h2>
+          <p>Cloud Bastion Host provides organizations with a centralized platform for managing administrator access, controlling operational permissions, monitoring privileged sessions, and maintaining complete audit trails.</p>
+        </div>
+        <div className="ecs-workload-capabilities storage-overview-highlights">
+          {cbhOverviewHighlights.map((highlight) => (
+            <span key={highlight}>
+              <CircleCheck size={14} />
+              {highlight}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-enterprise-proof">
+        <div className="ecs-section-heading centered">
+          <h2>Core Capabilities</h2>
+          <p>Privileged access management capabilities for secure gateways, role-based access, session recording, operation auditing, credential protection, and centralized security management.</p>
+        </div>
+        <div className="as-capability-card-grid smn-capability-card-grid">
+          {cbhCapabilities.map(({ icon: Icon, title, description }) => (
+            <article key={title}>
+              <span>
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="ecs-section ecs-workloads">
+        <div className="ecs-section-heading centered">
+          <h2>Common Use Cases</h2>
+          <p>Secure privileged access for production server administration, compliance programs, enterprise IT operations, and managed service teams.</p>
+        </div>
+        <div className="ecs-workload-grid">
+          {cbhUseCases.map(({ icon: Icon, title, description, capabilities }) => (
+            <article className="ecs-workload-card" key={title}>
+              <div className="ecs-workload-card-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="ecs-workload-capabilities">
+                {capabilities.map((capability) => (
+                  <span key={capability}>
+                    <CircleCheck size={14} />
+                    {capability}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <CbhHowItWorks />
+      <CbhFaq />
+      <CbhCta />
+      <Footer />
+    </main>
+  );
+}
+
+function CbhHeroVisual() {
+  return (
+    <div className="ecs-visual cbh-hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 520 520" role="img" aria-label="Cloud Bastion Host secure access illustration">
+        <rect x="64" y="72" width="392" height="376" rx="36" fill="#f4fbfb" stroke="#d4eef1" strokeWidth="3" />
+        <rect x="164" y="136" width="192" height="232" rx="28" fill="#ffffff" stroke="#c8ebee" strokeWidth="3" />
+        <rect x="188" y="164" width="144" height="56" rx="18" fill="#e7f8f8" />
+        <text x="260" y="199" textAnchor="middle" fill="#126f73" fontSize="17" fontWeight="500">Access Gateway</text>
+
+        <path d="M260 250 c34 0 62 26 62 58 v32 h-124 v-32 c0-32 28-58 62-58Z" fill="#ffffff" stroke="#23b8be" strokeWidth="5" />
+        <rect x="214" y="296" width="92" height="78" rx="18" fill="#23b8be" />
+        <circle cx="260" cy="326" r="12" fill="#ffffff" />
+        <path d="M260 336 v18" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" />
+
+        <g>
+          <rect x="72" y="186" width="98" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+          <text x="121" y="220" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Admins</text>
+          <path d="M170 216 H210" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="7 8" />
+          <path d="M206 208 l10 8 l-10 8" fill="none" stroke="#23b8be" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+
+        <g>
+          <rect x="350" y="178" width="98" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+          <text x="399" y="212" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Servers</text>
+          <path d="M314 216 H350" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="7 8" />
+          <path d="M346 208 l10 8 l-10 8" fill="none" stroke="#23b8be" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+
+        <g>
+          <rect x="72" y="326" width="98" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+          <text x="121" y="360" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Audit</text>
+          <path d="M170 354 H214" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="7 8" />
+        </g>
+
+        <g>
+          <rect x="350" y="326" width="98" height="58" rx="18" fill="#ffffff" stroke="#d7edf0" />
+          <text x="399" y="360" textAnchor="middle" fill="#56616b" fontSize="14" fontWeight="500">Policies</text>
+          <path d="M306 354 H350" stroke="#23b8be" strokeWidth="4" strokeLinecap="round" strokeDasharray="7 8" />
+        </g>
+
+        <rect x="164" y="400" width="192" height="44" rx="22" fill="#e7f8f8" />
+        <text x="260" y="428" textAnchor="middle" fill="#126f73" fontSize="17" fontWeight="500">Session Recording</text>
+      </svg>
+    </div>
+  );
+}
+
+function CbhHowItWorks() {
+  return (
+    <section className="ecs-section smn-how-section">
+      <div className="ecs-section-heading centered">
+        <h2>How CBH Works</h2>
+        <p>Instead of allowing administrators to connect directly to production servers, Cloud Bastion Host acts as a secure gateway for all privileged access.</p>
+      </div>
+      <div className="storage-how-layout">
+        <div className="storage-scenario-panel">
+          <h3>Scenario</h3>
+          <p>An organization manages hundreds of production cloud servers across multiple environments.</p>
+          <p>Instead of allowing administrators to connect directly to servers, all privileged access is routed through Cloud Bastion Host. CBH authenticates users, verifies permissions, records administrative sessions, audits every operation, and securely manages privileged access through a centralized platform.</p>
+          <p>Security teams gain complete visibility while administrators continue working through a controlled and efficient operational workflow.</p>
+        </div>
+        <div className="storage-advantages-panel">
+          <h3>Advantages</h3>
+          <article>
+            <h4>Stronger Infrastructure Security</h4>
+            <p>Reduce attack surfaces by eliminating direct administrative access to production resources.</p>
+          </article>
+          <article>
+            <h4>Complete Operational Accountability</h4>
+            <p>Maintain detailed records of every login, command, and privileged session for security investigations and compliance.</p>
+          </article>
+          <article>
+            <h4>Simplified Administration</h4>
+            <p>Manage administrator identities, permissions, and operational policies from one centralized security platform.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CbhFaq() {
+  return (
+    <section className="pricing-faq ecs-faq">
+      <div>
+        <h2>Frequently Asked Questions</h2>
+        <p>Everything you need to know about HTGClouds Cloud Bastion Host (CBH).</p>
+      </div>
+      <div className="pricing-faq-list">
+        {cbhFaqs.map((item, index) => (
+          <details key={item.question} open={index === 0}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CbhCta() {
+  return (
+    <section className="pricing-cta ecs-cta">
+      <div>
+        <h2>Secure Privileged Access Across Your Cloud Environment</h2>
+      </div>
+      <div>
+        <p>Protect production infrastructure with centralized administrator access, intelligent permission management, and comprehensive operational auditing built for enterprise security.</p>
         <div className="as-cta-actions">
           <a
             href="/signup"

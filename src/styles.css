@@ -1523,7 +1523,14 @@ blockquote {
 .elb-hero-visual,
 .eip-hero-visual,
 .vpn-hero-visual,
-.dns-hero-visual {
+.dns-hero-visual,
+.rds-hero-visual,
+.drs-hero-visual,
+.gaussdb-hero-visual,
+.smn-hero-visual,
+.roma-hero-visual,
+.waf-hero-visual,
+.cbh-hero-visual {
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, rgba(35, 184, 190, 0.12), rgba(255, 255, 255, 0.94));
@@ -1544,7 +1551,14 @@ blockquote {
 .elb-hero-visual svg,
 .eip-hero-visual svg,
 .vpn-hero-visual svg,
-.dns-hero-visual svg {
+.dns-hero-visual svg,
+.rds-hero-visual svg,
+.drs-hero-visual svg,
+.gaussdb-hero-visual svg,
+.smn-hero-visual svg,
+.roma-hero-visual svg,
+.waf-hero-visual svg,
+.cbh-hero-visual svg {
   width: 100%;
   height: 100%;
   display: block;
