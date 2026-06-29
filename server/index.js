@@ -10,7 +10,12 @@ import { PrismaClient } from "@prisma/client";
 const app = express();
 const prisma = new PrismaClient();
 const serverPort = Number(process.env.PORT || process.env.SERVER_PORT || 4001);
-const clientUrl = process.env.CLIENT_URL || "http://localhost:5180";
+const productionClientUrl = "https://htgweb.abdirizak-abdulle.workers.dev";
+const localClientUrl = "http://localhost:5180";
+const clientUrl =
+  process.env.CLIENT_URL || (process.env.NODE_ENV === "production" ? productionClientUrl : localClientUrl);
+const devResetTokenEndpointEnabled =
+  process.env.ENABLE_DEV_RESET_TOKEN_ENDPOINT === "true" && process.env.NODE_ENV !== "production";
 const jwtSecret = process.env.JWT_SECRET || "replace-with-secure-random-secret";
 const authCookieName = "htgclouds_token";
 const allowedOrigins = new Set([
@@ -264,13 +269,9 @@ app.post("/api/auth/forgot-password", async (request, response) => {
       });
     });
 
-    const resetLink = `${clientUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetUrl = passwordResetUrl(token);
     console.log("[AUTH] Password reset token generated for:", email);
-    if (!isProduction) {
-      console.log("========================================");
-      console.log("[AUTH] Password reset link for", email, ":", resetLink);
-      console.log("========================================");
-    }
+    await deliverPasswordReset({ email, resetUrl });
 
     return response.json(genericResponse);
   } catch (error) {
@@ -280,7 +281,7 @@ app.post("/api/auth/forgot-password", async (request, response) => {
 });
 
 app.get("/api/auth/dev-reset-token", async (request, response) => {
-  if (process.env.NODE_ENV === "production") {
+  if (!devResetTokenEndpointEnabled) {
     return response.status(404).json({ error: "Not found." });
   }
 
@@ -312,7 +313,7 @@ app.get("/api/auth/dev-reset-token", async (request, response) => {
   return response.json({
     email,
     token: savedToken.developmentToken,
-    resetLink: `${clientUrl}/reset-password?token=${encodeURIComponent(savedToken.developmentToken)}`,
+    resetLink: passwordResetUrl(savedToken.developmentToken),
     expiresAt: savedToken.expiresAt
   });
 });
@@ -652,6 +653,23 @@ function verificationCode() {
 
 function passwordResetToken() {
   return crypto.randomBytes(32).toString("hex");
+}
+
+function passwordResetUrl(token) {
+  return `${clientUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+async function deliverPasswordReset({ email, resetUrl }) {
+  console.log("=====================================================");
+  console.log("HTGCLOUD PASSWORD RESET (TEST MODE)");
+  console.log("");
+  console.log("Email:");
+  console.log(email);
+  console.log("");
+  console.log("Reset URL:");
+  console.log(resetUrl);
+  console.log("");
+  console.log("=====================================================");
 }
 
 function hashToken(token) {
