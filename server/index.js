@@ -9,7 +9,7 @@ import { PrismaClient } from "@prisma/client";
 
 const app = express();
 const prisma = new PrismaClient();
-const serverPort = Number(process.env.SERVER_PORT || process.env.PORT || 4001);
+const serverPort = Number(process.env.PORT || process.env.SERVER_PORT || 4001);
 const clientUrl = process.env.CLIENT_URL || "http://localhost:5180";
 const jwtSecret = process.env.JWT_SECRET || "replace-with-secure-random-secret";
 const authCookieName = "htgclouds_token";
