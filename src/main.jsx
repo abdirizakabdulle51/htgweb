@@ -7,6 +7,8 @@ import {
   Cloud,
   Code2,
   Database,
+  Eye,
+  EyeOff,
   Globe2,
   HardDrive,
   Lock,
@@ -24,7 +26,9 @@ import {
 } from "lucide-react";
 import {
   getCurrentUser as getAuthUser,
+  getDevResetToken,
   logout as logoutUser,
+  requestPasswordReset,
   resendVerificationEmail,
   resetPassword,
   saveOnboarding,
@@ -32,6 +36,7 @@ import {
   signUp,
   verifyEmail
 } from "./lib/auth";
+import { countries as authCountries } from "./data/countries";
 import { pricingCatalog, pricingServices } from "./pricing/pricingCatalog";
 import {
   calculateEstimateTotals,
@@ -45,41 +50,51 @@ const logoPath = "/logo.png";
 const authPanelPath = "/auth-side-panel.png";
 const FAVORITES_KEY = "htgclouds_favorite_services";
 
-const authCountries = [
-  {
-    value: "Kenya",
-    code: "KE",
-    phoneCode: "+254",
-    phonePlaceholder: "+254 712 123456"
-  },
-  {
-    value: "Somalia",
-    code: "SO",
-    phoneCode: "+252",
-    phonePlaceholder: "+252 61 1234567"
-  },
-  {
-    value: "United Arab Emirates",
-    code: "AE",
-    phoneCode: "+971",
-    phonePlaceholder: "+971 50 123 4567"
-  },
-  {
-    value: "United Kingdom",
-    code: "GB",
-    phoneCode: "+44",
-    phonePlaceholder: "+44 7400 123456"
-  },
-  {
-    value: "United States",
-    code: "US",
-    phoneCode: "+1",
-    phonePlaceholder: "+1 (415) 123-4567"
-  }
+const jobRoleOptions = [
+  "Developer",
+  "DevOps Engineer",
+  "System Administrator",
+  "IT Administrator",
+  "Solution Architect",
+  "Business Owner",
+  "Student",
+  "Other"
+];
+
+const organizationSizeOptions = [
+  "Just Me",
+  "2–10 Employees",
+  "11–50 Employees",
+  "51–200 Employees",
+  "201–1000 Employees",
+  "1000+ Employees"
 ];
 
 function getAuthCountry(value) {
   return authCountries.find((country) => country.value === value);
+}
+
+function RequiredLabel({ children }) {
+  return (
+    <span>
+      {children} <span className="required-mark">*</span>
+    </span>
+  );
+}
+
+function normalizeWebsiteUrl(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function isValidWebsiteUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && url.hostname.includes(".");
+  } catch {
+    return false;
+  }
 }
 
 function navigateTo(path) {
@@ -819,22 +834,35 @@ function Hero() {
       <div className="cloud-left" />
       <div className="cloud-right" />
       <div className="hero-content">
-        <h1>Enterprise Cloud Infrastructure Without Compromise</h1>
+        <span className="hero-eyebrow">Enterprise Cloud Platform</span>
+        <h1>Cloud Infrastructure for Modern Businesses</h1>
         <p>
-          HTGClouds provides high-performance cloud infrastructure that supports
-          production workloads at any scale, from fast-growing startups to large
-          enterprises.
+          Build, deploy, and scale modern applications with enterprise-grade
+          compute, storage, networking, databases, applications, and security
+          services—all on HTGCloud's integrated cloud platform.
         </p>
-        <a
-          className="button button-dark hero-cta"
-          href="/signup"
-          onClick={(event) => {
-            event.preventDefault();
-            navigateTo("/signup");
-          }}
-        >
-          Start Free Trial
-        </a>
+        <div className="hero-actions">
+          <a
+            className="button button-dark hero-cta"
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Start Building
+          </a>
+          <a
+            className="button hero-cta hero-cta-secondary"
+            href="#homepage-services"
+            onClick={(event) => {
+              event.preventDefault();
+              document.getElementById("homepage-services")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            Explore Products
+          </a>
+        </div>
         <div className="trust-row">
           <span>
             <Zap size={14} /> Multi-AZ Architecture
@@ -10480,35 +10508,117 @@ function PricingCta() {
 }
 
 function DocumentationPreview() {
+  const sidebarItems = [
+    ["Dashboard", Cloud],
+    ["Compute", Server],
+    ["Storage", HardDrive],
+    ["Network", Globe2],
+    ["Databases", Database],
+    ["Applications", Boxes],
+    ["Security", ShieldCheck],
+    ["Monitoring", Radio],
+    ["Billing", CircleCheck]
+  ];
+
+  const metrics = [
+    ["Running Instances", "24"],
+    ["Storage Used", "3.2 TB"],
+    ["Networks", "6"],
+    ["Databases", "8"],
+    ["Monthly Cost", "$420.25"]
+  ];
+
+  const activity = [
+    "ECS instance created",
+    "Backup completed",
+    "Database restored",
+    "WAF policy updated",
+    "VPN connection established"
+  ];
+
+  const quickAccess = [
+    ["Create ECS", Server],
+    ["Object Storage", HardDrive],
+    ["VPC", Globe2],
+    ["Managed Database", Database],
+    ["Load Balancer", SlidersVertical],
+    ["Security Group", ShieldCheck]
+  ];
+
   return (
-    <div className="docs-preview" aria-label="Developer documentation preview">
-      <aside className="docs-sidebar">
-        <span>Developer documentation</span>
-        {["Quickstart", "Install the SDK", "Authenticate requests", "Deploy to Acme", "Concepts", "Guides"].map(
-          (item) => (
-            <small key={item}>{item}</small>
-          )
-        )}
+    <div className="docs-preview console-preview" aria-label="HTGCloud Console preview">
+      <aside className="console-preview-sidebar">
+        <strong>HTGCloud Console</strong>
+        <nav aria-label="Console preview navigation">
+          {sidebarItems.map(([item, Icon]) => (
+            <span key={item} className={item === "Dashboard" ? "active" : ""}>
+              <Icon size={13} />
+              {item}
+            </span>
+          ))}
+        </nav>
       </aside>
-      <section className="docs-main">
-        <div className="crumbs">ACME API / API REFERENCE / SECURITY</div>
-        <h2>Auth tokens</h2>
-        <p>
-          Manage the tokens used to authenticate requests to the Acme API. Create
-          and rotate tokens for users and services accessing clusters and
-          workloads.
-        </p>
-        <h3>The AuthToken object</h3>
-        <div className="code-card">
-          <code>{`backend: "custom"`}</code>
+      <section className="console-preview-main">
+        <div className="console-preview-topbar">
+          <div className="console-search">Search services, resources...</div>
+          <div className="console-region">Mogadishu-region-hq3</div>
+          <div className="console-notification" aria-hidden="true" />
+          <div className="console-avatar" aria-hidden="true">A</div>
+        </div>
+        <div className="console-overview-head">
+          <h2>Overview</h2>
+          <span>100% Healthy</span>
+        </div>
+        <div className="console-metrics">
+          {metrics.map(([label, value]) => (
+            <article key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </article>
+          ))}
+        </div>
+        <div className="console-preview-grid">
+          <article className="console-panel console-usage-panel">
+            <div>
+              <h3>Resource Usage</h3>
+              <span>Live infrastructure view</span>
+            </div>
+            <svg viewBox="0 0 280 92" role="img" aria-label="Resource usage chart preview">
+              <path d="M8 70 C38 52 54 62 78 44 C103 25 126 48 148 35 C176 18 195 48 222 30 C245 16 260 22 272 14" />
+              <path d="M8 78 C42 69 61 72 84 60 C108 48 128 58 154 47 C181 35 202 55 228 44 C251 34 263 40 272 34" className="secondary" />
+            </svg>
+            <div className="console-usage-labels">
+              <span>CPU</span>
+              <span>Memory</span>
+              <span>Network</span>
+            </div>
+          </article>
+          <article className="console-panel console-health-panel">
+            <h3>Service Health</h3>
+            <div className="console-health-ring">
+              <span>100%</span>
+            </div>
+            <p>All services operational</p>
+          </article>
+          <article className="console-panel console-activity-panel">
+            <h3>Recent Activity</h3>
+            {activity.map((item) => (
+              <span key={item}>
+                <CircleCheck size={12} />
+                {item}
+              </span>
+            ))}
+          </article>
+        </div>
+        <div className="console-quick-access">
+          {quickAccess.map(([label, Icon]) => (
+            <span key={label}>
+              <Icon size={14} />
+              {label}
+            </span>
+          ))}
         </div>
       </section>
-      <aside className="docs-toc">
-        <strong>The AuthToken object</strong>
-        <span>GET Get an auth token</span>
-        <span>PATCH Update an auth token</span>
-        <span>POST Regenerate an auth token</span>
-      </aside>
     </div>
   );
 }
@@ -10529,25 +10639,160 @@ function LogoCloud() {
 }
 
 function Services() {
+  const [activeCategory, setActiveCategory] = useState("Compute");
+  const serviceExplorerCategories = [
+    {
+      title: "Compute",
+      count: "5 Services",
+      icon: Server,
+      description: "Launch, manage, and scale enterprise compute resources for modern applications and production workloads.",
+      cta: "Explore Compute",
+      path: "/products/compute/elastic-cloud-server",
+      products: [
+        ["Elastic Cloud Server (ECS)", "/products/compute/elastic-cloud-server"],
+        ["Bare Metal Server (BMS)", "/products/compute/bare-metal-server"],
+        ["Cloud Container Engine (CCE)", "/products/compute/cloud-container-engine"],
+        ["Image Management Service (IMS)", "/products/compute/image-management-service"],
+        ["Auto Scaling", "/products/compute/auto-scaling"]
+      ]
+    },
+    {
+      title: "Storage",
+      count: "5 Services",
+      icon: HardDrive,
+      description: "Store, protect, and manage data across block, object, file, backup, and recovery workloads.",
+      cta: "Explore Storage",
+      path: "/products/storage/elastic-volume-service",
+      products: [
+        ["Elastic Volume Service (EVS)", "/products/storage/elastic-volume-service"],
+        ["Object Storage Service (OBS)", "/products/storage/object-storage-service"],
+        ["Scalable File Service (SFS)", "/products/storage/scalable-file-service"],
+        ["Cloud Server Backup Service (CSBS)", "/products/storage/cloud-server-backup-service"],
+        ["Volume Backup Service (VBS)", "/products/storage/volume-backup-service"]
+      ]
+    },
+    {
+      title: "Network",
+      count: "5 Services",
+      icon: Globe2,
+      description: "Build secure, scalable, and reliable cloud networks for applications, users, and enterprise connectivity.",
+      cta: "Explore Network",
+      path: "/products/network/virtual-private-cloud",
+      products: [
+        ["Virtual Private Cloud (VPC)", "/products/network/virtual-private-cloud"],
+        ["Elastic Load Balance (ELB)", "/products/network/elastic-load-balance"],
+        ["Elastic IP (EIP)", "/products/network/elastic-ip"],
+        ["Virtual Private Network (VPN)", "/products/network/virtual-private-network"],
+        ["Domain Name Service (DNS)", "/products/network/domain-name-service"]
+      ]
+    },
+    {
+      title: "Databases",
+      count: "3 Services",
+      icon: Database,
+      description: "Run managed databases, synchronize data, and power mission-critical applications with enterprise data services.",
+      cta: "Explore Databases",
+      path: "/products/database/rds-for-mysql",
+      products: [
+        ["RDS for MySQL", "/products/database/rds-for-mysql"],
+        ["Data Replication Service (DRS)", "/products/database/data-replication-service"],
+        ["GaussDB", "/products/database/gaussdb"]
+      ]
+    },
+    {
+      title: "Applications",
+      count: "2 Services",
+      icon: Boxes,
+      description: "Connect systems, automate communication, and integrate enterprise applications through cloud-native application services.",
+      cta: "Explore Applications",
+      path: "/products/application/simple-message-notification",
+      products: [
+        ["Simple Message Notification (SMN)", "/products/application/simple-message-notification"],
+        ["ROMA Connect", "/products/application/roma-connect"]
+      ]
+    },
+    {
+      title: "Security & Compliance",
+      count: "2 Services",
+      icon: ShieldCheck,
+      description: "Protect applications, secure privileged access, and strengthen compliance with enterprise-grade cloud security services.",
+      cta: "Explore Security",
+      path: "/products/security/web-application-firewall",
+      products: [
+        ["Web Application Firewall (WAF)", "/products/security/web-application-firewall"],
+        ["Cloud Bastion Host (CBH)", "/products/security/cloud-bastion-host"]
+      ]
+    }
+  ];
+  const selectedCategory = serviceExplorerCategories.find((category) => category.title === activeCategory) || serviceExplorerCategories[0];
+  const SelectedIcon = selectedCategory.icon;
+
   return (
-    <section className="section services">
+    <section className="section services" id="homepage-services">
       <div className="section-heading">
-        <h2>Production-Ready Cloud Services</h2>
+        <h2>Explore HTGCloud Services</h2>
         <p>
-          Deploy, secure, and scale with a complete suite of enterprise-grade
-          cloud services.
+          Discover enterprise-grade cloud services for compute, storage,
+          networking, databases, applications, and security.
         </p>
       </div>
-      <div className="service-grid">
-        {services.map(({ icon: Icon, title, text }) => (
-          <article className="service-card" key={title}>
-            <div className="icon-tile">
-              <Icon size={20} />
+      <div className="service-explorer">
+        <div className="service-category-list" role="tablist" aria-label="HTGCloud service categories">
+          {serviceExplorerCategories.map(({ title, count, icon: Icon }) => (
+            <button
+              key={title}
+              className={`service-category-tab${selectedCategory.title === title ? " active" : ""}`}
+              type="button"
+              role="tab"
+              aria-selected={selectedCategory.title === title}
+              onClick={() => setActiveCategory(title)}
+            >
+              <span className="service-category-icon">
+                <Icon size={18} />
+              </span>
+              <span>
+                <strong>{title}</strong>
+                <small>{count}</small>
+              </span>
+            </button>
+          ))}
+        </div>
+        <article className="service-category-panel">
+          <div className="service-panel-header">
+            <span className="service-panel-icon">
+              <SelectedIcon size={24} />
+            </span>
+            <div>
+              <h3>{selectedCategory.title}</h3>
+              <p>{selectedCategory.description}</p>
             </div>
-            <h3>{title}</h3>
-            <p>{text}</p>
-          </article>
-        ))}
+          </div>
+          <div className="service-product-list">
+            {selectedCategory.products.map(([name, path]) => (
+              <a
+                key={name}
+                href={path}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateTo(path);
+                }}
+              >
+                <span>{name}</span>
+                <CircleCheck size={15} />
+              </a>
+            ))}
+          </div>
+          <a
+            className="service-panel-cta"
+            href={selectedCategory.path}
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo(selectedCategory.path);
+            }}
+          >
+            {selectedCategory.cta}
+          </a>
+        </article>
       </div>
     </section>
   );
@@ -10714,13 +10959,20 @@ function Testimonials() {
   );
 }
 
-function AuthLayout({ children, compact = false }) {
+function AuthLayout({
+  children,
+  compact = false,
+  className = "",
+  shellClassName = "",
+  sideContent = null,
+  sideLabel = "HTGCloud customer trust panel"
+}) {
   return (
-    <main className={`auth-page${compact ? " auth-page-compact" : ""}`}>
-      <section className="auth-shell">
+    <main className={`auth-page${compact ? " auth-page-compact" : ""}${className ? ` ${className}` : ""}`}>
+      <section className={`auth-shell${shellClassName ? ` ${shellClassName}` : ""}`}>
         <div className="auth-form-panel">{children}</div>
-        <aside className="auth-side" aria-label="HTGClouds customer trust panel">
-          <img src={authPanelPath} alt="" />
+        <aside className="auth-side" aria-label={sideLabel}>
+          {sideContent || <img src={authPanelPath} alt="" />}
         </aside>
       </section>
     </main>
@@ -10767,36 +11019,88 @@ function SignUpPage() {
     fullName: "",
     email: "",
     password: "",
-    country: "",
+    country: "Somalia",
     phone: "",
-    company: ""
+    company: "",
+    website: "",
+    jobRole: "",
+    organizationSize: ""
   });
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
   const selectedCountry = getAuthCountry(form.country);
   const phonePlaceholder = selectedCountry?.phonePlaceholder || "+1 (415) 123-4567";
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function handleWebsiteBlur(event) {
+    const website = normalizeWebsiteUrl(event.target.value);
+    if (website && website !== form.website) {
+      updateField("website", website);
+    }
+  }
+
+  function validateForm(nextForm) {
+    const errors = {};
+    const requiredFields = {
+      fullName: "Full Name is required.",
+      email: "Work Email is required.",
+      password: "Password is required.",
+      country: "Country is required.",
+      phone: "Phone Number is required.",
+      company: "Company Name is required.",
+      website: "Website is required.",
+      jobRole: "Job Role is required.",
+      organizationSize: "Organization Size is required."
+    };
+
+    Object.entries(requiredFields).forEach(([field, message]) => {
+      if (!String(nextForm[field] || "").trim()) errors[field] = message;
+    });
+
+    if (nextForm.password && nextForm.password.length < 8) {
+      errors.password = "Password must be at least 8 characters.";
+    }
+
+    if (nextForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextForm.email.trim())) {
+      errors.email = "Enter a valid work email.";
+    }
+
+    if (nextForm.website && !isValidWebsiteUrl(nextForm.website)) {
+      errors.website = "Enter a valid website URL.";
+    }
+
+    return errors;
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
+    setFieldErrors({});
 
-    if (!form.fullName || !form.email || !form.password || !form.company) {
-      setError("Please complete the required fields.");
+    const website = normalizeWebsiteUrl(form.website);
+    const nextForm = { ...form, website };
+    if (website !== form.website) setForm(nextForm);
+
+    const errors = validateForm(nextForm);
+    if (Object.keys(errors).length) {
+      setFieldErrors(errors);
       return;
     }
 
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-
-    const email = form.email.trim().toLowerCase();
+    const email = nextForm.email.trim().toLowerCase();
     try {
       await signUp({
-        ...form,
+        ...nextForm,
         email,
         countryCode: selectedCountry?.code || "",
         phoneCountryCode: selectedCountry?.phoneCode || ""
@@ -10808,52 +11112,92 @@ function SignUpPage() {
   }
 
   return (
-    <AuthLayout>
-      <form className="auth-card auth-card-wide" onSubmit={handleSubmit}>
-        <AuthHeader
-          title="Welcome to HTGClouds"
-          subtitle="Already have an account?"
-          actionText="Sign In"
-          actionPath="/signin"
-        />
+    <AuthLayout
+      className="signup-auth-page"
+      shellClassName="signup-shell"
+      sideLabel="HTGCloud cloud platform preview"
+      sideContent={<SignupValuePanel />}
+    >
+      <form className="auth-card auth-card-wide signup-card" onSubmit={handleSubmit} noValidate>
+        <header className="auth-header signup-header">
+          <a
+            className="auth-logo signup-logo"
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/");
+            }}
+          >
+            <img src={logoPath} alt="HTGClouds" />
+          </a>
+          <h1>Welcome to HTGClouds</h1>
+          <p className="signup-signin">
+            Already have an account?{" "}
+            <a
+              href="/signin"
+              onClick={(event) => {
+                event.preventDefault();
+                navigateTo("/signin");
+              }}
+            >
+              Sign In
+            </a>
+          </p>
+        </header>
         <label>
-          Full Name
+          <RequiredLabel>Full Name</RequiredLabel>
           <input
             required
             value={form.fullName}
             onChange={(event) => updateField("fullName", event.target.value)}
             placeholder="Enter your full name"
+            aria-invalid={Boolean(fieldErrors.fullName)}
           />
+          {fieldErrors.fullName && <span className="field-error">{fieldErrors.fullName}</span>}
         </label>
         <label>
-          Work Email
+          <RequiredLabel>Work Email</RequiredLabel>
           <input
             required
             type="email"
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
             placeholder="Enter your work email"
+            aria-invalid={Boolean(fieldErrors.email)}
           />
+          {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
         </label>
         <label>
-          Password
-          <input
-            required
-            type="password"
-            minLength={8}
-            value={form.password}
-            onChange={(event) => updateField("password", event.target.value)}
-            placeholder="At least 8 characters"
-          />
+          <RequiredLabel>Password</RequiredLabel>
+          <span className="signup-password-field">
+            <input
+              required
+              type={showPassword ? "text" : "password"}
+              minLength={8}
+              value={form.password}
+              onChange={(event) => updateField("password", event.target.value)}
+              placeholder="At least 8 characters"
+              aria-invalid={Boolean(fieldErrors.password)}
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((current) => !current)}
+            >
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </span>
+          {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
         </label>
         <div className="auth-field-row">
           <label>
-            Country
+            <RequiredLabel>Country</RequiredLabel>
             <select
+              required
               value={form.country}
               onChange={(event) => updateField("country", event.target.value)}
+              aria-invalid={Boolean(fieldErrors.country)}
             >
-              <option value="">Select country</option>
               {authCountries.map((country) => (
                 <option
                   key={country.code}
@@ -10865,25 +11209,84 @@ function SignUpPage() {
                 </option>
               ))}
             </select>
+            {fieldErrors.country && <span className="field-error">{fieldErrors.country}</span>}
           </label>
           <label>
-            Phone Number
+            <RequiredLabel>Phone Number</RequiredLabel>
             <input
+              required
               value={form.phone}
               onChange={(event) => updateField("phone", event.target.value)}
               placeholder={phonePlaceholder}
+              aria-invalid={Boolean(fieldErrors.phone)}
             />
+            {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
           </label>
         </div>
-        <label>
-          Company Name
-          <input
-            required
-            value={form.company}
-            onChange={(event) => updateField("company", event.target.value)}
-            placeholder="Enter your company name"
-          />
-        </label>
+        <div className="auth-field-row">
+          <label>
+            <RequiredLabel>Company Name</RequiredLabel>
+            <input
+              required
+              value={form.company}
+              onChange={(event) => updateField("company", event.target.value)}
+              placeholder="Enter your company name"
+              aria-invalid={Boolean(fieldErrors.company)}
+            />
+            {fieldErrors.company && <span className="field-error">{fieldErrors.company}</span>}
+          </label>
+          <label>
+            <RequiredLabel>Website</RequiredLabel>
+            <input
+              required
+              type="url"
+              value={form.website}
+              onBlur={handleWebsiteBlur}
+              onChange={(event) => updateField("website", event.target.value)}
+              placeholder="https://example.com"
+              aria-invalid={Boolean(fieldErrors.website)}
+            />
+            {fieldErrors.website && <span className="field-error">{fieldErrors.website}</span>}
+          </label>
+        </div>
+        <div className="auth-field-row">
+          <label>
+            <RequiredLabel>Job Role</RequiredLabel>
+            <select
+              required
+              value={form.jobRole}
+              onChange={(event) => updateField("jobRole", event.target.value)}
+              aria-invalid={Boolean(fieldErrors.jobRole)}
+            >
+              <option value="">Select role</option>
+              {jobRoleOptions.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.jobRole && <span className="field-error">{fieldErrors.jobRole}</span>}
+          </label>
+          <label>
+            <RequiredLabel>Organization Size</RequiredLabel>
+            <select
+              required
+              value={form.organizationSize}
+              onChange={(event) => updateField("organizationSize", event.target.value)}
+              aria-invalid={Boolean(fieldErrors.organizationSize)}
+            >
+              <option value="">Select size</option>
+              {organizationSizeOptions.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.organizationSize && (
+              <span className="field-error">{fieldErrors.organizationSize}</span>
+            )}
+          </label>
+        </div>
         {error && <p className="auth-error">{error}</p>}
         <button className="auth-submit" type="submit">
           Create Account
@@ -10896,10 +11299,44 @@ function SignUpPage() {
   );
 }
 
+function SignupValuePanel() {
+  const bullets = [
+    "Enterprise-grade infrastructure",
+    "High availability architecture",
+    "Secure by design"
+  ];
+  const logos = ["Compute", "Storage", "Networking"];
+
+  return (
+    <div className="signup-value-panel">
+      <span className="signup-panel-glow signup-panel-glow-large" aria-hidden="true" />
+      <span className="signup-panel-glow signup-panel-glow-small" aria-hidden="true" />
+      <span className="signup-panel-wave" aria-hidden="true" />
+      <div className="signup-value-copy">
+        <h2>Reliable Cloud Platform</h2>
+        <ul>
+          {bullets.map((bullet) => (
+            <li key={bullet}>
+              <CircleCheck size={15} />
+              {bullet}
+            </li>
+          ))}
+        </ul>
+        <div className="signup-logo-row" aria-label="Customer logos">
+          {logos.map((logo) => (
+            <span key={logo}>{logo}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSignIn(event) {
     event.preventDefault();
@@ -10930,14 +11367,38 @@ function SignInPage() {
   }
 
   return (
-    <AuthLayout compact>
-      <form className="auth-card" onSubmit={handleSignIn}>
-        <AuthHeader
-          title="Welcome to HTGClouds"
-          subtitle="Don't have an account?"
-          actionText="Sign Up"
-          actionPath="/signup"
-        />
+    <AuthLayout
+      className="signup-auth-page"
+      shellClassName="signup-shell"
+      sideLabel="HTGCloud cloud platform preview"
+      sideContent={<SignupValuePanel />}
+    >
+      <form className="auth-card auth-card-wide signup-card" onSubmit={handleSignIn}>
+        <header className="auth-header signup-header">
+          <a
+            className="auth-logo signup-logo"
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/");
+            }}
+          >
+            <img src={logoPath} alt="HTGClouds" />
+          </a>
+          <h1>Welcome to HTGClouds</h1>
+          <p className="signup-signin">
+            Don't have an account?{" "}
+            <a
+              href="/signup"
+              onClick={(event) => {
+                event.preventDefault();
+                navigateTo("/signup");
+              }}
+            >
+              Sign Up
+            </a>
+          </p>
+        </header>
         <label>
           Work Email
           <input
@@ -10950,13 +11411,22 @@ function SignInPage() {
         </label>
         <label>
           Password
-          <input
-            required
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
-          />
+          <span className="signup-password-field">
+            <input
+              required
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="At least 8 characters"
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((current) => !current)}
+            >
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </span>
         </label>
         <a
           className="forgot-link"
@@ -10972,7 +11442,6 @@ function SignInPage() {
         <button className="auth-submit" type="submit">
           Sign In
         </button>
-        <p className="demo-hint">Demo: demo@htgclouds.com / password123</p>
       </form>
     </AuthLayout>
   );
@@ -11067,19 +11536,45 @@ function VerifyEmailPage() {
 
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    navigateTo(`/recovery-link-sent?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+    setError("");
+    const nextEmail = email.trim().toLowerCase();
+
+    try {
+      await requestPasswordReset(nextEmail);
+      navigateTo(`/recovery-link-sent?email=${encodeURIComponent(nextEmail)}`);
+    } catch (error) {
+      setError(error.message);
+    }
   }
 
   return (
-    <AuthLayout compact>
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <AuthHeader
-          title="Reset Password"
-          actionLabel="Please create a new password 8+ characters long to access your account."
-        />
+    <AuthLayout
+      className="signup-auth-page"
+      shellClassName="signup-shell"
+      sideLabel="HTGCloud cloud platform preview"
+      sideContent={<SignupValuePanel />}
+    >
+      <form className="auth-card auth-card-wide signup-card" onSubmit={handleSubmit}>
+        <header className="auth-header signup-header">
+          <a
+            className="auth-logo signup-logo"
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/");
+            }}
+          >
+            <img src={logoPath} alt="HTGClouds" />
+          </a>
+          <h1>Reset Password</h1>
+          <p className="signup-signin">
+            Please create a new password 8+ characters long to access your account.
+          </p>
+        </header>
         <label>
           Work Email
           <input
@@ -11090,6 +11585,7 @@ function ForgotPasswordPage() {
             placeholder="Enter your work email"
           />
         </label>
+        {error && <p className="auth-error">{error}</p>}
         <button className="auth-submit" type="submit">
           Reset Password
         </button>
@@ -11103,38 +11599,89 @@ function RecoveryLinkSentPage() {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("email") || "";
   }, []);
+  const [devResetLink, setDevResetLink] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDevResetLink() {
+      if (!pendingEmail) return;
+      try {
+        const data = await getDevResetToken(pendingEmail);
+        if (isMounted && data.resetLink) setDevResetLink(data.resetLink);
+      } catch {
+        if (isMounted) setDevResetLink("");
+      }
+    }
+
+    loadDevResetLink();
+    return () => {
+      isMounted = false;
+    };
+  }, [pendingEmail]);
 
   return (
-    <AuthLayout compact>
-      <div className="auth-card auth-card-centered">
-        <AuthHeader
-          title="Recovery link sent!"
-          actionLabel="If the email exists in our system, you'll receive a reset email shortly. Can't find it? Check your spam folder."
-        />
-        <button
-          className="auth-submit"
-          type="button"
-          onClick={() => navigateTo(`/reset-password?email=${encodeURIComponent(pendingEmail)}`)}
-        >
-          Continue
-        </button>
+    <AuthLayout
+      className="signup-auth-page"
+      shellClassName="signup-shell"
+      sideLabel="HTGCloud cloud platform preview"
+      sideContent={<SignupValuePanel />}
+    >
+      <div className="auth-card auth-card-wide signup-card auth-card-centered">
+        <header className="auth-header signup-header">
+          <a
+            className="auth-logo signup-logo"
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/");
+            }}
+          >
+            <img src={logoPath} alt="HTGClouds" />
+          </a>
+          <h1>Recovery link sent!</h1>
+          <p className="signup-signin">
+            If the email exists in our system, you'll receive a reset email shortly. Can't find it?
+            Check your spam folder.
+          </p>
+        </header>
+        {devResetLink ? (
+          <button
+            className="auth-submit"
+            type="button"
+            onClick={() => navigateTo(new URL(devResetLink).pathname + new URL(devResetLink).search)}
+          >
+            Open Local Reset Link
+          </button>
+        ) : (
+          <p className="auth-terms">
+            In local development, use the backend dev reset-token endpoint to retrieve the reset link.
+          </p>
+        )}
       </div>
     </AuthLayout>
   );
 }
 
 function ResetPasswordPage() {
-  const pendingEmail = useMemo(() => {
+  const resetToken = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("email") || "";
+    return new URLSearchParams(window.location.search).get("token") || "";
   }, []);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
+    if (!resetToken) {
+      setError("Password reset link is invalid or expired.");
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
@@ -11145,47 +11692,106 @@ function ResetPasswordPage() {
     }
 
     try {
-      await resetPassword({ email: pendingEmail, password });
-      navigateTo("/signin");
+      await resetPassword({ token: resetToken, password });
+      setSuccess(true);
     } catch (error) {
       setError(error.message);
     }
   }
 
   return (
-    <AuthLayout compact>
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <AuthHeader
-          title="Reset Password"
-          actionLabel="Please create a new password 8+ characters long to access your account."
-        />
-        <label>
-          Password
-          <input
-            required
-            type="password"
-            minLength={8}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
-          />
-        </label>
-        <label>
-          Confirm new password
-          <input
-            required
-            type="password"
-            minLength={8}
-            value={confirm}
-            onChange={(event) => setConfirm(event.target.value)}
-            placeholder="At least 8 characters"
-          />
-        </label>
-        {error && <p className="auth-error">{error}</p>}
-        <button className="auth-submit" type="submit">
-          Reset Password
-        </button>
-      </form>
+    <AuthLayout
+      className="signup-auth-page"
+      shellClassName="signup-shell"
+      sideLabel="HTGCloud cloud platform preview"
+      sideContent={<SignupValuePanel />}
+    >
+      {success ? (
+        <div className="auth-card auth-card-wide signup-card auth-card-centered">
+          <header className="auth-header signup-header">
+            <a
+              className="auth-logo signup-logo"
+              href="/"
+              onClick={(event) => {
+                event.preventDefault();
+                navigateTo("/");
+              }}
+            >
+              <img src={logoPath} alt="HTGClouds" />
+            </a>
+            <h1>Password updated</h1>
+            <p className="signup-signin">
+              Your password has been reset successfully. You can now sign in with your new password.
+            </p>
+          </header>
+          <button className="auth-submit" type="button" onClick={() => navigateTo("/signin")}>
+            Back to Sign In
+          </button>
+        </div>
+      ) : (
+        <form className="auth-card auth-card-wide signup-card" onSubmit={handleSubmit}>
+          <header className="auth-header signup-header">
+            <a
+              className="auth-logo signup-logo"
+              href="/"
+              onClick={(event) => {
+                event.preventDefault();
+                navigateTo("/");
+              }}
+            >
+              <img src={logoPath} alt="HTGClouds" />
+            </a>
+            <h1>Reset Password</h1>
+            <p className="signup-signin">
+              Please create a new password 8+ characters long to access your account.
+            </p>
+          </header>
+          <label>
+            Password
+            <span className="signup-password-field">
+              <input
+                required
+                type={showPassword ? "text" : "password"}
+                minLength={8}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="At least 8 characters"
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((current) => !current)}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </span>
+          </label>
+          <label>
+            Confirm new password
+            <span className="signup-password-field">
+              <input
+                required
+                type={showConfirm ? "text" : "password"}
+                minLength={8}
+                value={confirm}
+                onChange={(event) => setConfirm(event.target.value)}
+                placeholder="At least 8 characters"
+              />
+              <button
+                type="button"
+                aria-label={showConfirm ? "Hide confirmation password" : "Show confirmation password"}
+                onClick={() => setShowConfirm((current) => !current)}
+              >
+                {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </span>
+          </label>
+          {error && <p className="auth-error">{error}</p>}
+          <button className="auth-submit" type="submit">
+            Reset Password
+          </button>
+        </form>
+      )}
     </AuthLayout>
   );
 }
@@ -11794,6 +12400,7 @@ export default App;
 if (typeof document !== "undefined") {
   const root = document.getElementById("root");
   if (root) {
-    createRoot(root).render(<App />);
+    window.__htgcloudRoot = window.__htgcloudRoot || createRoot(root);
+    window.__htgcloudRoot.render(<App />);
   }
 }

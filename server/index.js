@@ -2,14 +2,15 @@ import "dotenv/config";
 import bcrypt from "bcrypt";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import crypto from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 
 const app = express();
 const prisma = new PrismaClient();
-const serverPort = Number(process.env.SERVER_PORT || 4000);
-const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+const serverPort = Number(process.env.SERVER_PORT || process.env.PORT || 4001);
+const clientUrl = process.env.CLIENT_URL || "http://localhost:5180";
 const jwtSecret = process.env.JWT_SECRET || "replace-with-secure-random-secret";
 const authCookieName = "htgclouds_token";
 const allowedOrigins = new Set([
@@ -18,7 +19,9 @@ const allowedOrigins = new Set([
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:5174",
-  "http://127.0.0.1:5174"
+  "http://127.0.0.1:5174",
+  "http://localhost:5180",
+  "http://127.0.0.1:5180"
 ]);
 
 app.use(
@@ -211,6 +214,159 @@ app.post("/api/auth/resend-verification", async (request, response) => {
     console.error("[AUTH] Resend verification error:", error);
     const status = error instanceof HttpError ? error.status : 500;
     const message = error instanceof Error ? error.message : "Could not resend verification code.";
+    return response.status(status).json({ error: message });
+  }
+});
+
+app.post("/api/auth/forgot-password", async (request, response) => {
+  const email = clean(request.body.email).toLowerCase();
+  const genericResponse = {
+    success: true,
+    ok: true,
+    message: "If the email exists in our system, a reset link has been generated."
+  };
+
+  try {
+    console.log("[AUTH] Forgot password request:", email);
+
+    if (!isEmail(email)) {
+      return response.json(genericResponse);
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      console.log("[AUTH] Forgot password user found:", false);
+      return response.json(genericResponse);
+    }
+
+    const token = passwordResetToken();
+    const tokenHash = hashToken(token);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    const isProduction = process.env.NODE_ENV === "production";
+
+    await prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.updateMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+          expiresAt: { gt: new Date() }
+        },
+        data: { usedAt: new Date() }
+      });
+
+      await tx.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          developmentToken: isProduction ? null : token,
+          expiresAt
+        }
+      });
+    });
+
+    const resetLink = `${clientUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    console.log("[AUTH] Password reset token generated for:", email);
+    if (!isProduction) {
+      console.log("========================================");
+      console.log("[AUTH] Password reset link for", email, ":", resetLink);
+      console.log("========================================");
+    }
+
+    return response.json(genericResponse);
+  } catch (error) {
+    console.error("[AUTH] Forgot password error:", error);
+    return response.json(genericResponse);
+  }
+});
+
+app.get("/api/auth/dev-reset-token", async (request, response) => {
+  if (process.env.NODE_ENV === "production") {
+    return response.status(404).json({ error: "Not found." });
+  }
+
+  const email = clean(request.query.email).toLowerCase();
+
+  if (!isEmail(email)) {
+    return response.status(400).json({ error: "Enter a valid email address." });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    return response.status(404).json({ error: "No user found for that email." });
+  }
+
+  const savedToken = await prisma.passwordResetToken.findFirst({
+    where: {
+      userId: user.id,
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+      developmentToken: { not: null }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  if (!savedToken?.developmentToken) {
+    return response.status(404).json({ error: "No active password reset token found." });
+  }
+
+  return response.json({
+    email,
+    token: savedToken.developmentToken,
+    resetLink: `${clientUrl}/reset-password?token=${encodeURIComponent(savedToken.developmentToken)}`,
+    expiresAt: savedToken.expiresAt
+  });
+});
+
+app.post("/api/auth/reset-password", async (request, response) => {
+  try {
+    const token = clean(request.body.token);
+    const password = request.body.password || "";
+
+    console.log("[AUTH] Reset password request received");
+
+    if (!token) {
+      throw new HttpError("Password reset token is required.", 400);
+    }
+
+    if (password.length < 8) {
+      throw new HttpError("Password must be at least 8 characters.", 400);
+    }
+
+    const tokenHash = hashToken(token);
+    const savedToken = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true }
+    });
+
+    if (!savedToken || savedToken.usedAt || savedToken.expiresAt <= new Date()) {
+      throw new HttpError("Password reset link is invalid or expired.", 400);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: savedToken.userId },
+        data: { passwordHash }
+      });
+
+      await tx.passwordResetToken.update({
+        where: { id: savedToken.id },
+        data: { usedAt: new Date() }
+      });
+    });
+
+    console.log("[AUTH] Password reset successful for:", savedToken.user.email);
+
+    return response.json({
+      success: true,
+      ok: true,
+      message: "Password reset successfully."
+    });
+  } catch (error) {
+    console.error("[AUTH] Reset password error:", error);
+    const status = error instanceof HttpError ? error.status : 500;
+    const message = error instanceof Error ? error.message : "Password reset failed.";
     return response.status(status).json({ error: message });
   }
 });
@@ -492,6 +648,14 @@ function isEmail(value) {
 
 function verificationCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function passwordResetToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 class HttpError extends Error {

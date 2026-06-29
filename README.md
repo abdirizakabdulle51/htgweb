@@ -9,9 +9,9 @@ Copy `.env.example` to `.env` and set local values:
 ```env
 DATABASE_URL="postgresql://postgres:replace-with-database-password@localhost:5432/htgclouds"
 JWT_SECRET="replace-with-secure-random-secret"
-CLIENT_URL="http://localhost:5173"
-SERVER_PORT=4000
-VITE_API_BASE_URL="http://localhost:4000"
+CLIENT_URL="http://localhost:5180"
+SERVER_PORT=4001
+VITE_API_BASE_URL="http://localhost:4001"
 ```
 
 If your PostgreSQL password contains `@`, Prisma may require it to be URL encoded in `.env`.
@@ -25,7 +25,7 @@ Set the Cloudflare Pages environment variable:
 VITE_API_BASE_URL="https://htgweb.onrender.com"
 ```
 
-The frontend auth client falls back to the Render backend in production if the variable is unset or accidentally points to localhost. Local development continues to use `http://localhost:4000`.
+The frontend auth client falls back to the Render backend in production if the variable is unset or accidentally points to localhost. Local development continues to use `http://localhost:4001`.
 
 ## Render Backend
 
@@ -68,8 +68,8 @@ Frontend and backend together:
 npm run dev:all
 ```
 
-The Vite app runs on `http://127.0.0.1:5173`.
-The Express auth server runs on `http://localhost:4000`.
+The Vite app runs on `http://localhost:5180`.
+The Express auth server runs on `http://localhost:4001`.
 
 ## Development Email Verification
 

@@ -20,6 +20,7 @@ model User {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   verificationCodes   VerificationCode[]
+  passwordResetTokens PasswordResetToken[]
   onboarding          Onboarding?
 }
 
@@ -33,6 +34,19 @@ model VerificationCode {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, code])
+}
+
+model PasswordResetToken {
+  id               String    @id @default(cuid())
+  userId           String
+  tokenHash        String    @unique
+  developmentToken String?
+  expiresAt        DateTime
+  usedAt           DateTime?
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model Onboarding {

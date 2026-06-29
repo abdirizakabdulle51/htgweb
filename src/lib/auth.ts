@@ -27,7 +27,7 @@ type SignUpPayload = {
   phone?: string;
 };
 
-const LOCAL_API_BASE_URL = "http://localhost:4000";
+const LOCAL_API_BASE_URL = "http://localhost:4001";
 const PRODUCTION_API_BASE_URL = "https://htgweb.onrender.com";
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL || "";
 const configuredApiIsLocal =
@@ -67,6 +67,19 @@ export async function resendVerificationEmail(email: string) {
   });
 }
 
+export async function requestPasswordReset(email: string) {
+  return apiRequest("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+}
+
+export async function getDevResetToken(email: string) {
+  return apiRequest(`/api/auth/dev-reset-token?email=${encodeURIComponent(email)}`, {
+    method: "GET"
+  });
+}
+
 export async function signInWithPassword(email: string, password: string) {
   return apiRequest("/api/auth/signin", {
     method: "POST",
@@ -95,8 +108,11 @@ export async function saveOnboarding(payload: Partial<AuthUser>) {
   });
 }
 
-export async function resetPassword() {
-  throw new Error("Password reset is not available yet.");
+export async function resetPassword({ token, password }: { token: string; password: string }) {
+  return apiRequest("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, password })
+  });
 }
 
 export async function logout() {
