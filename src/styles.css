@@ -5574,9 +5574,11 @@ blockquote {
 
 .auth-page {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 72px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  padding: 0 24px 42px;
   background: #2b2b2b;
 }
 
@@ -5587,6 +5589,7 @@ blockquote {
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
   background: #ffffff;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
+  margin: auto 0;
 }
 
 .auth-page-compact .auth-shell {
@@ -5754,7 +5757,7 @@ blockquote {
 }
 
 .signup-auth-page {
-  padding: 42px 24px;
+  padding: 0 24px 42px;
   background:
     radial-gradient(circle at 78% 16%, rgba(72, 212, 211, 0.28), transparent 34%),
     radial-gradient(circle at 18% 86%, rgba(122, 232, 221, 0.18), transparent 32%),
@@ -9374,12 +9377,13 @@ blockquote {
   }
 
   .auth-page {
-    padding: 18px;
-    align-items: start;
+    align-items: center;
+    gap: 14px;
+    padding: 0 18px 18px;
   }
 
   .signup-auth-page {
-    padding: 18px;
+    padding: 0 18px 18px;
   }
 
   .auth-shell {

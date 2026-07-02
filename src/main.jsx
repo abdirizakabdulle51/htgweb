@@ -11613,6 +11613,7 @@ function AuthLayout({
 }) {
   return (
     <main className={`auth-page${compact ? " auth-page-compact" : ""}${className ? ` ${className}` : ""}`}>
+      <Navigation />
       <section className={`auth-shell${shellClassName ? ` ${shellClassName}` : ""}`}>
         <div className="auth-form-panel">{children}</div>
         <aside className="auth-side" aria-label={sideLabel}>
