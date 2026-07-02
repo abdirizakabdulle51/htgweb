@@ -11886,12 +11886,26 @@ function SignUpPage() {
 }
 
 function SignupValuePanel() {
-  const bullets = [
-    "Enterprise-grade infrastructure",
-    "High availability architecture",
-    "Secure by design"
+  const stats = [
+    ["2+", "Regional data centers"],
+    ["3x", "Capacity growth"],
+    ["10+", "Cloud team members"],
+    ["2024", "Founded"]
   ];
-  const logos = ["Compute", "Storage", "Networking"];
+  const benefits = [
+    {
+      title: "Low-latency regional cloud",
+      text: "Infrastructure closer to customers across East Africa."
+    },
+    {
+      title: "AI-first infrastructure",
+      text: "Designed for modern AI, GPU, and cloud-native workloads."
+    },
+    {
+      title: "Local payments and support",
+      text: "Built around regional realities, currencies, and customer needs."
+    }
+  ];
 
   return (
     <div className="signup-value-panel">
@@ -11899,19 +11913,37 @@ function SignupValuePanel() {
       <span className="signup-panel-glow signup-panel-glow-small" aria-hidden="true" />
       <span className="signup-panel-wave" aria-hidden="true" />
       <div className="signup-value-copy">
-        <h2>Reliable Cloud Platform</h2>
-        <ul>
-          {bullets.map((bullet) => (
-            <li key={bullet}>
-              <CircleCheck size={15} />
-              {bullet}
-            </li>
+        <h2>Built for East Africa. Ready for enterprise workloads.</h2>
+        <p>
+          HTG Clouds brings AI-first infrastructure closer to your users with low latency,
+          local support, and secure regional cloud services.
+        </p>
+        <div className="signup-stat-grid">
+          {stats.map(([value, label]) => (
+            <div key={label}>
+              <strong>{value}</strong>
+              <span>{label}</span>
+            </div>
           ))}
-        </ul>
-        <div className="signup-logo-row" aria-label="Customer logos">
-          {logos.map((logo) => (
-            <span key={logo}>{logo}</span>
+        </div>
+        <div className="signup-benefit-list">
+          {benefits.map((benefit) => (
+            <article key={benefit.title}>
+              <CircleCheck size={16} />
+              <div>
+                <strong>{benefit.title}</strong>
+                <p>{benefit.text}</p>
+              </div>
+            </article>
           ))}
+        </div>
+        <div className="signup-help-card">
+          <strong>Need help choosing a service?</strong>
+          <p>Speak with our cloud team if you need help choosing the right service.</p>
+          {/* TODO: Replace placeholder with the real Waafi chat URL or contact target. */}
+          <a href="#" onClick={(event) => event.preventDefault()}>
+            Chat on Waafi
+          </a>
         </div>
       </div>
     </div>
@@ -12904,17 +12936,16 @@ function OnboardingWizard({ user }) {
   }
 
   return (
-    <main className="onboarding-page">
-      <div className="onboarding-backdrop" aria-hidden="true">
-        <DashboardPage />
-      </div>
+    <AuthLayout
+      className="signup-auth-page onboarding-auth-page"
+      shellClassName="signup-shell onboarding-shell"
+      sideLabel="HTGCloud onboarding trust panel"
+      sideContent={<SignupValuePanel />}
+    >
       <form className="onboarding-card" onSubmit={handleSubmit}>
-        <div className="onboarding-preview" aria-hidden="true">
-          <span />
-          <strong />
-          <em />
-        </div>
-
+        <a className="auth-logo signup-logo onboarding-logo" href="/">
+          <img src={logoPath} alt="HTGClouds" />
+        </a>
         {step > 0 && (
           <div className="onboarding-progress">
             <span>Step {step + 2} of 5</span>
@@ -13077,7 +13108,7 @@ function OnboardingWizard({ user }) {
           </button>
         </div>
       </form>
-    </main>
+    </AuthLayout>
   );
 }
 
