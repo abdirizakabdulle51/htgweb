@@ -5,7 +5,8 @@
     "server": "node server/index.js",
     "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "pnpm run build && wrangler dev",
+    "deploy": "pnpm run build && wrangler deploy"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -16,13 +17,15 @@
     "dotenv": "latest",
     "express": "latest",
     "jsonwebtoken": "latest",
-    "vite": "latest",
+    "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest"
+    "vite": "latest"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.42.4",
     "concurrently": "latest",
-    "prisma": "^6.19.0"
+    "prisma": "^6.19.0",
+    "wrangler": "^4.106.0"
   }
 }
