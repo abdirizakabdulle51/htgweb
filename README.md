@@ -40,6 +40,12 @@ NODE_ENV=production
 
 In production, the auth cookie is `httpOnly`, `secure`, `sameSite: "none"`, and scoped to `/` so the Cloudflare frontend can use the Render API with credentials.
 
+## Deployment Convention
+
+For normal code or UI changes, "push to GitHub" means commit the approved changes and push `main`. Pushing `main` triggers the Cloudflare Pages frontend deployment and the Render backend deployment.
+
+If a change includes a new Prisma migration or any database schema change, do not push `main` until the production migration has been applied first. Run `npx prisma migrate deploy` with a one-command production `DATABASE_URL`, confirm it succeeds, then push `main`.
+
 ## Install
 
 ```bash
