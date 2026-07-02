@@ -6,6 +6,7 @@ import {
   CircleCheck,
   Cloud,
   Code2,
+  CreditCard,
   Database,
   Eye,
   EyeOff,
@@ -49,17 +50,6 @@ import "./styles.css";
 const logoPath = "/logo.png";
 const authPanelPath = "/auth-side-panel.png";
 const FAVORITES_KEY = "htgclouds_favorite_services";
-
-const jobRoleOptions = [
-  "Developer",
-  "DevOps Engineer",
-  "System Administrator",
-  "IT Administrator",
-  "Solution Architect",
-  "Business Owner",
-  "Student",
-  "Other"
-];
 
 const organizationSizeOptions = [
   "Just Me",
@@ -222,6 +212,32 @@ const productFeaturedServices = {
     name: "Security Center",
     path: "#"
   }
+};
+
+const solutionGroups = [
+  {
+    label: "Financial Technology",
+    shortLabel: "FinTech",
+    icon: CreditCard,
+    description:
+      "Build secure, scalable platforms for digital banking, payments, wallets, lending, and financial operations.",
+    products: ["MoneyPro", "ConnectPay", "FlexiPay"],
+    cta: "Explore FinTech Solutions"
+  },
+  {
+    label: "Telecommunications",
+    shortLabel: "Telecom",
+    icon: Radio,
+    description:
+      "Modernize telecom operations with cloud solutions for customer service, charging, automation, and business workflows.",
+    products: ["AutoAssist", "ChargeOne", "BizFlow", "PolicyPro"],
+    cta: "Explore Telecom Solutions"
+  }
+];
+
+const solutionProductPaths = {
+  MoneyPro: "/solutions/fintech/moneypro",
+  ConnectPay: "/solutions/fintech/connectpay"
 };
 
 const services = [
@@ -591,6 +607,8 @@ function App() {
   if (path === "/products/application/roma-connect") return <RomaConnectPage />;
   if (path === "/products/security/web-application-firewall") return <WebApplicationFirewallPage />;
   if (path === "/products/security/cloud-bastion-host") return <CloudBastionHostPage />;
+  if (path === "/solutions/fintech/moneypro") return <MoneyProSolutionPage />;
+  if (path === "/solutions/fintech/connectpay") return <ConnectPaySolutionPage />;
   if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
@@ -688,6 +706,7 @@ function useCurrentUser() {
 
 function Navigation() {
   const [isProductMenuOpen, setProductMenuOpen] = useState(false);
+  const [isSolutionsMenuOpen, setSolutionsMenuOpen] = useState(false);
 
   return (
     <header className="site-header">
@@ -708,7 +727,10 @@ function Navigation() {
             <div
               className="product-nav-wrap"
               key={item.label}
-              onMouseEnter={() => setProductMenuOpen(true)}
+              onMouseEnter={() => {
+                setSolutionsMenuOpen(false);
+                setProductMenuOpen(true);
+              }}
               onMouseLeave={() => setProductMenuOpen(false)}
             >
               <button className="nav-link-button" type="button" aria-expanded={isProductMenuOpen}>
@@ -716,6 +738,22 @@ function Navigation() {
                 <ChevronDown size={12} strokeWidth={2.4} />
               </button>
               {isProductMenuOpen && <ProductsMegaMenu />}
+            </div>
+          ) : item.label === "Solutions" ? (
+            <div
+              className="product-nav-wrap"
+              key={item.label}
+              onMouseEnter={() => {
+                setProductMenuOpen(false);
+                setSolutionsMenuOpen(true);
+              }}
+              onMouseLeave={() => setSolutionsMenuOpen(false)}
+            >
+              <button className="nav-link-button" type="button" aria-expanded={isSolutionsMenuOpen}>
+                {item.label}
+                <ChevronDown size={12} strokeWidth={2.4} />
+              </button>
+              {isSolutionsMenuOpen && <SolutionsMegaMenu />}
             </div>
           ) : (
             <a
@@ -764,6 +802,9 @@ function Navigation() {
 
 function ProductsMegaMenu() {
   const [activeCategory, setActiveCategory] = useState("Compute");
+  const visibleProductCategories = productCategories.filter(
+    (category) => category.label !== "Management Tools"
+  );
   const products = productMenuItems[activeCategory] || productMenuItems.Compute;
   const featuredService = productFeaturedServices[activeCategory] || productFeaturedServices.Compute;
   const FeaturedIcon = featuredService.icon;
@@ -771,7 +812,7 @@ function ProductsMegaMenu() {
   return (
     <div className="products-mega" role="menu" aria-label="Products">
       <aside className="mega-categories">
-        {productCategories.map(({ label, icon: Icon }) => (
+        {visibleProductCategories.map(({ label, icon: Icon }) => (
           <button
             className={activeCategory === label ? "active" : ""}
             key={label}
@@ -824,6 +865,55 @@ function ProductsMegaMenu() {
           <strong>{featuredService.name}</strong>
         </a>
       </aside>
+    </div>
+  );
+}
+
+function SolutionsMegaMenu() {
+  return (
+    <div className="solutions-mega" role="menu" aria-label="Solutions">
+      <span className="solutions-mega-label">Industry Solutions</span>
+      <div className="solutions-grid">
+        {solutionGroups.map(({ label, shortLabel, icon: Icon, description, products, cta }) => (
+          <article className="solution-card" key={label}>
+            <div className="solution-card-heading">
+              <span className="solution-icon" aria-hidden="true">
+                <Icon size={20} />
+              </span>
+              <div>
+                <h3>{label}</h3>
+                <small>{shortLabel}</small>
+              </div>
+            </div>
+            <p>{description}</p>
+            <div className="solution-products" aria-label={`${label} products`}>
+              {products.map((product) => {
+                const productPath = solutionProductPaths[product] || "#";
+                return (
+                  <a
+                    key={product}
+                    href={productPath}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (productPath !== "#") navigateTo(productPath);
+                    }}
+                  >
+                    <span>{product}</span>
+                    <ChevronDown size={13} />
+                  </a>
+                );
+              })}
+            </div>
+            <a
+              className="solution-cta"
+              href="#"
+              onClick={(event) => event.preventDefault()}
+            >
+              {cta} <span aria-hidden="true">→</span>
+            </a>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
@@ -9642,6 +9732,560 @@ function ImsCta() {
   );
 }
 
+function MoneyProSolutionPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description =
+      "MoneyPro helps fintech companies and financial institutions manage payment operations, wallet services, merchant workflows, and transaction visibility on HTGCloud.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "MoneyPro | Financial Technology Solution | HTGCloud";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  const challenges = [
+    {
+      icon: SlidersVertical,
+      title: "Transaction friction",
+      text: "Complex or delayed transactions reduce user trust and adoption."
+    },
+    {
+      icon: Lock,
+      title: "Limited interoperability",
+      text: "Disconnected systems restrict access to diverse financial services."
+    },
+    {
+      icon: ShieldCheck,
+      title: "Security Risks",
+      text: "Financial platforms require strong protection for data and transactions."
+    },
+    {
+      icon: Boxes,
+      title: "Growth and scale demands",
+      text: "Platforms must support increasing transaction volumes without disruption."
+    }
+  ];
+
+  const darkCapabilities = [
+    {
+      title: "Seamless Transactions",
+      text: "MoneyPro enables instant and secure transactions, allowing users to manage finances easily at any time."
+    },
+    {
+      title: "Interoperable Financial Services",
+      text: "The platform integrates with banks, telecoms, and fintech systems, supporting diverse payment methods and services."
+    },
+    {
+      title: "Enhanced Security Controls",
+      text: "Advanced encryption and fraud detection mechanisms protect user data and financial transactions."
+    }
+  ];
+
+  const platformFeatures = [
+    {
+      icon: CreditCard,
+      title: "Multi - Currency Support",
+      text: "Users can hold, send, and convert multiple currencies within a single platform, supporting cross-border and local transactions."
+    },
+    {
+      icon: Database,
+      title: "Instant Bill Payments and Utility Integration",
+      text: "Bills, utilities, and essential services can be paid instantly through a streamlined interface."
+    },
+    {
+      icon: Radio,
+      title: "Offline Transaction Capability",
+      text: "Transactions remain accessible in low-connectivity environments, enabling continuous financial access without constant internet availability."
+    },
+    {
+      icon: SlidersVertical,
+      title: "Financial Analytics and Insights",
+      text: "Real-time analytics and reporting support informed financial management and decision-making for individuals and businesses."
+    }
+  ];
+
+  const useCases = [
+    {
+      visual: "low-connectivity",
+      title: "Low - Connectivity Financial Access",
+      text: "Ensure service availability in areas with limited network access."
+    },
+    {
+      visual: "public-sector",
+      title: "Public Sector",
+      text: "Allow businesses to manage payments, utilities, and financial activity efficiently."
+    },
+    {
+      visual: "fraud-security",
+      title: "Fraud & security teams",
+      text: "Support everyday payments, transfers, and account management."
+    },
+    {
+      visual: "production",
+      title: "Proven in Production",
+      text: "MoneyPro operates in live financial environments through partnership deployments, supporting secure and scalable transaction processing."
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "Does MoneyPro support multiple currencies?",
+      answer:
+        "Yes. Users can manage and convert multiple currencies within the platform."
+    },
+    {
+      question: "How do you support financial compliance and regulatory requirements?",
+      answer:
+        "MoneyPro is designed with secure access, transaction visibility, and operational controls that help financial teams manage regulated workflows."
+    },
+    {
+      question: "How does AI and machine learning enhance financial analytics?",
+      answer:
+        "Analytics can help teams identify usage patterns, monitor activity, and support informed financial decisions."
+    },
+    {
+      question: "Can I integrate your cloud services with my existing financial systems?",
+      answer:
+        "Yes. MoneyPro is built to work with HTGCloud infrastructure and can support integrations with financial platforms and service workflows."
+    },
+    {
+      question: "How do you handle disaster recovery and business continuity?",
+      answer:
+        "HTGCloud infrastructure services can support backup, recovery, availability, and continuity planning for MoneyPro deployments."
+    }
+  ];
+
+  return (
+    <main className="moneypro-figma-page">
+      <Navigation />
+      <section className="moneypro-hero-shell">
+        <div className="moneypro-hero-copy">
+          <p className="moneypro-eyebrow">Fintech Solution <strong>MoneyPro</strong></p>
+          <h1>Financial Solutions, MoneyPro Secure. Seamless. Scalable.</h1>
+          <p>
+            HTGClouds provides MoneyPro, a mobile financial solution delivered in partnership with
+            Safarifone. MoneyPro enables secure and seamless financial transactions while supporting
+            a wide range of payment services for individuals and businesses through a single,
+            unified platform.
+          </p>
+          <div className="moneypro-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get a Demo
+            </a>
+            <a href="/contact" onClick={(event) => event.preventDefault()}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <div className="moneypro-hero-visual" aria-label="MoneyPro mobile wallet preview" />
+      </section>
+
+      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
+        <p>From visionary startups to industry leaders.</p>
+        <div>
+          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
+            <span key={brand}>{brand}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-challenges">
+        <h2>Key Challenges We Address</h2>
+        <div className="moneypro-challenge-grid">
+          {challenges.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-solutions-heading">
+        <h2>Key Solutions &amp; Capabilities</h2>
+      </section>
+
+      <section className="moneypro-section moneypro-dark-capabilities">
+        <div className="moneypro-dark-copy">
+          <h2>Comprehensive tools for modern digital finance.</h2>
+          <div className="moneypro-dark-card-list">
+            {darkCapabilities.map((item) => (
+              <article key={item.title}>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="moneypro-dark-visual" aria-hidden="true" />
+      </section>
+
+      <section className="moneypro-section moneypro-self-care" id="fintech-solutions">
+        <h2>Self-Care Platform Features</h2>
+        <div className="moneypro-feature-grid">
+          {platformFeatures.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={21} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-use-cases">
+        <h2>Use Cases</h2>
+        <div className="moneypro-use-grid">
+          {useCases.map(({ visual, title, text }) => (
+            <article className={`moneypro-use-card moneypro-use-card-${visual}`} key={title}>
+              <h3>{title}</h3>
+              <p>{text}</p>
+              {visual === "fraud-security" && (
+                <div className="moneypro-security-mini" aria-hidden="true">
+                  <div>
+                    <CreditCard size={22} />
+                    <strong>Account Information</strong>
+                  </div>
+                  <div>
+                    <span>••••</span>
+                    <span className="moneypro-lock-badge">
+                      <Lock size={22} />
+                    </span>
+                    <span>••••</span>
+                  </div>
+                  <strong>Private Info</strong>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="pricing-faq ecs-faq moneypro-faq">
+        <div>
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about MoneyPro.</p>
+        </div>
+        <div className="pricing-faq-list">
+          {faqs.map((faq) => (
+            <details key={faq.question} open={faq.question === "Does MoneyPro support multiple currencies?"}>
+              <summary>{faq.question}</summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-final-cta">
+        <h2>Ready to Optimize Your Network?</h2>
+        <div>
+          <p>
+            HTGClouds empowers telecom operators with intelligent policy control and charging
+            solutions.
+          </p>
+          <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            Start Free Trial
+          </a>
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function ConnectPaySolutionPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description =
+      "ConnectPay brings communication, entertainment, and financial services together in one secure digital platform delivered on HTGCloud.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "ConnectPay | Unified Fintech Solution | HTGCloud";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  const challenges = [
+    {
+      icon: SlidersVertical,
+      title: "Fragmented digital experiences",
+      text: "Separate apps for communication, payments, and entertainment reduce usability and engagement."
+    },
+    {
+      icon: ShieldCheck,
+      title: "Security and privacy concerns",
+      text: "Handling personal communication and financial data requires strong protection mechanisms."
+    },
+    {
+      icon: Lock,
+      title: "Limited accessibility across devices",
+      text: "Users expect consistent access regardless of device or location."
+    },
+    {
+      icon: Boxes,
+      title: "Disconnected financial tools",
+      text: "Managing wallets, banking, and cards across platforms increases friction."
+    }
+  ];
+
+  const darkCapabilities = [
+    {
+      title: "Unified User Experience",
+      text: "ConnectPay integrates communication, entertainment, and financial services into one cohesive application, simplifying daily digital interactions."
+    },
+    {
+      title: "Enhanced Security and Privacy",
+      text: "Advanced encryption and secure transaction controls protect personal communications and financial data across the platform."
+    },
+    {
+      title: "Cross-Platform Accessibility",
+      text: "The application works across multiple devices, allowing users to access all features anytime and anywhere."
+    }
+  ];
+
+  const platformFeatures = [
+    {
+      icon: Radio,
+      title: "Unified Communication and Finance",
+      text: "Chat, voice calls, video calls, mobile money, and banking services operate together within one app."
+    },
+    {
+      icon: CreditCard,
+      title: "In-Chat Payments",
+      text: "Users can send or request money directly during conversations or calls, making transactions part of natural communication flows."
+    },
+    {
+      icon: Code2,
+      title: "Short Video Creation and Viewing",
+      text: "Users can create, watch, and share short videos for entertainment within the platform."
+    },
+    {
+      icon: Database,
+      title: "Real-Time Financial Dashboard",
+      text: "Expenses and financial activity can be tracked in real time from one secure interface."
+    }
+  ];
+
+  const useCases = [
+    {
+      visual: "inapp-transactions",
+      title: "In-App Financial Transactions",
+      text: "Send and receive money during conversations without switching applications."
+    },
+    {
+      visual: "personal-management",
+      title: "Personal Financial Management",
+      text: "Track spending, manage wallets, and handle banking tasks from one dashboard."
+    },
+    {
+      visual: "production",
+      title: "Proven in Production",
+      text: "ConnectPay operates in live digital environments through partnership deployments, supporting unified communication and financial services."
+    },
+    {
+      visual: "everyday-communication",
+      title: "Everyday Digital Communication",
+      text: "Chat, voice, and video calls within a unified social environment."
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "Does MoneyPro support multiple currencies?",
+      answer:
+        "Yes. Users can manage and convert multiple currencies within the platform."
+    },
+    {
+      question: "How do you support financial compliance and regulatory requirements?",
+      answer:
+        "ConnectPay is designed with secure access, transaction visibility, and operational controls that help teams manage digital financial workflows."
+    },
+    {
+      question: "How does AI and machine learning enhance financial analytics?",
+      answer:
+        "Analytics can help teams identify usage patterns, monitor activity, and support informed financial decisions."
+    },
+    {
+      question: "Can I integrate your cloud services with my existing financial systems?",
+      answer:
+        "Yes. ConnectPay is built to work with HTGCloud infrastructure and can support integrations with communication and financial service workflows."
+    },
+    {
+      question: "How do you handle disaster recovery and business continuity?",
+      answer:
+        "HTGCloud infrastructure services can support backup, recovery, availability, and continuity planning for ConnectPay deployments."
+    }
+  ];
+
+  return (
+    <main className="moneypro-figma-page connectpay-page">
+      <Navigation />
+      <section className="moneypro-hero-shell">
+        <div className="moneypro-hero-copy">
+          <p className="moneypro-eyebrow">Fintech Solution <strong>ConnectPay</strong></p>
+          <h1>Financial Solutions, ConnectiPay - Unified. Secure. Accessible.</h1>
+          <p>
+            HTGClouds provides ConnectPay, an integrated digital platform delivered in partnership
+            with Sarifone. ConnectPay brings together communication, entertainment, and financial
+            services within a single application, enabling users to connect, transact, and manage
+            their finances through one unified experience.
+          </p>
+          <div className="moneypro-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get a Demo
+            </a>
+            <a href="/contact" onClick={(event) => event.preventDefault()}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <div className="moneypro-hero-visual" aria-label="ConnectPay payment confirmation preview" />
+      </section>
+
+      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
+        <p>From visionary startups to industry leaders.</p>
+        <div>
+          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
+            <span key={brand}>{brand}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-challenges">
+        <h2>Key Challenges We Address</h2>
+        <div className="moneypro-challenge-grid">
+          {challenges.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-solutions-heading">
+        <h2>Key Solutions &amp; Capabilities</h2>
+      </section>
+
+      <section className="moneypro-section moneypro-dark-capabilities">
+        <div className="moneypro-dark-copy">
+          <h2>Core Features</h2>
+          <div className="moneypro-dark-card-list">
+            {darkCapabilities.map((item) => (
+              <article key={item.title}>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="moneypro-dark-visual" aria-hidden="true" />
+      </section>
+
+      <section className="moneypro-section moneypro-self-care" id="connectpay-features">
+        <h2>Self-Care Platform Features</h2>
+        <div className="moneypro-feature-grid">
+          {platformFeatures.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={21} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-use-cases">
+        <h2>Use Cases</h2>
+        <div className="moneypro-use-grid">
+          {useCases.map(({ visual, title, text }) => (
+            <article
+              className={`moneypro-use-card connectpay-use-card connectpay-use-card-${visual}`}
+              key={title}
+              aria-label={`${title}. ${text}`}
+            >
+              <h3 className="sr-only">{title}</h3>
+              <p className="sr-only">{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="pricing-faq ecs-faq moneypro-faq">
+        <div>
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about MoneyPro.</p>
+        </div>
+        <div className="pricing-faq-list">
+          {faqs.map((faq) => (
+            <details key={faq.question} open={faq.question === "Does MoneyPro support multiple currencies?"}>
+              <summary>{faq.question}</summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-final-cta">
+        <h2>Ready to Optimize Your Network?</h2>
+        <div>
+          <p>
+            HTGClouds empowers telecom operators with intelligent policy control and charging
+            solutions.
+          </p>
+          <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            Start Free Trial
+          </a>
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
 function PricingPage() {
   const [activeTab, setActiveTab] = useState("Compute");
   const activeServices = getPricingTabItems(activeTab);
@@ -11021,11 +11665,9 @@ function SignUpPage() {
     password: "",
     country: "Somalia",
     phone: "",
-    company: "",
-    website: "",
-    jobRole: "",
-    organizationSize: ""
+    company: ""
   });
+  const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -11042,13 +11684,6 @@ function SignUpPage() {
     });
   }
 
-  function handleWebsiteBlur(event) {
-    const website = normalizeWebsiteUrl(event.target.value);
-    if (website && website !== form.website) {
-      updateField("website", website);
-    }
-  }
-
   function validateForm(nextForm) {
     const errors = {};
     const requiredFields = {
@@ -11057,10 +11692,7 @@ function SignUpPage() {
       password: "Password is required.",
       country: "Country is required.",
       phone: "Phone Number is required.",
-      company: "Company Name is required.",
-      website: "Website is required.",
-      jobRole: "Job Role is required.",
-      organizationSize: "Organization Size is required."
+      company: "Company Name is required."
     };
 
     Object.entries(requiredFields).forEach(([field, message]) => {
@@ -11075,10 +11707,6 @@ function SignUpPage() {
       errors.email = "Enter a valid work email.";
     }
 
-    if (nextForm.website && !isValidWebsiteUrl(nextForm.website)) {
-      errors.website = "Enter a valid website URL.";
-    }
-
     return errors;
   }
 
@@ -11087,9 +11715,7 @@ function SignUpPage() {
     setError("");
     setFieldErrors({});
 
-    const website = normalizeWebsiteUrl(form.website);
-    const nextForm = { ...form, website };
-    if (website !== form.website) setForm(nextForm);
+    const nextForm = { ...form };
 
     const errors = validateForm(nextForm);
     if (Object.keys(errors).length) {
@@ -11130,6 +11756,7 @@ function SignUpPage() {
           >
             <img src={logoPath} alt="HTGClouds" />
           </a>
+          <span className="signup-step-label">Step 1 of 5 · Basic Details</span>
           <h1>Welcome to HTGClouds</h1>
           <p className="signup-signin">
             Already have an account?{" "}
@@ -11144,52 +11771,75 @@ function SignUpPage() {
             </a>
           </p>
         </header>
-        <label>
-          <RequiredLabel>Full Name</RequiredLabel>
-          <input
-            required
-            value={form.fullName}
-            onChange={(event) => updateField("fullName", event.target.value)}
-            placeholder="Enter your full name"
-            aria-invalid={Boolean(fieldErrors.fullName)}
-          />
-          {fieldErrors.fullName && <span className="field-error">{fieldErrors.fullName}</span>}
-        </label>
-        <label>
-          <RequiredLabel>Work Email</RequiredLabel>
-          <input
-            required
-            type="email"
-            value={form.email}
-            onChange={(event) => updateField("email", event.target.value)}
-            placeholder="Enter your work email"
-            aria-invalid={Boolean(fieldErrors.email)}
-          />
-          {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
-        </label>
-        <label>
-          <RequiredLabel>Password</RequiredLabel>
-          <span className="signup-password-field">
+        <div className="auth-field-row">
+          <label>
+            <RequiredLabel>Full Name</RequiredLabel>
             <input
               required
-              type={showPassword ? "text" : "password"}
-              minLength={8}
-              value={form.password}
-              onChange={(event) => updateField("password", event.target.value)}
-              placeholder="At least 8 characters"
-              aria-invalid={Boolean(fieldErrors.password)}
+              value={form.fullName}
+              onChange={(event) => updateField("fullName", event.target.value)}
+              placeholder="Enter your full name"
+              aria-invalid={Boolean(fieldErrors.fullName)}
             />
-            <button
-              type="button"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              onClick={() => setShowPassword((current) => !current)}
-            >
-              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-            </button>
-          </span>
-          {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
-        </label>
+            {fieldErrors.fullName && <span className="field-error">{fieldErrors.fullName}</span>}
+          </label>
+          <label>
+            <RequiredLabel>Work Email</RequiredLabel>
+            <input
+              required
+              type="email"
+              value={form.email}
+              onChange={(event) => updateField("email", event.target.value)}
+              placeholder="Enter your work email"
+              aria-invalid={Boolean(fieldErrors.email)}
+            />
+            {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
+          </label>
+        </div>
         <div className="auth-field-row">
+          <label>
+            Create username
+            <input
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="abdirizak_htg"
+            />
+          </label>
+          <label>
+            <RequiredLabel>Password</RequiredLabel>
+            <span className="signup-password-field">
+              <input
+                required
+                type={showPassword ? "text" : "password"}
+                minLength={8}
+                value={form.password}
+                onChange={(event) => updateField("password", event.target.value)}
+                placeholder="At least 8 characters"
+                aria-invalid={Boolean(fieldErrors.password)}
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((current) => !current)}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </span>
+            {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
+          </label>
+        </div>
+        <div className="auth-field-row">
+          <label>
+            <RequiredLabel>Phone Number</RequiredLabel>
+            <input
+              required
+              value={form.phone}
+              onChange={(event) => updateField("phone", event.target.value)}
+              placeholder={phonePlaceholder}
+              aria-invalid={Boolean(fieldErrors.phone)}
+            />
+            {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+          </label>
           <label>
             <RequiredLabel>Country</RequiredLabel>
             <select
@@ -11211,85 +11861,21 @@ function SignUpPage() {
             </select>
             {fieldErrors.country && <span className="field-error">{fieldErrors.country}</span>}
           </label>
-          <label>
-            <RequiredLabel>Phone Number</RequiredLabel>
-            <input
-              required
-              value={form.phone}
-              onChange={(event) => updateField("phone", event.target.value)}
-              placeholder={phonePlaceholder}
-              aria-invalid={Boolean(fieldErrors.phone)}
-            />
-            {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
-          </label>
         </div>
-        <div className="auth-field-row">
-          <label>
-            <RequiredLabel>Company Name</RequiredLabel>
-            <input
-              required
-              value={form.company}
-              onChange={(event) => updateField("company", event.target.value)}
-              placeholder="Enter your company name"
-              aria-invalid={Boolean(fieldErrors.company)}
-            />
-            {fieldErrors.company && <span className="field-error">{fieldErrors.company}</span>}
-          </label>
-          <label>
-            <RequiredLabel>Website</RequiredLabel>
-            <input
-              required
-              type="url"
-              value={form.website}
-              onBlur={handleWebsiteBlur}
-              onChange={(event) => updateField("website", event.target.value)}
-              placeholder="https://example.com"
-              aria-invalid={Boolean(fieldErrors.website)}
-            />
-            {fieldErrors.website && <span className="field-error">{fieldErrors.website}</span>}
-          </label>
-        </div>
-        <div className="auth-field-row">
-          <label>
-            <RequiredLabel>Job Role</RequiredLabel>
-            <select
-              required
-              value={form.jobRole}
-              onChange={(event) => updateField("jobRole", event.target.value)}
-              aria-invalid={Boolean(fieldErrors.jobRole)}
-            >
-              <option value="">Select role</option>
-              {jobRoleOptions.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.jobRole && <span className="field-error">{fieldErrors.jobRole}</span>}
-          </label>
-          <label>
-            <RequiredLabel>Organization Size</RequiredLabel>
-            <select
-              required
-              value={form.organizationSize}
-              onChange={(event) => updateField("organizationSize", event.target.value)}
-              aria-invalid={Boolean(fieldErrors.organizationSize)}
-            >
-              <option value="">Select size</option>
-              {organizationSizeOptions.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.organizationSize && (
-              <span className="field-error">{fieldErrors.organizationSize}</span>
-            )}
-          </label>
-        </div>
+        <label className="signup-full-row">
+          <RequiredLabel>Company Name</RequiredLabel>
+          <input
+            required
+            value={form.company}
+            onChange={(event) => updateField("company", event.target.value)}
+            placeholder="Enter your company name"
+            aria-invalid={Boolean(fieldErrors.company)}
+          />
+          {fieldErrors.company && <span className="field-error">{fieldErrors.company}</span>}
+        </label>
         {error && <p className="auth-error">{error}</p>}
         <button className="auth-submit" type="submit">
-          Create Account
+          Continue →
         </button>
         <p className="auth-terms">
           By creating an account, you agree to our <a href="#">Privacy policy</a>
@@ -11452,6 +12038,12 @@ function VerifyEmailPage() {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("email") || "";
   }, []);
+  const maskedEmail = useMemo(() => {
+    if (!pendingEmail || !pendingEmail.includes("@")) return "your work email";
+    const [name, domain] = pendingEmail.split("@");
+    const visible = name.slice(0, 1) || "\u2022";
+    return `${visible}${"\u2022".repeat(Math.max(6, Math.min(name.length, 8)))}@${domain}`;
+  }, [pendingEmail]);
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -11503,10 +12095,46 @@ function VerifyEmailPage() {
     }
   }
 
+  function handleCodeKeyDown(index, event) {
+    if (event.key === "Backspace" && !code[index] && index > 0) {
+      const previousInput = document.querySelector(`[data-code-index="${index - 1}"]`);
+      previousInput?.focus();
+    }
+  }
+
   return (
-    <AuthLayout>
-      <form className="auth-card auth-card-centered" onSubmit={handleSubmit}>
-        <AuthHeader title="Verify your email" actionLabel={`We sent a verification code to ${pendingEmail || "your email"}`} />
+    <AuthLayout
+      className="signup-auth-page"
+      shellClassName="signup-shell"
+      sideLabel="HTGCloud cloud platform preview"
+      sideContent={<SignupValuePanel />}
+    >
+      <form className="auth-card auth-card-wide signup-card verify-card" onSubmit={handleSubmit}>
+        <header className="auth-header signup-header">
+          <a
+            className="auth-logo signup-logo"
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/");
+            }}
+          >
+            <img src={logoPath} alt="HTGClouds" />
+          </a>
+          <span className="signup-step-label">Step 2 of 5 &middot; Verify Email</span>
+          <h1>Verify your email</h1>
+          <p className="signup-signin">
+            We&apos;ll confirm your email before you enter the cloud console.
+          </p>
+        </header>
+        <div className="verify-email-summary">
+          <span aria-hidden="true">@</span>
+          <div>
+            <strong>Email address</strong>
+            <p>We sent a 6-digit code to your work email.</p>
+            <em>{maskedEmail}</em>
+          </div>
+        </div>
         <label className="code-label">Verification Code</label>
         <div className="code-inputs">
           {code.map((digit, index) => (
@@ -11517,6 +12145,7 @@ function VerifyEmailPage() {
               maxLength={1}
               value={digit}
               onChange={(event) => updateDigit(index, event.target.value)}
+              onKeyDown={(event) => handleCodeKeyDown(index, event)}
               aria-label={`Verification digit ${index + 1}`}
             />
           ))}
@@ -11527,7 +12156,7 @@ function VerifyEmailPage() {
           Verify Email
         </button>
         <p className="auth-terms">
-          Didn't receive the code? <button type="button" onClick={handleResend}>Resend email</button>
+          Didn&apos;t receive the code? <button type="button" onClick={handleResend}>Resend code</button>
         </p>
       </form>
     </AuthLayout>
@@ -12206,22 +12835,43 @@ function OnboardingPage() {
 
 function OnboardingWizard({ user }) {
   const context = getConsoleContext(user);
-  const products = [
-    { name: "Elastic Cloud Server", code: "EC", text: "Scalable virtual machines for production workloads." },
-    { name: "Storage", code: "S", text: "Durable object and block storage for cloud data." },
-    { name: "Bare Metal Server", code: "BM", text: "Dedicated compute for performance-sensitive systems." },
-    { name: "Database", code: "D", text: "Managed relational databases with backup and recovery." }
+  const accountTypes = [
+    { name: "Company / Enterprise", text: "For organizations running production or mission-critical workloads." },
+    { name: "Startup / SME", text: "For growing teams that need scalable infrastructure and support." },
+    { name: "Developer / Individual", text: "For builders experimenting with cloud, AI, Kubernetes, and storage." },
+    { name: "Government / Institution", text: "For public sector, education, and regulated organizations." }
   ];
-  const usageOptions = ["Work", "School", "Personal"];
+  const cloudNeeds = [
+    "AI / GPU Infrastructure",
+    "Public Cloud",
+    "Kubernetes",
+    "Backup & DR",
+    "Storage",
+    "Security",
+    "Managed Cloud",
+    "Not sure yet"
+  ];
   const providerOptions = ["Yes", "No"];
+  const budgetOptions = ["$100–$500", "$500–$2,000", "$2,000+", "Enterprise"];
+  const timelineOptions = ["Immediately", "This month", "Planning only", "Need consultation"];
+  const stepTitles = {
+    1: "Account Type",
+    2: "Cloud Needs",
+    3: "Create Account"
+  };
   const [step, setStep] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
   const [form, setForm] = useState({
     organizationName: user?.company || context.organization,
     projectName: context.projectName,
     selectedRegion: context.region,
+    // Retired from the onboarding UI; retained for the existing saveOnboarding payload.
     useCase: "Work",
+    accountType: "Company / Enterprise",
     alreadyUsesCloudProvider: "No",
-    productsInterest: []
+    productsInterest: [],
+    budget: "$500–$2,000",
+    timeline: "Immediately"
   });
 
   function updateField(field, value) {
@@ -12244,6 +12894,8 @@ function OnboardingWizard({ user }) {
       return;
     }
 
+    if (!confirmed) return;
+
     console.log("[AUTH] onboarding status", false);
     await saveOnboarding(form);
     console.log("[AUTH] onboarding status", true);
@@ -12265,12 +12917,13 @@ function OnboardingWizard({ user }) {
 
         {step > 0 && (
           <div className="onboarding-progress">
-            <span>Step {step} of 3</span>
+            <span>Step {step + 2} of 5</span>
             <div aria-hidden="true">
               {[1, 2, 3].map((item) => (
                 <strong className={item <= step ? "active" : ""} key={item} />
               ))}
             </div>
+            <small>{stepTitles[step]}</small>
           </div>
         )}
 
@@ -12286,17 +12939,19 @@ function OnboardingWizard({ user }) {
 
         {step === 1 && (
           <section className="onboarding-step">
-            <h1>What would you like to use HTG Clouds for?</h1>
-            <p>Help us tune your starting workspace.</p>
-            <div className="onboarding-choice-row">
-              {usageOptions.map((option) => (
+            <h1>Choose the account that best describes you</h1>
+            <p>We&apos;ll tailor your setup, recommendations, and support experience around this profile.</p>
+            <div className="onboarding-account-grid">
+              {accountTypes.map((option) => (
                 <button
-                  className={form.useCase === option ? "selected" : ""}
-                  key={option}
+                  className={form.accountType === option.name ? "selected" : ""}
+                  key={option.name}
                   type="button"
-                  onClick={() => updateField("useCase", option)}
+                  onClick={() => updateField("accountType", option.name)}
                 >
-                  {option}
+                  <span aria-hidden="true">{option.name.slice(0, 2).toUpperCase()}</span>
+                  <strong>{option.name}</strong>
+                  <small>{option.text}</small>
                 </button>
               ))}
             </div>
@@ -12304,45 +12959,110 @@ function OnboardingWizard({ user }) {
         )}
 
         {step === 2 && (
-          <section className="onboarding-step">
-            <h1>Do you already use another cloud provider?</h1>
-            <p>We&apos;ll use this to shape migration and setup suggestions.</p>
-            <div className="onboarding-choice-row compact">
-              {providerOptions.map((option) => (
+          <section className="onboarding-step onboarding-cloud-needs">
+            <h1>What cloud services do you need?</h1>
+            <p>Select the services and timeline that best match your first HTGCloud deployment.</p>
+
+            <div className="onboarding-provider-toggle">
+              <span>Do you already use another cloud provider?</span>
+              <div>
+                {providerOptions.map((option) => (
+                  <button
+                    className={form.alreadyUsesCloudProvider === option ? "selected" : ""}
+                    key={option}
+                    type="button"
+                    onClick={() => updateField("alreadyUsesCloudProvider", option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="onboarding-chip-group" aria-label="Cloud services">
+              {cloudNeeds.map((product) => (
                 <button
-                  className={form.alreadyUsesCloudProvider === option ? "selected" : ""}
-                  key={option}
+                  className={form.productsInterest.includes(product) ? "selected" : ""}
+                  key={product}
                   type="button"
-                  onClick={() => updateField("alreadyUsesCloudProvider", option)}
+                  onClick={() => toggleProduct(product)}
                 >
-                  {option}
+                  {product}
                 </button>
               ))}
+            </div>
+
+            <div className="onboarding-control-group">
+              <h2>Expected monthly budget</h2>
+              <div className="onboarding-select-grid">
+                {budgetOptions.map((option) => (
+                  <button
+                    className={form.budget === option ? "selected" : ""}
+                    key={option}
+                    type="button"
+                    onClick={() => updateField("budget", option)}
+                  >
+                    <strong>{option}</strong>
+                    <small>Estimated monthly spend</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="onboarding-control-group">
+              <h2>When do you want to start?</h2>
+              <div className="onboarding-select-grid">
+                {timelineOptions.map((option) => (
+                  <button
+                    className={form.timeline === option ? "selected" : ""}
+                    key={option}
+                    type="button"
+                    onClick={() => updateField("timeline", option)}
+                  >
+                    <strong>{option}</strong>
+                    <small>Preferred onboarding timeline</small>
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
         )}
 
         {step === 3 && (
-          <section className="onboarding-step">
-            <h1>Which products are you interested in trying?</h1>
-            <p>Choose one or more services. We&apos;ll surface these first in your console.</p>
-            <div className="product-interest-grid">
-              {products.map((product) => {
-                const selected = form.productsInterest.includes(product.name);
-                return (
-                  <button
-                    className={selected ? "selected" : ""}
-                    key={product.name}
-                    type="button"
-                    onClick={() => toggleProduct(product.name)}
-                  >
-                    <span>{product.code}</span>
-                    <strong>{product.name}</strong>
-                    <small>{product.text}</small>
-                  </button>
-                );
-              })}
+          <section className="onboarding-step onboarding-review-step">
+            <h1>Review and create your account</h1>
+            <p>Confirm the details below before entering your HTGCloud console.</p>
+            <div className="onboarding-review-table">
+              <div>
+                <span>Account Type</span>
+                <strong>{form.accountType}</strong>
+              </div>
+              <div>
+                <span>Email Verification</span>
+                <strong>Verified</strong>
+              </div>
+              <div>
+                <span>Services</span>
+                <strong>{form.productsInterest.length ? form.productsInterest.join(", ") : "Not selected"}</strong>
+              </div>
+              <div>
+                <span>Budget</span>
+                <strong>{form.budget}</strong>
+              </div>
+              <div>
+                <span>Timeline</span>
+                <strong>{form.timeline}</strong>
+              </div>
             </div>
+            <label className="onboarding-confirm-row">
+              <input
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
+                required
+                type="checkbox"
+              />
+              <span>I confirm the information is correct and agree to create my HTGClouds account.</span>
+            </label>
           </section>
         )}
 
@@ -12352,8 +13072,8 @@ function OnboardingWizard({ user }) {
               Back
             </button>
           )}
-          <button className="onboarding-primary" type="submit">
-            {step === 0 ? "Get Started" : step === 3 ? "Finish Setup" : "Next"}
+          <button className="onboarding-primary" disabled={step === 3 && !confirmed} type="submit">
+            {step === 0 ? "Get Started" : step === 3 ? "Create Account →" : "Continue →"}
           </button>
         </div>
       </form>
