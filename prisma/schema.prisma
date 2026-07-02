@@ -54,6 +54,9 @@ model Onboarding {
   userId            String   @unique
   useCase           String?
   usesCloudProvider String?
+  accountType       String?
+  budget            String?
+  timeline          String?
   selectedProducts  String[] @default([])
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

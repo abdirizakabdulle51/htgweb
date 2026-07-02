@@ -12,8 +12,11 @@ type AuthUser = {
   projectName?: string;
   selectedRegion?: string;
   useCase?: string;
+  accountType?: string;
   alreadyUsesCloudProvider?: string;
   productsInterest?: string[];
+  budget?: string;
+  timeline?: string;
 };
 
 type SignUpPayload = {
@@ -103,6 +106,9 @@ export async function saveOnboarding(payload: Partial<AuthUser>) {
     body: JSON.stringify({
       useCase: payload.useCase,
       usesCloudProvider: payload.alreadyUsesCloudProvider,
+      accountType: payload.accountType,
+      budget: payload.budget,
+      timeline: payload.timeline,
       selectedProducts: payload.productsInterest || []
     })
   });

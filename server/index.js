@@ -523,6 +523,9 @@ app.get("/api/auth/debug-user", async (request, response) => {
 app.post("/api/onboarding", requireAuth, async (request, response) => {
   const useCase = clean(request.body.useCase) || null;
   const usesCloudProvider = clean(request.body.usesCloudProvider) || null;
+  const accountType = clean(request.body.accountType) || null;
+  const budget = clean(request.body.budget) || null;
+  const timeline = clean(request.body.timeline) || null;
   const selectedProducts = Array.isArray(request.body.selectedProducts)
     ? request.body.selectedProducts.filter((product) => typeof product === "string")
     : [];
@@ -533,12 +536,18 @@ app.post("/api/onboarding", requireAuth, async (request, response) => {
       update: {
         useCase,
         usesCloudProvider,
+        accountType,
+        budget,
+        timeline,
         selectedProducts
       },
       create: {
         userId: request.user.id,
         useCase,
         usesCloudProvider,
+        accountType,
+        budget,
+        timeline,
         selectedProducts
       }
     });
