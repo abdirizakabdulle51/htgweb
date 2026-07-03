@@ -12,6 +12,7 @@ import {
   EyeOff,
   Globe2,
   HardDrive,
+  Headphones,
   Lock,
   Maximize2,
   Menu,
@@ -100,7 +101,7 @@ async function getCurrentUser() {
 const navItems = [
   { label: "Products", hasMenu: true },
   { label: "Solutions", hasMenu: true },
-  { label: "About us" },
+  { label: "About us", path: "/about" },
   { label: "Why HTG Clouds" },
   { label: "Pricing", path: "/pricing" }
 ];
@@ -237,7 +238,12 @@ const solutionGroups = [
 
 const solutionProductPaths = {
   MoneyPro: "/solutions/fintech/moneypro",
-  ConnectPay: "/solutions/fintech/connectpay"
+  ConnectPay: "/solutions/fintech/connectpay",
+  FlexiPay: "/solutions/fintech/flexipay",
+  AutoAssist: "/solutions/telecom/autoassist",
+  ChargeOne: "/solutions/telecom/chargeone",
+  BizFlow: "/solutions/telecom/bizflow",
+  PolicyPro: "/solutions/telecom/policypro"
 };
 
 const services = [
@@ -585,6 +591,7 @@ function App() {
   if (path === "/onboarding") return <OnboardingPage />;
   if (path === "/dashboard") return <DashboardRoute />;
   if (path === "/services") return <ServicesRoute />;
+  if (path === "/about" || path === "/about-us") return <AboutPage />;
   if (path === "/products/compute/elastic-cloud-server") return <ElasticCloudServerPage />;
   if (path === "/products/compute/cloud-container-engine") return <CloudContainerEnginePage />;
   if (path === "/products/compute/image-management-service") return <ImageManagementServicePage />;
@@ -609,6 +616,11 @@ function App() {
   if (path === "/products/security/cloud-bastion-host") return <CloudBastionHostPage />;
   if (path === "/solutions/fintech/moneypro") return <MoneyProSolutionPage />;
   if (path === "/solutions/fintech/connectpay") return <ConnectPaySolutionPage />;
+  if (path === "/solutions/fintech/flexipay") return <FlexiPaySolutionPage />;
+  if (path === "/solutions/telecom/autoassist") return <AutoAssistSolutionPage />;
+  if (path === "/solutions/telecom/chargeone") return <ChargeOneSolutionPage />;
+  if (path === "/solutions/telecom/bizflow") return <BizFlowSolutionPage />;
+  if (path === "/solutions/telecom/policypro") return <PolicyProSolutionPage />;
   if (path === "/pricing/calculator") return <PricingCalculatorPage />;
   if (path === "/pricing") return <PricingPage />;
 
@@ -644,6 +656,287 @@ function ReplacePath({ to, children }) {
   }, [to]);
 
   return children;
+}
+
+function AboutPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description =
+      "HTG Clouds is building Africa's AI-first cloud infrastructure for secure, high-performance compute, storage, networking, and AI workloads.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "About Us | HTGClouds";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  const highlights = [
+    {
+      value: "2024",
+      label: "Founded",
+      description: "Building Africa's AI-first cloud from Nairobi, Kenya."
+    },
+    {
+      value: "2",
+      label: "Operating Countries",
+      description: "Serving customers across Kenya and Somalia."
+    },
+    {
+      value: "2+",
+      label: "Regional Data Centers",
+      description: "Infrastructure positioned closer to East African workloads."
+    },
+    {
+      value: "3x",
+      label: "Capacity Growth",
+      description: "Infrastructure capacity expanded within the last year."
+    }
+  ];
+
+  const values = [
+    {
+      icon: Star,
+      title: "Customer First",
+      text: "Our customers are at the center of everything we build. We listen, simplify complexity, and create solutions that help organizations innovate faster and achieve lasting success."
+    },
+    {
+      icon: Zap,
+      title: "AI First",
+      text: "Artificial intelligence is transforming every industry. We build infrastructure optimized for AI workloads, making advanced computing accessible to businesses, researchers, and developers across Africa."
+    },
+    {
+      icon: CircleCheck,
+      title: "Speed First",
+      text: "Innovation shouldn't wait for infrastructure. Through automation and intelligent cloud operations, we enable customers to provision, deploy, and scale resources within minutes."
+    },
+    {
+      icon: ShieldCheck,
+      title: "Security",
+      text: "Security is built into every layer of our platform. We continuously strengthen our infrastructure to protect applications, workloads, and data with enterprise-grade security and operational resilience."
+    },
+    {
+      icon: Maximize2,
+      title: "Innovation",
+      text: "We constantly challenge conventional thinking, embrace emerging technologies, and improve our platform to help customers stay ahead in an evolving digital world."
+    },
+    {
+      icon: Cloud,
+      title: "Reliability",
+      text: "Businesses trust us to power their most critical workloads. We deliver dependable infrastructure designed for high availability, consistent performance, and long-term scalability."
+    }
+  ];
+
+  const journey = [
+    {
+      year: "2024",
+      title: "HTG Clouds Founded",
+      text: "HTG Clouds was established with a vision to localize enterprise cloud infrastructure and AI computing across East Africa, making world-class cloud services more accessible to businesses throughout the region."
+    },
+    {
+      year: "2024",
+      title: "Regional Infrastructure Launch",
+      text: "Our first regional cloud infrastructure became operational, delivering secure, low-latency cloud services that enable organizations to keep workloads closer to their customers."
+    },
+    {
+      year: "2025",
+      title: "3x Infrastructure Expansion",
+      text: "Driven by growing customer demand, HTG Clouds expanded its infrastructure capacity by three times, supporting larger enterprise deployments, AI workloads, and rapidly growing digital businesses."
+    },
+    {
+      year: "Today",
+      title: "Powering Africa's Next Generation",
+      text: "Today, HTG Clouds continues to expand its regional cloud platform, helping organizations modernize applications, accelerate AI adoption, and build the digital services that will shape Africa's future."
+    }
+  ];
+
+  return (
+    <main className="about-page">
+      <Navigation />
+
+      <section className="about-hero">
+        <div className="about-hero-copy">
+          <p className="about-eyebrow">About Us</p>
+          <h1>Building Africa's AI-First Cloud Infrastructure</h1>
+          <p>
+            HTG Clouds is an enterprise cloud provider built for Africa's digital future. We deliver
+            secure, high-performance cloud infrastructure, AI computing, and modern platform services
+            that empower businesses, developers, and governments to innovate with confidence. By bringing
+            world-class cloud technology closer to our customers, we reduce latency, simplify operations,
+            and accelerate the adoption of artificial intelligence across East Africa.
+          </p>
+        </div>
+        <div className="about-hero-visual" aria-hidden="true">
+          <div className="about-cloud-panel">
+            <span>Regional Cloud Platform</span>
+            <strong>AI-first infrastructure closer to your users.</strong>
+            <div>
+              <small>Mogadishu-region-hq3</small>
+              <small>Nairobi Edge Operations</small>
+            </div>
+          </div>
+          <div className="about-node about-node-primary">
+            <Cloud size={34} />
+          </div>
+          <div className="about-node about-node-secondary">
+            <Server size={30} />
+          </div>
+          <div className="about-node about-node-tertiary">
+            <ShieldCheck size={30} />
+          </div>
+        </div>
+      </section>
+
+      <section className="about-section about-what">
+        <div className="about-section-heading">
+          <h2>Building the Cloud Africa Deserves</h2>
+          <div>
+            <p>
+              For too long, organizations across East Africa have depended on cloud infrastructure
+              located thousands of kilometers away. High latency, limited access to enterprise GPU
+              resources, complex international payments, and data residency challenges have slowed
+              innovation and increased operational costs.
+            </p>
+            <p>HTG Clouds was founded in 2024 to solve these challenges.</p>
+            <p>
+              Headquartered in Nairobi, Kenya, and operating across Kenya and Somalia, we are building
+              an AI-first cloud platform designed specifically for African businesses. Our regional
+              infrastructure enables organizations to deploy applications, train AI models, and scale
+              mission-critical workloads closer to their customers with enterprise-grade security,
+              reliability, and performance.
+            </p>
+            <p>
+              From startups to financial institutions, governments, and global enterprises, we are
+              committed to making cloud computing faster, more accessible, and built for Africa.
+            </p>
+          </div>
+        </div>
+
+        <div className="about-glance" id="about-glance">
+          <div className="about-glance-heading">
+            <p>HTG Clouds at a Glance</p>
+            <h2>Built for Performance. Designed for Africa.</h2>
+            <span>
+              Regional cloud infrastructure, AI computing, and enterprise platform services built
+              closer to the customers we serve.
+            </span>
+          </div>
+
+          <div className="about-stat-grid">
+            {highlights.map((item) => (
+              <article className="about-stat-card" key={item.label}>
+                <strong>{item.value}</strong>
+                <span>{item.label}</span>
+                <p>{item.description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="about-section about-values">
+        <div className="about-section-heading about-centered-heading">
+          <h2>Our Core Values</h2>
+          <p>
+            The principles that guide how we build, operate, and support the infrastructure powering
+            our customers' most important workloads.
+          </p>
+        </div>
+        <div className="about-values-grid">
+          {values.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="about-section about-journey">
+        <div className="about-journey-card">
+          <h2>Building the Foundation for Africa's AI Economy</h2>
+          <div className="about-timeline">
+            {journey.map((item) => (
+              <article key={`${item.year}-${item.title}`}>
+                <span>{item.year}</span>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="about-section about-split-content">
+        <article>
+          <h2>Why Organizations Choose HTG Clouds</h2>
+          <p>
+            Organizations choose HTG Clouds because proximity matters. Our regional infrastructure
+            delivers lower latency, faster application performance, and a better experience for users
+            across East Africa.
+          </p>
+          <p>
+            Built with an AI-first approach, our platform combines enterprise-grade security, scalable
+            cloud services, automation, and local expertise to help businesses confidently run
+            mission-critical workloads. By supporting local currencies and familiar payment methods, we
+            remove barriers to cloud adoption and make advanced infrastructure more accessible throughout
+            the region.
+          </p>
+        </article>
+        <article>
+          <h2>Our Vision</h2>
+          <p>
+            We envision a future where AI infrastructure is as accessible as electricity and deploying
+            intelligent applications is as simple as ordering a cup of coffee.
+          </p>
+          <p>
+            Our ambition is to become Africa's leading cloud provider - delivering world-class
+            infrastructure that empowers every business, developer, and innovator to build without limits.
+          </p>
+        </article>
+      </section>
+
+      <section className="about-closing-cta">
+        <h2>Ready to Build on Africa's AI-First Cloud?</h2>
+        <div>
+          <p>
+            Whether you're modernizing enterprise infrastructure, launching cloud-native applications,
+            or accelerating AI innovation, HTG Clouds provides the secure, scalable, and high-performance
+            platform you need to move faster with confidence.
+          </p>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Start Building Today
+          </a>
+        </div>
+      </section>
+
+      <Footer />
+    </main>
+  );
 }
 
 function DashboardRoute() {
@@ -9955,7 +10248,7 @@ function MoneyProSolutionPage() {
         </div>
       </section>
 
-      <section className="moneypro-section moneypro-use-cases">
+      <section className="moneypro-section moneypro-use-cases moneypro-use-cases-fidelity">
         <h2>Use Cases</h2>
         <div className="moneypro-use-grid">
           {useCases.map(({ visual, title, text }) => (
@@ -10129,29 +10422,29 @@ function ConnectPaySolutionPage() {
 
   const faqs = [
     {
-      question: "Does MoneyPro support multiple currencies?",
+      question: "Does ConnectPay unify communication and financial services?",
       answer:
-        "Yes. Users can manage and convert multiple currencies within the platform."
+        "Yes. ConnectPay brings communication, entertainment, mobile money, banking, and financial activity into one unified digital platform."
     },
     {
-      question: "How do you support financial compliance and regulatory requirements?",
+      question: "How does ConnectPay protect user data and transactions?",
       answer:
-        "ConnectPay is designed with secure access, transaction visibility, and operational controls that help teams manage digital financial workflows."
+        "ConnectPay uses secure access patterns, transaction controls, and privacy-focused platform design to help protect communication and financial activity."
     },
     {
-      question: "How does AI and machine learning enhance financial analytics?",
+      question: "Can ConnectPay work across multiple devices?",
       answer:
-        "Analytics can help teams identify usage patterns, monitor activity, and support informed financial decisions."
+        "Yes. ConnectPay is designed for cross-platform accessibility so users can access communication and financial services across supported devices."
     },
     {
-      question: "Can I integrate your cloud services with my existing financial systems?",
+      question: "Can ConnectPay integrate with existing financial systems?",
       answer:
-        "Yes. ConnectPay is built to work with HTGCloud infrastructure and can support integrations with communication and financial service workflows."
+        "Yes. ConnectPay can support integrations with banking, wallet, payment, and communication workflows through HTGCloud-backed implementation support."
     },
     {
-      question: "How do you handle disaster recovery and business continuity?",
+      question: "How does ConnectPay support production deployments?",
       answer:
-        "HTGCloud infrastructure services can support backup, recovery, availability, and continuity planning for ConnectPay deployments."
+        "ConnectPay is supported by HTGCloud infrastructure patterns for availability, backup, recovery, and scalable digital service delivery."
     }
   ];
 
@@ -10246,10 +10539,7 @@ function ConnectPaySolutionPage() {
               className={`moneypro-use-card connectpay-use-card connectpay-use-card-${visual}`}
               key={title}
               aria-label={`${title}. ${text}`}
-            >
-              <h3 className="sr-only">{title}</h3>
-              <p className="sr-only">{text}</p>
-            </article>
+            />
           ))}
         </div>
       </section>
@@ -10257,11 +10547,11 @@ function ConnectPaySolutionPage() {
       <section className="pricing-faq ecs-faq moneypro-faq">
         <div>
           <h2>Frequently Asked Questions</h2>
-          <p>Everything you need to know about MoneyPro.</p>
+          <p>Everything you need to know about ConnectPay.</p>
         </div>
         <div className="pricing-faq-list">
           {faqs.map((faq) => (
-            <details key={faq.question} open={faq.question === "Does MoneyPro support multiple currencies?"}>
+            <details key={faq.question} open={faq.question === "Does ConnectPay unify communication and financial services?"}>
               <summary>{faq.question}</summary>
               <p>{faq.answer}</p>
             </details>
@@ -10270,11 +10560,1378 @@ function ConnectPaySolutionPage() {
       </section>
 
       <section className="moneypro-final-cta">
-        <h2>Ready to Optimize Your Network?</h2>
+        <h2>Ready to Launch Unified Digital Finance?</h2>
         <div>
           <p>
-            HTGClouds empowers telecom operators with intelligent policy control and charging
-            solutions.
+            HTGClouds helps teams deliver secure communication, payments, and financial services
+            through one connected digital platform.
+          </p>
+          <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            Start Free Trial
+          </a>
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function FlexiPaySolutionPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description =
+      "FlexiPay helps businesses accept secure card and wallet payments with flexible integration, fast processing, and scalable payment operations on HTGCloud.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "FlexiPay | Payment Gateway Solution | HTGCloud";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  const challenges = [
+    {
+      icon: Code2,
+      title: "Complex payment integrations",
+      text: "Disparate systems increase development effort and slow deployment."
+    },
+    {
+      icon: ShieldCheck,
+      title: "Security and compliance requirements",
+      text: "Payment platforms must protect transactions and meet regulatory standards."
+    },
+    {
+      icon: Zap,
+      title: "Transaction performance issues",
+      text: "Slow or unreliable processing impacts checkout experience and conversion."
+    },
+    {
+      icon: Boxes,
+      title: "Scaling payment operations",
+      text: "Growing businesses need platforms that support higher volumes without disruption."
+    }
+  ];
+
+  const darkCapabilities = [
+    {
+      title: "Seamless Integration",
+      text: "FlexiPay integrates with e-commerce platforms, applications, and websites using SDKs, APIs, and plugins."
+    },
+    {
+      title: "Security and Compliance",
+      text: "Advanced encryption and real-time fraud detection help protect transactions while supporting PCI-DSS requirements."
+    },
+    {
+      title: "Fast and Reliable Transactions",
+      text: "Optimized payment processing reduces checkout time and minimizes payment failures."
+    },
+    {
+      title: "Scalable Payment Architecture",
+      text: "The platform supports growing transaction volumes and business expansion with reliable performance."
+    }
+  ];
+
+  const platformFeatures = [
+    {
+      icon: MousePointerClick,
+      title: "One-Click Payment Option",
+      text: "Customers complete purchases quickly using a streamlined checkout experience that supports higher conversion rates."
+    },
+    {
+      icon: Globe2,
+      title: "Global Payment Support",
+      text: "Multi-currency and cross-border payment support helps businesses accept international transactions."
+    },
+    {
+      icon: CreditCard,
+      title: "Instant Payment Settlements",
+      text: "Merchants receive faster access to funds through instant settlement capabilities."
+    },
+    {
+      icon: Code2,
+      title: "Developer-Friendly SDKs and APIs",
+      text: "Flexible development tools allow customization and smooth integration with existing systems."
+    }
+  ];
+
+  const useCases = [
+    {
+      visual: "ecommerce",
+      title: "E-Commerce Payment Enablement",
+      text: "Accept card and wallet payments across online stores and platforms."
+    },
+    {
+      visual: "multi-channel",
+      title: "Multi-Channel Payment Processing",
+      text: "Support payments through websites, applications, and integrated services."
+    },
+    {
+      visual: "international",
+      title: "International Business Transactions",
+      text: "Process global payments with multi-currency support."
+    },
+    {
+      visual: "production",
+      title: "Proven in Production",
+      text: "FlexiPay operates in live payment environments through partnership deployments, supporting secure and scalable transaction processing."
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "Does FlexiPay support card and wallet payments?",
+      answer: "Yes. Major credit cards and custom wallets are supported."
+    },
+    {
+      question: "Can FlexiPay integrate with e-commerce platforms?",
+      answer:
+        "Yes. Plugins and APIs support platforms such as Shopify and WooCommerce."
+    },
+    {
+      question: "Is the platform compliant with security standards?",
+      answer:
+        "Yes. Security controls support industry compliance requirements."
+    },
+    {
+      question: "Are settlements processed instantly?",
+      answer: "Yes. Instant settlement capabilities are available."
+    },
+    {
+      question: "Can FlexiPay scale with business growth?",
+      answer:
+        "Yes. The platform is designed to support increasing workloads."
+    }
+  ];
+
+  return (
+    <main className="moneypro-figma-page flexipay-page">
+      <Navigation />
+      <section className="moneypro-hero-shell">
+        <div className="moneypro-hero-copy">
+          <p className="moneypro-eyebrow">Fintech Solution <strong>FlexiPay</strong></p>
+          <h1>Financial Solutions, FlexiPay Secure. Fast. Scalable.</h1>
+          <p>
+            HTGClouds provides FlexiPay, a comprehensive payment solution delivered in partnership
+            with Safarifone. FlexiPay enables businesses to accept payments securely through major
+            credit cards and custom wallets, with flexible integration options that support digital
+            commerce across multiple channels.
+          </p>
+          <div className="moneypro-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Get a Demo
+            </a>
+            <a href="/contact" onClick={(event) => event.preventDefault()}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <div className="moneypro-hero-visual flexipay-hero-visual" aria-label="FlexiPay checkout and payment preview">
+          <div className="flexipay-payment-card">
+            <span>Payment approved</span>
+            <strong>$128.40</strong>
+            <small>Card ending 4288</small>
+          </div>
+          <div className="flexipay-terminal-card">
+            <CreditCard size={22} />
+            <span>Instant settlement</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
+        <p>From visionary startups to industry leaders.</p>
+        <div>
+          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
+            <span key={brand}>{brand}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section flexipay-overview">
+        <h2>Why Modern Payment Platforms Matter</h2>
+        <p>
+          Businesses require payment systems that integrate easily, process transactions quickly,
+          and meet security and compliance requirements. FlexiPay supports these needs by offering
+          a unified payment platform that works across e-commerce, applications, and websites.
+        </p>
+      </section>
+
+      <section className="moneypro-section moneypro-challenges">
+        <h2>Key Challenges We Address</h2>
+        <div className="moneypro-challenge-grid">
+          {challenges.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-solutions-heading">
+        <h2>Key Solutions &amp; Capabilities</h2>
+      </section>
+
+      <section className="moneypro-section moneypro-dark-capabilities">
+        <div className="moneypro-dark-copy">
+          <h2>Payment Platform Capabilities</h2>
+          <div className="moneypro-dark-card-list">
+            {darkCapabilities.map((item) => (
+              <article key={item.title}>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="moneypro-dark-visual flexipay-dark-visual" aria-hidden="true">
+          <div className="flexipay-checkout-panel">
+            <span>Checkout</span>
+            <strong>$63.00</strong>
+            <small>Balance: $470</small>
+          </div>
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-self-care" id="flexipay-features">
+        <h2>Core Features &amp; Capabilities</h2>
+        <div className="moneypro-feature-grid">
+          {platformFeatures.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={21} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-use-cases flexipay-use-cases">
+        <h2>Use Cases</h2>
+        <div className="moneypro-use-grid">
+          {useCases.map(({ visual, title, text }) => (
+            <article className={`moneypro-use-card flexipay-use-card flexipay-use-card-${visual}`} key={title}>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="pricing-faq ecs-faq moneypro-faq">
+        <div>
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about FlexiPay.</p>
+        </div>
+        <div className="pricing-faq-list">
+          {faqs.map((faq) => (
+            <details key={faq.question} open={faq.question === "Does FlexiPay support card and wallet payments?"}>
+              <summary>{faq.question}</summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-final-cta">
+        <h2>Ready to Simplify Payment Processing?</h2>
+        <div>
+          <p>
+            HTGClouds enables secure and scalable payment experiences through a unified digital
+            payment platform.
+          </p>
+          <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            Schedule a Demo
+          </a>
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function AutoAssistSolutionPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description =
+      "AutoAssist helps telecom operators deliver omni-channel self-care across SMS, USSD, IVR, and mobile applications.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "AutoAssist | Telecom Self-Care Solution | HTGCloud";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  const challenges = [
+    {
+      icon: Radio,
+      title: "High dependency on customer support",
+      text: "Manual support requests increase operational costs and response times."
+    },
+    {
+      icon: SlidersVertical,
+      title: "Fragmented customer interaction channels",
+      text: "Disjointed self-care experiences reduce usability and service continuity."
+    },
+    {
+      icon: CircleCheck,
+      title: "Limited personalization",
+      text: "Generic service access limits customer engagement and satisfaction."
+    },
+    {
+      icon: Boxes,
+      title: "Operational cost pressures",
+      text: "Telecom operators require scalable solutions that minimize maintenance overhead."
+    }
+  ];
+
+  const darkCapabilities = [
+    {
+      title: "Omni-Channel Self-Care Access",
+      text: "AutoAssist delivers a unified experience across USSD, SMS, IVR, and mobile applications, allowing users to move between channels without losing functionality or data."
+    },
+    {
+      title: "Operational Efficiency",
+      text: "Self-service capabilities enable customers to perform balance checks, plan changes, and bill payments independently, reducing reliance on customer support teams."
+    },
+    {
+      title: "Personalized User Experience",
+      text: "The platform supports tailored interactions through personalized notifications, account insights, and service recommendations based on user behavior."
+    }
+  ];
+
+  const platformFeatures = [
+    {
+      icon: Radio,
+      title: "Dynamic Menu Management",
+      text: "Menus adapt based on user preferences and actions, delivering an intuitive and personalized experience across all channels."
+    },
+    {
+      icon: Globe2,
+      title: "Multi-Language Support",
+      text: "Support for multiple languages improves accessibility and enhances user satisfaction across diverse customer segments."
+    },
+    {
+      icon: Boxes,
+      title: "Seamless Multi-Channel Access",
+      text: "Users manage their telecom services consistently across USSD, SMS, IVR, and mobile applications."
+    },
+    {
+      icon: Headphones,
+      title: "Real-Time Updates and Customization",
+      text: "Customers receive real-time updates and can customize services such as data plans and payment options with ease."
+    }
+  ];
+
+  const useCases = [
+    {
+      visual: "subscriber",
+      title: "Subscriber Self-Service Enablement",
+      text: "Customers manage balances, subscriptions, and services independently."
+    },
+    {
+      visual: "multichannel",
+      title: "Multi-Channel Customer Interaction",
+      text: "Customers manage balances, subscriptions, and services independently."
+    },
+    {
+      visual: "engagement",
+      title: "Personalized Telecom Engagement",
+      text: "Tailored notifications and recommendations based on usage behavior."
+    },
+    {
+      visual: "production",
+      title: "Proven in Production",
+      text: "AutoAssist operates in live telecom environments through partnership deployments and supports multiple customer interaction channels."
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "Does AutoAssist support SMS, USSD, IVR, and mobile apps?",
+      answer:
+        "Yes. AutoAssist is designed for omni-channel telecom self-care across SMS, USSD, IVR, and mobile applications."
+    },
+    {
+      question: "Can AutoAssist reduce customer support workload?",
+      answer:
+        "Yes. Self-service workflows help customers manage balances, subscriptions, plan changes, and payments without relying on support teams."
+    },
+    {
+      question: "How does AutoAssist personalize subscriber experiences?",
+      answer:
+        "AutoAssist can support tailored menus, notifications, account insights, and service recommendations based on subscriber behavior."
+    },
+    {
+      question: "Can AutoAssist integrate with existing telecom systems?",
+      answer:
+        "Yes. AutoAssist can be implemented alongside existing telecom channels and backend service workflows."
+    },
+    {
+      question: "How does AutoAssist support production operations?",
+      answer:
+        "AutoAssist is designed for consistent self-care access, operational efficiency, and scalable customer interaction across telecom environments."
+    }
+  ];
+
+  return (
+    <main className="moneypro-figma-page autoassist-page">
+      <Navigation />
+      <section className="moneypro-hero-shell">
+        <div className="moneypro-hero-copy">
+          <p className="moneypro-eyebrow">Telecom Solution <strong>Auto Assist</strong></p>
+          <h1>Auto Assist Accessible. Efficient. Consistent.</h1>
+          <p>
+            HTGClouds provides AutoAssist, a value-added self-care solution delivered in
+            partnership with Safarifone. The solution enables telecom customers to manage their
+            accounts easily across USSD, SMS, IVR, and mobile applications, offering consistent
+            access and control across multiple channels.
+          </p>
+          <div className="moneypro-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Start Free Trial
+            </a>
+            <a href="/contact" onClick={(event) => event.preventDefault()}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <div className="moneypro-hero-visual autoassist-hero-visual" aria-label="AutoAssist SMS USSD IVR mobile self-care preview" />
+      </section>
+
+      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
+        <p>From visionary startups to industry leaders.</p>
+        <div>
+          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
+            <span key={brand}>{brand}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-challenges">
+        <h2>Key Challenges We Address</h2>
+        <div className="moneypro-challenge-grid">
+          {challenges.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-solutions-heading">
+        <h2>Key Solutions &amp; Capabilities</h2>
+      </section>
+
+      <section className="moneypro-section moneypro-dark-capabilities">
+        <div className="moneypro-dark-copy">
+          <h2>Core Features</h2>
+          <div className="moneypro-dark-card-list">
+            {darkCapabilities.map((item) => (
+              <article key={item.title}>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="moneypro-dark-visual autoassist-dark-visual" aria-hidden="true" />
+      </section>
+
+      <section className="moneypro-section moneypro-self-care" id="autoassist-features">
+        <h2>Self-Care Platform Features</h2>
+        <div className="moneypro-feature-grid">
+          {platformFeatures.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={21} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-use-cases autoassist-use-cases">
+        <h2>Use Cases</h2>
+        <div className="moneypro-use-grid">
+          {useCases.map(({ visual, title, text }) => (
+            <article
+              className={`moneypro-use-card autoassist-use-card autoassist-use-card-${visual}`}
+              key={title}
+              aria-label={`${title}. ${text}`}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="pricing-faq ecs-faq moneypro-faq">
+        <div>
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about AutoAssist.</p>
+        </div>
+        <div className="pricing-faq-list">
+          {faqs.map((faq) => (
+            <details key={faq.question} open={faq.question === "Does AutoAssist support SMS, USSD, IVR, and mobile apps?"}>
+              <summary>{faq.question}</summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-final-cta">
+        <h2>Ready to Simplify Telecom Self-Care?</h2>
+        <div>
+          <p>
+            HTGClouds helps telecom operators deliver consistent self-care experiences across
+            SMS, USSD, IVR, and mobile applications.
+          </p>
+          <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            Start Free Trial
+          </a>
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function BizFlowSolutionPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description =
+      "BizFlow helps telecom operators personalize services, optimize revenue, and manage customer operations across BSS and OSS workflows.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "BizFlow | BSS & OSS Solution | HTGCloud";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  const challenges = [
+    {
+      icon: CircleCheck,
+      title: "Limited personalization at scale",
+      text: "Generic service offerings reduce customer engagement and loyalty."
+    },
+    {
+      icon: MousePointerClick,
+      title: "Slow revenue optimization",
+      text: "Static promotions limit upsell and cross-sell opportunities."
+    },
+    {
+      icon: Boxes,
+      title: "Operational complexity",
+      text: "Managing customers, services, and interactions across disconnected systems increases inefficiency."
+    },
+    {
+      icon: SlidersVertical,
+      title: "Growth constraints",
+      text: "Telecom platforms must adapt as subscriber bases, services, and usage evolve."
+    }
+  ];
+
+  const darkCapabilities = [
+    {
+      title: "Personalized Service Enablement",
+      text: "BizFlow dynamically tailors offers based on real-time usage patterns and customer behavior, improving satisfaction and loyalty."
+    },
+    {
+      title: "Revenue Growth Optimization",
+      text: "Dynamic offer management supports targeted promotions and upsell opportunities, helping operators capture new revenue streams."
+    },
+    {
+      title: "Customer Management Optimization",
+      text: "The platform streamlines customer and service management, improving interaction tracking and engagement quality."
+    }
+  ];
+
+  const platformFeatures = [
+    {
+      icon: Radio,
+      title: "Dynamic Menu Management",
+      text: "Menus adapt based on user preferences and actions, delivering an intuitive and personalized experience across all channels."
+    },
+    {
+      icon: SlidersVertical,
+      title: "Real-Time Customer Insights",
+      text: "Deep visibility into customer behavior enables data-driven decisions and targeted marketing activities."
+    },
+    {
+      icon: Maximize2,
+      title: "Scalable and Modular Architecture",
+      text: "A flexible, modular design supports future growth and integration of additional services as market needs change."
+    },
+    {
+      icon: MousePointerClick,
+      title: "Automated Customer Journey Management",
+      text: "BizFlow manages the full customer journey, automating interactions from onboarding to service changes and upsell opportunities."
+    }
+  ];
+
+  const useCases = [
+    {
+      visual: "promotions",
+      title: "Targeted Promotions and Offers",
+      text: "Deliver behavior-based promotions to increase uptake and loyalty."
+    },
+    {
+      visual: "lifecycle",
+      title: "Customer Lifecycle Management",
+      text: "Manage onboarding, engagement, and retention through a unified system."
+    },
+    {
+      visual: "experience-chart",
+      title: "Service and Experience Optimization",
+      text: "Use real-time insights to refine service delivery and customer interaction."
+    },
+    {
+      visual: "experience-person",
+      title: "Service and Experience Optimization",
+      text: "Use real-time insights to refine service delivery and customer interaction."
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "How does BizFlow support telecom BSS and OSS operations?",
+      answer:
+        "BizFlow helps operators manage customer journeys, service interactions, offer configuration, and operational workflows across BSS and OSS environments."
+    },
+    {
+      question: "Can BizFlow personalize offers for different customer segments?",
+      answer:
+        "Yes. BizFlow is designed to support behavior-based offers, targeted promotions, and personalized engagement journeys."
+    },
+    {
+      question: "How does BizFlow help grow revenue?",
+      answer:
+        "BizFlow supports upsell, cross-sell, and dynamic offer management so telecom teams can respond faster to customer behavior and market opportunities."
+    },
+    {
+      question: "Can BizFlow integrate with existing telecom systems?",
+      answer:
+        "Yes. BizFlow can be implemented alongside existing customer, billing, service, and interaction workflows."
+    },
+    {
+      question: "Is BizFlow ready for production telecom environments?",
+      answer:
+        "BizFlow is designed for scalable telecom operations, modular growth, and continuous customer journey optimization."
+    }
+  ];
+
+  return (
+    <main className="moneypro-figma-page bizflow-page">
+      <Navigation />
+      <section className="moneypro-hero-shell">
+        <div className="moneypro-hero-copy">
+          <p className="moneypro-eyebrow">Telecom Solution <strong>Bizflow</strong></p>
+          <h1>BizFlow BSS &amp; OSS Solutions</h1>
+          <p>
+            HTGClouds provides BizFlow, a Business Support System solution delivered in
+            partnership with Safarifone. BizFlow enables telecom operators to manage
+            customers, services, and offers through a unified platform, supporting
+            personalized engagement, operational efficiency, and sustainable growth.
+          </p>
+          <div className="moneypro-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Start Free Trial
+            </a>
+            <a href="/contact" onClick={(event) => event.preventDefault()}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <div className="moneypro-hero-visual bizflow-hero-visual" aria-label="BizFlow telecom BSS and OSS preview" />
+      </section>
+
+      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
+        <p>From visionary startups to industry leaders.</p>
+        <div>
+          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
+            <span key={brand}>{brand}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-challenges">
+        <h2>Key Challenges We Address</h2>
+        <div className="moneypro-challenge-grid">
+          {challenges.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-solutions-heading">
+        <h2>Key Solutions &amp; Capabilities</h2>
+      </section>
+
+      <section className="moneypro-section moneypro-dark-capabilities">
+        <div className="moneypro-dark-copy">
+          <h2>Core Features</h2>
+          <div className="moneypro-dark-card-list">
+            {darkCapabilities.map((item) => (
+              <article key={item.title}>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="moneypro-dark-visual bizflow-dark-visual" aria-hidden="true" />
+      </section>
+
+      <section className="moneypro-section moneypro-self-care" id="bizflow-features">
+        <h2>Self-Care Platform Features</h2>
+        <div className="moneypro-feature-grid">
+          {platformFeatures.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={21} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-use-cases bizflow-use-cases">
+        <h2>Use Cases</h2>
+        <div className="moneypro-use-grid">
+          {useCases.map(({ visual, title, text }) => (
+            <article
+              className={`moneypro-use-card bizflow-use-card bizflow-use-card-${visual}`}
+              key={visual}
+              aria-label={`${title}. ${text}`}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="pricing-faq ecs-faq moneypro-faq">
+        <div>
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about BizFlow.</p>
+        </div>
+        <div className="pricing-faq-list">
+          {faqs.map((faq) => (
+            <details key={faq.question} open={faq.question === "How does BizFlow support telecom BSS and OSS operations?"}>
+              <summary>{faq.question}</summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-final-cta">
+        <h2>Ready to Modernize Telecom Operations?</h2>
+        <div>
+          <p>
+            HTGClouds helps telecom teams streamline customer journeys, optimize offers,
+            and manage BSS and OSS workflows through BizFlow.
+          </p>
+          <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            Start Free Trial
+          </a>
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function ChargeOneSolutionPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description =
+      "ChargeOne helps telecom providers run real-time charging, convergent billing, tariff management, and secure payment operations.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "ChargeOne | Telecom Charging & Billing Solution | HTGCloud";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  const challenges = [
+    {
+      icon: Maximize2,
+      title: "Scaling transaction volumes",
+      text: "Telecom growth increases charging events and users, requiring systems that maintain performance at scale."
+    },
+    {
+      icon: Boxes,
+      title: "Operational complexity",
+      text: "Managing accounts, services, and configurations across multiple systems creates inefficiencies."
+    },
+    {
+      icon: CreditCard,
+      title: "Evolving business models",
+      text: "Support is required for prepaid, postpaid, and mixed service offerings."
+    },
+    {
+      icon: Shield,
+      title: "Security and transaction integrity",
+      text: "Telecom operators require scalable solutions that minimize maintenance overhead."
+    }
+  ];
+
+  const darkCapabilities = [
+    {
+      title: "Scalable Charging Platform",
+      text: "The solution is designed to handle increasing transaction volumes and subscriber growth without performance degradation."
+    },
+    {
+      title: "Flexible Service Enablement",
+      text: "The platform adapts to different telecom business models and supports the introduction of new services, payment methods, and technologies."
+    },
+    {
+      title: "Secure Financial Operations",
+      text: "Security controls are applied to protect customer data, transaction integrity, and network-related charging processes."
+    }
+  ];
+
+  const platformFeatures = [
+    {
+      icon: CreditCard,
+      title: "Real-Time Convergent Billing",
+      text: "ChargeOne processes transactions instantly, ensuring accurate prepaid balance management and credit control."
+    },
+    {
+      icon: SlidersVertical,
+      title: "Tariff and Plan Configuration",
+      text: "Operators can configure complex rate plans and bundles to match market needs without extensive development."
+    },
+    {
+      icon: Boxes,
+      title: "Multi-Channel Payment Support",
+      text: "The solution supports both prepaid and postpaid customers on a single platform, simplifying operations."
+    },
+    {
+      icon: SlidersVertical,
+      title: "Usage Monitoring and Analytics",
+      text: "ChargeOne integrates with core network elements using standard protocols for reliable charging."
+    }
+  ];
+
+  const useCases = [
+    {
+      visual: "modernization",
+      title: "Telecom Charging Platform Modernization",
+      text: "Replacement or enhancement of legacy charging systems with a cloud-based platform."
+    },
+    {
+      visual: "tariff",
+      title: "Tariff and Promotion Management",
+      text: "Efficient creation and adjustment of plans and bundles."
+    },
+    {
+      visual: "payment",
+      title: "Payment Channel Expansion",
+      text: "Support for multiple payment methods to improve customer accessibility."
+    },
+    {
+      visual: "production",
+      title: "Proven in Production",
+      text: "This solution is deployed and operated in partnership with Safarifone, supporting live telecom environments and real customer traffic."
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "How does ChargeOne support real-time charging and billing?",
+      answer:
+        "ChargeOne is designed to process charging events instantly, helping telecom teams manage prepaid balances, postpaid billing, and credit control."
+    },
+    {
+      question: "Can ChargeOne support prepaid and postpaid services?",
+      answer:
+        "Yes. ChargeOne supports convergent charging and billing models for prepaid, postpaid, and mixed service offerings."
+    },
+    {
+      question: "How does ChargeOne manage tariffs and promotions?",
+      answer:
+        "Operators can configure rate plans, bundles, tariffs, and promotions to respond to market needs without heavy development work."
+    },
+    {
+      question: "Can ChargeOne connect to multiple payment channels?",
+      answer:
+        "Yes. ChargeOne can support payment-channel expansion across bank transfer, cards, mobile payments, and partner payment workflows."
+    },
+    {
+      question: "Is ChargeOne ready for production telecom environments?",
+      answer:
+        "ChargeOne is designed for secure financial operations, transaction integrity, and reliable telecom charging workloads."
+    }
+  ];
+
+  return (
+    <main className="moneypro-figma-page chargeone-page">
+      <Navigation />
+      <section className="moneypro-hero-shell">
+        <div className="moneypro-hero-copy">
+          <p className="moneypro-eyebrow">Telecom Solution <strong>ChargeOne</strong></p>
+          <h1>Telecom Charging and Billing- Reliable. Flexible. Secure.</h1>
+          <p>
+            HTGClouds provides a telecom charging and billing solution delivered in
+            partnership with Safarifone, combining cloud infrastructure expertise with
+            real-world telecom operational experience. The solution supports real-time
+            charging, flexible tariff management, and secure financial operations for
+            modern telecom providers.
+          </p>
+          <div className="moneypro-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Start Free Trial
+            </a>
+            <a href="/contact" onClick={(event) => event.preventDefault()}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <div className="moneypro-hero-visual chargeone-hero-visual" aria-label="ChargeOne telecom charging and billing preview" />
+      </section>
+
+      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
+        <p>From visionary startups to industry leaders.</p>
+        <div>
+          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
+            <span key={brand}>{brand}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-challenges">
+        <h2>Key Challenges We Address</h2>
+        <div className="moneypro-challenge-grid">
+          {challenges.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-solutions-heading">
+        <h2>Key Solutions &amp; Capabilities</h2>
+      </section>
+
+      <section className="moneypro-section moneypro-dark-capabilities">
+        <div className="moneypro-dark-copy">
+          <h2>Core Features</h2>
+          <div className="moneypro-dark-card-list">
+            {darkCapabilities.map((item) => (
+              <article key={item.title}>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="moneypro-dark-visual chargeone-dark-visual" aria-hidden="true" />
+      </section>
+
+      <section className="moneypro-section moneypro-self-care" id="chargeone-features">
+        <h2>Self-Care Platform Features</h2>
+        <div className="moneypro-feature-grid">
+          {platformFeatures.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={21} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-use-cases chargeone-use-cases">
+        <h2>Use Cases</h2>
+        <div className="moneypro-use-grid">
+          {useCases.map(({ visual, title, text }) => (
+            <article
+              className={`moneypro-use-card chargeone-use-card chargeone-use-card-${visual}`}
+              key={visual}
+              aria-label={`${title}. ${text}`}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="pricing-faq ecs-faq moneypro-faq">
+        <div>
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about ChargeOne.</p>
+        </div>
+        <div className="pricing-faq-list">
+          {faqs.map((faq) => (
+            <details key={faq.question} open={faq.question === "How does ChargeOne support real-time charging and billing?"}>
+              <summary>{faq.question}</summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-final-cta">
+        <h2>Ready to Modernize Telecom Charging?</h2>
+        <div>
+          <p>
+            HTGClouds helps telecom operators run reliable charging, billing, tariff
+            management, and secure payment operations with ChargeOne.
+          </p>
+          <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            Start Free Trial
+          </a>
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function PolicyProSolutionPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    const description =
+      "PolicyPro helps telecom operators manage policy control, charging, usage monitoring, and differentiated service delivery.";
+    let metaDescription = document.querySelector('meta[name="description"]');
+    const previousDescription = metaDescription?.getAttribute("content");
+    const createdDescription = !metaDescription;
+
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+
+    document.title = "PolicyPro | Policy Control & Charging Solution | HTGCloud";
+    metaDescription.setAttribute("content", description);
+
+    return () => {
+      document.title = previousTitle;
+      if (previousDescription) {
+        metaDescription.setAttribute("content", previousDescription);
+      } else if (createdDescription) {
+        metaDescription.remove();
+      }
+    };
+  }, []);
+
+  const challenges = [
+    {
+      icon: CircleCheck,
+      title: "Complex Policy Management",
+      text: "Operators struggle to implement and enforce consistent policies across diverse networks and services."
+    },
+    {
+      icon: MousePointerClick,
+      title: "Revenue Leakage",
+      text: "Inefficient charging mechanisms and delayed billing processes lead to significant revenue loss."
+    },
+    {
+      icon: Boxes,
+      title: "Network Congestion",
+      text: "Uncontrolled data usage and lack of prioritization degrade network performance for high-value users."
+    },
+    {
+      icon: Radio,
+      title: "Slow Time-to-Market",
+      text: "Launching new plans and offers is delayed by rigid and outdated policy control systems."
+    }
+  ];
+
+  const darkCapabilities = [
+    {
+      title: "Dynamic Policy Control",
+      text: "PolicyPro enables operators to implement real-time policies that adapt to network conditions and subscriber profiles."
+    },
+    {
+      title: "Service Differentiation",
+      text: "The solution supports differentiated service levels, allowing operators to offer premium plans and ensure QoS."
+    },
+    {
+      title: "Usage Monitoring",
+      text: "PolicyPro tracks data usage in real time, preventing revenue leakage and enabling accurate billing."
+    }
+  ];
+
+  const platformFeatures = [
+    {
+      icon: SlidersVertical,
+      title: "Advanced Policy Engine",
+      text: "Configure complex rules for varied service plans and promotions."
+    },
+    {
+      icon: Zap,
+      title: "Real-time Charging Integration",
+      text: "Seamlessly connect policy decisions with online charging systems."
+    },
+    {
+      icon: Server,
+      title: "High Availability Architecture",
+      text: "Ensure continuous policy enforcement with a resilient platform design."
+    },
+    {
+      icon: CircleCheck,
+      title: "Standards Compliance",
+      text: "Built on 3GPP standards to ensure interoperability and future-readiness."
+    }
+  ];
+
+  const useCases = [
+    {
+      visual: "tiered",
+      title: "Tiered Data Plans",
+      text: "Support diverse offerings such as daily, weekly, and monthly data bundles."
+    },
+    {
+      visual: "fair-usage",
+      title: "Fair Usage Policy Enforcement",
+      text: "Manage heavy users to ensure equitable network access for all subscribers."
+    },
+    {
+      visual: "volte",
+      title: "VoLTE and VoWiFi Support",
+      text: "Ensure quality of service for voice calls over LTE and Wi-Fi networks."
+    },
+    {
+      visual: "sponsored",
+      title: "Sponsored Data Services",
+      text: "Enable zero-rated access for specific applications and partner content."
+    }
+  ];
+
+  const faqs = [
+    {
+      question: "How does PolicyPro support real-time policy control?",
+      answer:
+        "PolicyPro enables telecom teams to apply subscriber, service, and network policies in real time across charging and data usage workflows."
+    },
+    {
+      question: "Can PolicyPro help reduce revenue leakage?",
+      answer:
+        "Yes. Real-time usage monitoring and charging integration help operators track consumption accurately and enforce policies consistently."
+    },
+    {
+      question: "Does PolicyPro support differentiated service plans?",
+      answer:
+        "Yes. PolicyPro supports service differentiation for tiered data plans, premium experiences, sponsored data, and fair usage policies."
+    },
+    {
+      question: "Can PolicyPro integrate with existing telecom charging systems?",
+      answer:
+        "Yes. PolicyPro is designed to connect policy decisions with online charging systems and standards-based telecom environments."
+    },
+    {
+      question: "Is PolicyPro suitable for high-availability telecom workloads?",
+      answer:
+        "PolicyPro is designed with resilient policy enforcement patterns for production telecom operations."
+    }
+  ];
+
+  return (
+    <main className="moneypro-figma-page policypro-page">
+      <Navigation />
+      <section className="moneypro-hero-shell">
+        <div className="moneypro-hero-copy">
+          <p className="moneypro-eyebrow">Telecom Solution <strong>PolicyPro</strong></p>
+          <h1>PolicyPro - Policy Control &amp; Charging</h1>
+          <p>
+            HTGClouds provides PolicyPro, a converged policy and charging solution
+            delivered in partnership with Safarifone. PolicyPro enables operators to
+            manage subscriber policies, implement dynamic charging models, and optimize
+            network resources in real time.
+          </p>
+          <div className="moneypro-actions">
+            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+              Start Free Trial
+            </a>
+            <a href="/contact" onClick={(event) => event.preventDefault()}>
+              Contact Sales
+            </a>
+          </div>
+        </div>
+        <div className="moneypro-hero-visual policypro-hero-visual" aria-label="PolicyPro policy control and charging preview" />
+      </section>
+
+      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
+        <p>From visionary startups to industry leaders.</p>
+        <div>
+          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
+            <span key={brand}>{brand}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-challenges">
+        <h2>Key Challenges We Address</h2>
+        <div className="moneypro-challenge-grid">
+          {challenges.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={22} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-solutions-heading">
+        <h2>Key Solutions &amp; Capabilities</h2>
+      </section>
+
+      <section className="moneypro-section moneypro-dark-capabilities">
+        <div className="moneypro-dark-copy">
+          <h2>Optimizing network resources and enhancing service delivery.</h2>
+          <div className="moneypro-dark-card-list">
+            {darkCapabilities.map((item) => (
+              <article key={item.title}>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="moneypro-dark-visual policypro-dark-visual" aria-hidden="true" />
+      </section>
+
+      <section className="moneypro-section moneypro-self-care" id="policypro-features">
+        <h2>Self-Care Platform Features</h2>
+        <div className="moneypro-feature-grid">
+          {platformFeatures.map(({ icon: Icon, title, text }) => (
+            <article key={title}>
+              <span aria-hidden="true">
+                <Icon size={21} />
+              </span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-section moneypro-use-cases policypro-use-cases">
+        <h2>Use Cases</h2>
+        <div className="moneypro-use-grid">
+          {useCases.map(({ visual, title, text }) => (
+            <article
+              className={`moneypro-use-card policypro-use-card policypro-use-card-${visual}`}
+              key={visual}
+              aria-label={`${title}. ${text}`}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="pricing-faq ecs-faq moneypro-faq">
+        <div>
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about PolicyPro.</p>
+        </div>
+        <div className="pricing-faq-list">
+          {faqs.map((faq) => (
+            <details key={faq.question} open={faq.question === "How does PolicyPro support real-time policy control?"}>
+              <summary>{faq.question}</summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="moneypro-final-cta">
+        <h2>Ready to Optimize Policy and Charging?</h2>
+        <div>
+          <p>
+            HTGClouds helps telecom operators enforce real-time policies, protect revenue,
+            and deliver differentiated services with PolicyPro.
           </p>
           <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
             Start Free Trial
