@@ -39,6 +39,7 @@ import {
   verifyEmail
 } from "./lib/auth";
 import { countries as authCountries } from "./data/countries";
+import { legalDocuments } from "./legalContent";
 import { pricingCatalog, pricingServices } from "./pricing/pricingCatalog";
 import {
   calculateEstimateTotals,
@@ -329,8 +330,19 @@ const footerColumns = [
   ["Company", "About", "Careers", "Contact"],
   ["Developers", "Documentation", "API Reference"],
   ["Resources", "Pricing", "Blog", "Reports", "Status"],
-  ["Legal", "Privacy Policy", "Terms of Service"]
+  [
+    "Legal",
+    "Privacy Policy",
+    "Online Subscription and Ordering Terms",
+    "View All Legal Documents"
+  ]
 ];
+
+const footerLinkTargets = {
+  "Privacy Policy": "/legal/privacy-policy",
+  "Online Subscription and Ordering Terms": "/legal/online-subscription-and-ordering-terms",
+  "View All Legal Documents": "/legal"
+};
 
 const pricingTabs = ["Compute", "Storage", "Networking", "Database"];
 
@@ -572,6 +584,18 @@ function getAllServiceEntries() {
   );
 }
 
+function updateMetaDescription(description) {
+  let metaDescription = document.querySelector('meta[name="description"]');
+
+  if (!metaDescription) {
+    metaDescription = document.createElement("meta");
+    metaDescription.setAttribute("name", "description");
+    document.head.appendChild(metaDescription);
+  }
+
+  metaDescription.setAttribute("content", description);
+}
+
 function App() {
   const [route, setRoute] = useState(window.location.pathname + window.location.search);
   const path = route.split("?")[0];
@@ -592,6 +616,9 @@ function App() {
   if (path === "/dashboard") return <DashboardRoute />;
   if (path === "/services") return <ServicesRoute />;
   if (path === "/about" || path === "/about-us") return <AboutPage />;
+  if (path === "/legal") return <LegalHubPage />;
+  const legalDocument = legalDocuments.find((documentItem) => documentItem.path === path);
+  if (legalDocument) return <LegalDocumentPage legalDocument={legalDocument} />;
   if (path === "/products/compute/elastic-cloud-server") return <ElasticCloudServerPage />;
   if (path === "/products/compute/cloud-container-engine") return <CloudContainerEnginePage />;
   if (path === "/products/compute/image-management-service") return <ImageManagementServicePage />;
@@ -656,6 +683,145 @@ function ReplacePath({ to, children }) {
   }, [to]);
 
   return children;
+}
+
+function LegalHubPage() {
+  useEffect(() => {
+    document.title = "Legal | HTGClouds";
+    updateMetaDescription(
+      "Review HTG Clouds legal policies, agreements, and security documents."
+    );
+  }, []);
+
+  return (
+    <main className="legal-page">
+      <Navigation />
+      <section className="legal-hero">
+        <div>
+          <p className="legal-eyebrow">HTG Clouds Legal</p>
+          <h1>Legal</h1>
+          <p>
+            Review the policies, agreements, and security commitments that govern
+            HTG Clouds services.
+          </p>
+        </div>
+      </section>
+
+      <section className="legal-card-section" aria-label="Legal documents">
+        <div className="legal-card-grid">
+          {legalDocuments.map((legalDocument) => (
+            <a
+              className="legal-card"
+              href={legalDocument.path}
+              key={legalDocument.path}
+              onClick={(event) => {
+                event.preventDefault();
+                navigateTo(legalDocument.path);
+              }}
+            >
+              <h2>{legalDocument.title}</h2>
+              <span>Learn more <span aria-hidden="true">→</span></span>
+            </a>
+          ))}
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function LegalDocumentPage({ legalDocument }) {
+  return (
+    <LegalPageLayout
+      title={legalDocument.title}
+      lastUpdated={legalDocument.lastUpdated}
+    >
+      {renderLegalBlocks(legalDocument.content)}
+    </LegalPageLayout>
+  );
+}
+
+function renderLegalBlocks(blocks) {
+  return blocks.map((block, blockIndex) => {
+    if (block.type === "heading") {
+      const HeadingTag = block.level === 3 ? "h3" : block.level >= 4 ? "h4" : "h2";
+      return <HeadingTag key={`legal-heading-${blockIndex}`}>{block.text}</HeadingTag>;
+    }
+
+    if (block.type === "paragraph") {
+      return <p key={`legal-paragraph-${blockIndex}`}>{block.text}</p>;
+    }
+
+    if (block.type === "list") {
+      const ListTag = block.ordered ? "ol" : "ul";
+      return (
+        <ListTag key={`legal-list-${blockIndex}`}>
+          {block.items.map((item, itemIndex) => (
+            <li key={`legal-list-${blockIndex}-${itemIndex}`}>{item}</li>
+          ))}
+        </ListTag>
+      );
+    }
+
+    if (block.type === "table") {
+      return (
+        <div className="legal-table-scroll" key={`legal-table-${blockIndex}`}>
+          <table>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={`legal-table-${blockIndex}-${rowIndex}`}>
+                  {row.map((cell, cellIndex) => {
+                    const CellTag = rowIndex === 0 ? "th" : "td";
+                    return (
+                      <CellTag key={`legal-table-${blockIndex}-${rowIndex}-${cellIndex}`}>
+                        {cell}
+                      </CellTag>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    return null;
+  });
+}
+
+function LegalPageLayout({ title, lastUpdated, children }) {
+  useEffect(() => {
+    document.title = `${title} | HTGClouds Legal`;
+    updateMetaDescription(`${title} for HTG Clouds services.`);
+  }, [title]);
+
+  return (
+    <main className="legal-page legal-document-page">
+      <Navigation />
+      <article className="legal-document-shell">
+        <nav className="legal-breadcrumb" aria-label="Breadcrumb">
+          <a
+            href="/legal"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/legal");
+            }}
+          >
+            Legal &amp; Security
+          </a>
+          <span aria-hidden="true">/</span>
+          <span>{title}</span>
+        </nav>
+        <header className="legal-document-header">
+          <h1>{title}</h1>
+          <p>Last updated on {lastUpdated}</p>
+        </header>
+        <div className="legal-prose">{children}</div>
+      </article>
+      <Footer />
+    </main>
+  );
 }
 
 function AboutPage() {
@@ -14785,7 +14951,7 @@ function Footer() {
           <div key={heading}>
             <h3>{heading}</h3>
             {items.map((item) => (
-              <a key={item} href="#">
+              <a key={item} href={footerLinkTargets[item] || "#"}>
                 {item}
               </a>
             ))}
