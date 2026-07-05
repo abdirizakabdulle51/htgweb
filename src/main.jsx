@@ -609,6 +609,7 @@ function updateMetaDescription(description) {
 function App() {
   const [route, setRoute] = useState(window.location.pathname + window.location.search);
   const path = route.split("?")[0];
+  const legalPath = path.startsWith("/legal") ? path.replace(/\/+$/, "") || "/legal" : path;
 
   useEffect(() => {
     const handleRoute = () => setRoute(window.location.pathname + window.location.search);
@@ -626,8 +627,8 @@ function App() {
   if (path === "/dashboard") return <DashboardRoute />;
   if (path === "/services") return <ServicesRoute />;
   if (path === "/about" || path === "/about-us") return <AboutPage />;
-  if (path === "/legal") return <LegalHubPage />;
-  const legalDocument = publicLegalDocuments.find((documentItem) => documentItem.path === path);
+  if (legalPath === "/legal") return <LegalHubPage />;
+  const legalDocument = publicLegalDocuments.find((documentItem) => documentItem.path === legalPath);
   if (legalDocument) return <LegalDocumentPage legalDocument={legalDocument} />;
   if (path === "/products/compute/elastic-cloud-server") return <ElasticCloudServerPage />;
   if (path === "/products/compute/cloud-container-engine") return <CloudContainerEnginePage />;

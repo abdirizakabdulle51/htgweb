@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-07-05: Normalized trailing slash handling for public Legal routes. Status: complete.
 - 2026-07-05: Replaced three homepage use-case photos with Nappy-sourced Black professional imagery. Status: complete.
 - 2026-07-05: Removed partner logo strip sections from homepage and solution pages. Status: complete.
 - 2026-07-05: Updated footer About link and disabled unfinished Blog, Documentation, and Contact links. Status: complete.
