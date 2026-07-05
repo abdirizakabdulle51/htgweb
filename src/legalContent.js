@@ -1736,56 +1736,7 @@ export const legalDocuments = [
       {
         "type": "heading",
         "level": 2,
-        "text": "9. Service Credits"
-      },
-      {
-        "type": "paragraph",
-        "text": "Service Credits are Customer's sole and exclusive remedy for qualifying failure to meet the applicable monthly availability commitment. Credits apply only to the affected eligible service fee for the impacted month and do not apply to taxes, professional services, setup fees, third-party charges, connectivity fees, or unpaid amounts."
-      },
-      {
-        "type": "table",
-        "rows": [
-          [
-            "Monthly Availability Achieved",
-            "Credit Against Affected Monthly Service Fee"
-          ],
-          [
-            ">= applicable SLA target",
-            "No credit"
-          ],
-          [
-            "99.0% to below target",
-            "5% credit"
-          ],
-          [
-            "98.0% to below 99.0%",
-            "10% credit"
-          ],
-          [
-            "95.0% to below 98.0%",
-            "15% credit"
-          ],
-          [
-            "Below 95.0%",
-            "25% credit cap unless Online Order Record states otherwise"
-          ]
-        ]
-      },
-      {
-        "type": "list",
-        "ordered": true,
-        "items": [
-          "Customer must submit a credit request through the customer portal, support system, or registered billing email within thirty (30) days after the end of the month in which the alleged SLA failure occurred.",
-          "The request must identify the affected service, date/time, ticket reference, business impact, and supporting evidence.",
-          "HTG Clouds shall review the claim using service logs, monitoring records, ticket history, and incident reports.",
-          "Approved credits will be applied to future invoices generated under the Customer account and will not be paid in cash unless required by law or expressly agreed.",
-          "The maximum monthly credit shall not exceed twenty-five percent (25%) of the affected monthly service fee unless the Online Order Record expressly states otherwise."
-        ]
-      },
-      {
-        "type": "heading",
-        "level": 2,
-        "text": "10. SLA Exclusions"
+        "text": "9. SLA Exclusions"
       },
       {
         "type": "paragraph",
@@ -1808,7 +1759,7 @@ export const legalDocuments = [
       {
         "type": "heading",
         "level": 2,
-        "text": "11. Customer Obligations"
+        "text": "10. Customer Obligations"
       },
       {
         "type": "paragraph",
@@ -1850,7 +1801,7 @@ export const legalDocuments = [
       {
         "type": "heading",
         "level": 2,
-        "text": "12. Reporting and Service Review"
+        "text": "11. Reporting and Service Review"
       },
       {
         "type": "paragraph",
@@ -1889,7 +1840,7 @@ export const legalDocuments = [
       {
         "type": "heading",
         "level": 2,
-        "text": "13. Contact and Escalation Schedule"
+        "text": "12. Contact and Escalation Schedule"
       },
       {
         "type": "paragraph",
@@ -1959,7 +1910,7 @@ export const legalDocuments = [
       {
         "type": "heading",
         "level": 2,
-        "text": "14. Service-Specific Operational Notes"
+        "text": "13. Service-Specific Operational Notes"
       },
       {
         "type": "table",

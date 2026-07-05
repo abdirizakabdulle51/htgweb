@@ -1511,6 +1511,14 @@ blockquote {
   font-size: 13px;
 }
 
+.footer-disabled-link {
+  display: block;
+  margin-top: 13px;
+  color: #59636d;
+  font-size: 13px;
+  cursor: default;
+}
+
 .footer-bottom {
   grid-column: 1 / -1;
   display: flex;

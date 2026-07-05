@@ -52,6 +52,13 @@ import "./styles.css";
 const logoPath = "/logo.png";
 const authPanelPath = "/auth-side-panel.png";
 const FAVORITES_KEY = "htgclouds_favorite_services";
+const publicLegalDocuments = legalDocuments.filter(
+  (legalDocument) =>
+    ![
+      "/legal/data-processing-agreement",
+      "/legal/master-services-agreement"
+    ].includes(legalDocument.path)
+);
 
 const organizationSizeOptions = [
   "Just Me",
@@ -327,9 +334,9 @@ const useCases = [
 ];
 
 const footerColumns = [
-  ["Company", "About", "Careers", "Contact"],
-  ["Developers", "Documentation", "API Reference"],
-  ["Resources", "Pricing", "Blog", "Reports", "Status"],
+  ["Company", "About", "Contact"],
+  ["Developers", "Documentation"],
+  ["Resources", "Pricing", "Blog"],
   [
     "Legal",
     "Privacy Policy",
@@ -339,10 +346,13 @@ const footerColumns = [
 ];
 
 const footerLinkTargets = {
+  About: "/about",
   "Privacy Policy": "/legal/privacy-policy",
   "Online Subscription and Ordering Terms": "/legal/online-subscription-and-ordering-terms",
   "View All Legal Documents": "/legal"
 };
+
+const disabledFooterLinks = new Set(["Blog", "Documentation", "Contact"]);
 
 const pricingTabs = ["Compute", "Storage", "Networking", "Database"];
 
@@ -617,7 +627,7 @@ function App() {
   if (path === "/services") return <ServicesRoute />;
   if (path === "/about" || path === "/about-us") return <AboutPage />;
   if (path === "/legal") return <LegalHubPage />;
-  const legalDocument = legalDocuments.find((documentItem) => documentItem.path === path);
+  const legalDocument = publicLegalDocuments.find((documentItem) => documentItem.path === path);
   if (legalDocument) return <LegalDocumentPage legalDocument={legalDocument} />;
   if (path === "/products/compute/elastic-cloud-server") return <ElasticCloudServerPage />;
   if (path === "/products/compute/cloud-container-engine") return <CloudContainerEnginePage />;
@@ -655,7 +665,6 @@ function App() {
     <main>
       <Navigation />
       <Hero />
-      <LogoCloud />
       <Services />
       <Infrastructure />
       <Reliability />
@@ -709,7 +718,7 @@ function LegalHubPage() {
 
       <section className="legal-card-section" aria-label="Legal documents">
         <div className="legal-card-grid">
-          {legalDocuments.map((legalDocument) => (
+          {publicLegalDocuments.map((legalDocument) => (
             <a
               className="legal-card"
               href={legalDocument.path}
@@ -10356,15 +10365,6 @@ function MoneyProSolutionPage() {
         <div className="moneypro-hero-visual" aria-label="MoneyPro mobile wallet preview" />
       </section>
 
-      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
-        <p>From visionary startups to industry leaders.</p>
-        <div>
-          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
-            <span key={brand}>{brand}</span>
-          ))}
-        </div>
-      </section>
-
       <section className="moneypro-section moneypro-challenges">
         <h2>Key Challenges We Address</h2>
         <div className="moneypro-challenge-grid">
@@ -10639,15 +10639,6 @@ function ConnectPaySolutionPage() {
         <div className="moneypro-hero-visual" aria-label="ConnectPay payment confirmation preview" />
       </section>
 
-      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
-        <p>From visionary startups to industry leaders.</p>
-        <div>
-          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
-            <span key={brand}>{brand}</span>
-          ))}
-        </div>
-      </section>
-
       <section className="moneypro-section moneypro-challenges">
         <h2>Key Challenges We Address</h2>
         <div className="moneypro-challenge-grid">
@@ -10916,15 +10907,6 @@ function FlexiPaySolutionPage() {
             <CreditCard size={22} />
             <span>Instant settlement</span>
           </div>
-        </div>
-      </section>
-
-      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
-        <p>From visionary startups to industry leaders.</p>
-        <div>
-          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
-            <span key={brand}>{brand}</span>
-          ))}
         </div>
       </section>
 
@@ -11201,15 +11183,6 @@ function AutoAssistSolutionPage() {
         <div className="moneypro-hero-visual autoassist-hero-visual" aria-label="AutoAssist SMS USSD IVR mobile self-care preview" />
       </section>
 
-      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
-        <p>From visionary startups to industry leaders.</p>
-        <div>
-          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
-            <span key={brand}>{brand}</span>
-          ))}
-        </div>
-      </section>
-
       <section className="moneypro-section moneypro-challenges">
         <h2>Key Challenges We Address</h2>
         <div className="moneypro-challenge-grid">
@@ -11467,15 +11440,6 @@ function BizFlowSolutionPage() {
           </div>
         </div>
         <div className="moneypro-hero-visual bizflow-hero-visual" aria-label="BizFlow telecom BSS and OSS preview" />
-      </section>
-
-      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
-        <p>From visionary startups to industry leaders.</p>
-        <div>
-          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
-            <span key={brand}>{brand}</span>
-          ))}
-        </div>
       </section>
 
       <section className="moneypro-section moneypro-challenges">
@@ -11738,15 +11702,6 @@ function ChargeOneSolutionPage() {
         <div className="moneypro-hero-visual chargeone-hero-visual" aria-label="ChargeOne telecom charging and billing preview" />
       </section>
 
-      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
-        <p>From visionary startups to industry leaders.</p>
-        <div>
-          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
-            <span key={brand}>{brand}</span>
-          ))}
-        </div>
-      </section>
-
       <section className="moneypro-section moneypro-challenges">
         <h2>Key Challenges We Address</h2>
         <div className="moneypro-challenge-grid">
@@ -12004,15 +11959,6 @@ function PolicyProSolutionPage() {
           </div>
         </div>
         <div className="moneypro-hero-visual policypro-hero-visual" aria-label="PolicyPro policy control and charging preview" />
-      </section>
-
-      <section className="moneypro-logo-strip" aria-label="Trusted by companies">
-        <p>From visionary startups to industry leaders.</p>
-        <div>
-          {["ssPay", "fluiz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map((brand) => (
-            <span key={brand}>{brand}</span>
-          ))}
-        </div>
       </section>
 
       <section className="moneypro-section moneypro-challenges">
@@ -13087,21 +13033,6 @@ function DocumentationPreview() {
         </div>
       </section>
     </div>
-  );
-}
-
-function LogoCloud() {
-  return (
-    <section className="logo-cloud" aria-label="Trusted companies">
-      <p>From visionary startups to industry leaders.</p>
-      <div>
-        {["ssPay", "fliuz", "ferry", "BNY", "pingpong", "AtoB", "Gynger"].map(
-          (name) => (
-            <span key={name}>{name}</span>
-          )
-        )}
-      </div>
-    </section>
   );
 }
 
@@ -14950,11 +14881,17 @@ function Footer() {
         {footerColumns.map(([heading, ...items]) => (
           <div key={heading}>
             <h3>{heading}</h3>
-            {items.map((item) => (
-              <a key={item} href={footerLinkTargets[item] || "#"}>
-                {item}
-              </a>
-            ))}
+            {items.map((item) =>
+              disabledFooterLinks.has(item) ? (
+                <span className="footer-disabled-link" key={item}>
+                  {item}
+                </span>
+              ) : (
+                <a key={item} href={footerLinkTargets[item] || "#"}>
+                  {item}
+                </a>
+              )
+            )}
           </div>
         ))}
       </div>
