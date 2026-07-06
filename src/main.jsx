@@ -347,12 +347,15 @@ const footerColumns = [
 
 const footerLinkTargets = {
   About: "/about",
+  Documentation: "https://docs-htgcloud-region-02.htgclouds.com/en-us/index.html",
   "Privacy Policy": "/legal/privacy-policy",
   "Online Subscription and Ordering Terms": "/legal/online-subscription-and-ordering-terms",
   "View All Legal Documents": "/legal"
 };
 
-const disabledFooterLinks = new Set(["Blog", "Documentation", "Contact"]);
+const externalFooterLinks = new Set(["Documentation"]);
+
+const disabledFooterLinks = new Set(["Blog", "Contact"]);
 
 const pricingTabs = ["Compute", "Storage", "Networking", "Database"];
 
@@ -14888,7 +14891,12 @@ function Footer() {
                   {item}
                 </span>
               ) : (
-                <a key={item} href={footerLinkTargets[item] || "#"}>
+                <a
+                  key={item}
+                  href={footerLinkTargets[item] || "#"}
+                  target={externalFooterLinks.has(item) ? "_blank" : undefined}
+                  rel={externalFooterLinks.has(item) ? "noreferrer" : undefined}
+                >
                   {item}
                 </a>
               )
