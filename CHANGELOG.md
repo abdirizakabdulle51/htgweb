@@ -1,5 +1,12 @@
 # Changelog
 
+- 2026-07-12: Confirmed and fixed Why HTG Clouds closing CTA rendered line count. Status: complete.
+- 2026-07-12: Refined Why HTG Clouds closing CTA headline wrapping and weight. Status: complete.
+- 2026-07-12: Refined Why HTG Clouds headline wrapping and section header weights. Status: complete.
+- 2026-07-12: Fixed Why HTG Clouds section header weights and Trust Center headline rendering. Status: complete.
+- 2026-07-12: Replaced Why HTG Clouds hero map with Natural Earth-based East Africa SVG. Status: complete.
+- 2026-07-11: Added Why HTG Clouds page with local advantage and Trust Center sections. Status: complete.
+- 2026-07-06: Added route-level page titles and meta descriptions across site routes. Status: complete.
 - 2026-07-05: Normalized trailing slash handling for public Legal routes. Status: complete.
 - 2026-07-05: Replaced three homepage use-case photos with Nappy-sourced Black professional imagery. Status: complete.
 - 2026-07-05: Removed partner logo strip sections from homepage and solution pages. Status: complete.

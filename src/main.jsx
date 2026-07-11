@@ -110,7 +110,7 @@ const navItems = [
   { label: "Products", hasMenu: true },
   { label: "Solutions", hasMenu: true },
   { label: "About us", path: "/about" },
-  { label: "Why HTG Clouds" },
+  { label: "Why HTG Clouds", path: "/why-htg-clouds" },
   { label: "Pricing", path: "/pricing" }
 ];
 
@@ -420,6 +420,113 @@ const pricingFaqs = [
   }
 ];
 
+const whyCloudAdvantages = [
+  {
+    title: "Stay Connected Even When Others Can't",
+    text:
+      "Local-first connectivity built for real-world conditions. HTG Clouds provides optimized local access paths so your organization stays reliably connected, with reduced dependency on international routes.",
+    icon: Radio
+  },
+  {
+    title: "The Fastest Cloud Experience Across East Africa",
+    text:
+      "Distance matters. By placing infrastructure closer to your users, HTG Clouds delivers faster response times than cloud platforms hosted outside the region — for financial services, telecom, and real-time applications.",
+    icon: Zap
+  },
+  {
+    title: "Connected to the Region's Digital Economy",
+    text:
+      "Expanding across East Africa shouldn't mean rebuilding your stack country by country. HTG Clouds connects you to local mobile money ecosystems, regional payment providers, enterprise billing integrations, and major East African telecom operators out of the box.",
+    icon: CreditCard
+  },
+  {
+    title: "Enterprise Grade Security",
+    text:
+      "Identity and access management, network isolation, monitoring, auditing, and backup and disaster recovery — enterprise-grade protection built into every layer.",
+    icon: ShieldCheck
+  },
+  {
+    title: "360° Visibility of Your Environment",
+    text:
+      "Infrastructure should never feel like a black box. See compute, storage, network, application health, and security events in one place, and make decisions based on real data.",
+    icon: Eye
+  },
+  {
+    title: "Scalability & Automation",
+    text:
+      "From startup to enterprise, increase resources on demand, automate infrastructure operations, and optimize costs as fast as your business grows.",
+    icon: SlidersVertical
+  }
+];
+
+const trustCenterCards = [
+  {
+    title: "Security & Compliance",
+    items: [
+      "Identity & access management",
+      "Network security",
+      "Data protection & encryption",
+      "Monitoring & auditing",
+      "Backup & disaster recovery"
+    ],
+    icon: Shield,
+    signal: "5-layer",
+    summary: "Controls built into identity, network, data, monitoring, and recovery."
+  },
+  {
+    title: "Reliability",
+    items: [
+      "High availability design",
+      "Redundant infrastructure",
+      "Continuous monitoring",
+      "Disaster recovery capabilities",
+      "AI-ready, multi-environment support (private, hybrid, enterprise)"
+    ],
+    icon: CircleCheck,
+    signal: "HA",
+    summary: "Designed for resilient services across critical production environments."
+  },
+  {
+    title: "Transparency",
+    items: [
+      "Real-time resource visibility",
+      "Performance monitoring",
+      "Security event tracking",
+      "Operational status",
+      "Cost management"
+    ],
+    icon: Eye,
+    signal: "360°",
+    summary: "Operational visibility for resources, performance, events, and cost."
+  },
+  {
+    title: "Compliance",
+    items: [
+      "Industry best practices",
+      "Data protection standards",
+      "Compliance frameworks",
+      "Regular assessments",
+      "Governance & policies"
+    ],
+    icon: Lock,
+    signal: "Governed",
+    summary: "Best-practice frameworks and assessments guide platform operations."
+  },
+  {
+    title: "Regional Advantage",
+    items: [
+      "Local connectivity expertise",
+      "Understanding of local markets",
+      "Data sovereignty support",
+      "Local payment integrations",
+      "Built for East African businesses"
+    ],
+    icon: Globe2,
+    signal: "Local",
+    summary: "Regional connectivity, market knowledge, and payment integrations."
+  }
+];
+
 const consolePrimaryNav = [
   { type: "item", label: "Home", path: "/dashboard", icon: "H" },
   { type: "header", label: "Favorites" },
@@ -609,6 +716,277 @@ function updateMetaDescription(description) {
   metaDescription.setAttribute("content", description);
 }
 
+const defaultPageMetadata = {
+  title: "HTG Clouds | Enterprise Cloud Platform",
+  description:
+    "Build, deploy, and scale with HTG Clouds compute, storage, networking, databases, security, and application services."
+};
+
+const pageMetadata = {
+  "/": defaultPageMetadata,
+  "/about": {
+    title: "About HTG Clouds | AI-First Cloud",
+    description:
+      "Learn how HTG Clouds builds regional AI-first cloud infrastructure for secure, high-performance workloads across East Africa."
+  },
+  "/about-us": {
+    title: "About HTG Clouds | AI-First Cloud",
+    description:
+      "Learn how HTG Clouds builds regional AI-first cloud infrastructure for secure, high-performance workloads across East Africa."
+  },
+  "/why-htg-clouds": {
+    title: "Why HTG Clouds | Regional Cloud",
+    description:
+      "See why HTG Clouds combines enterprise-grade cloud infrastructure with East African connectivity, security, reliability, and local expertise."
+  },
+  "/pricing": {
+    title: "Cloud Pricing | HTG Clouds",
+    description:
+      "Review HTG Clouds pricing for compute, storage, networking, databases, backup, and other cloud infrastructure services."
+  },
+  "/pricing/calculator": {
+    title: "Pricing Calculator | HTG Clouds",
+    description:
+      "Estimate monthly HTG Clouds costs for compute, storage, networking, and managed infrastructure using the pricing calculator."
+  },
+  "/signup": {
+    title: "Create Account | HTG Clouds",
+    description:
+      "Create your HTG Clouds account to access regional cloud infrastructure, AI compute, storage, networking, and platform services."
+  },
+  "/signin": {
+    title: "Sign In | HTG Clouds",
+    description:
+      "Sign in to the HTG Clouds console to manage cloud resources, projects, billing, security, and infrastructure services."
+  },
+  "/verify-email": {
+    title: "Verify Email | HTG Clouds",
+    description:
+      "Verify your email address to secure your HTG Clouds account and continue setting up your cloud console access."
+  },
+  "/forgot-password": {
+    title: "Reset Password | HTG Clouds",
+    description:
+      "Request a secure password reset link for your HTG Clouds account and restore access to the cloud console."
+  },
+  "/recovery-link-sent": {
+    title: "Recovery Link Sent | HTG Clouds",
+    description:
+      "Check your inbox for the HTG Clouds password recovery link and continue the secure account reset process."
+  },
+  "/reset-password": {
+    title: "Set New Password | HTG Clouds",
+    description:
+      "Create a new secure password for your HTG Clouds account and regain access to the cloud console."
+  },
+  "/onboarding": {
+    title: "Account Onboarding | HTG Clouds",
+    description:
+      "Complete HTG Clouds onboarding by selecting account type, cloud needs, budget, and timeline before entering the console."
+  },
+  "/dashboard": {
+    title: "Cloud Dashboard | HTG Clouds",
+    description:
+      "Manage HTG Clouds services, projects, regions, favorites, and cloud resources from the customer dashboard."
+  },
+  "/services": {
+    title: "Cloud Services | HTG Clouds",
+    description:
+      "Browse HTG Clouds compute, storage, network, database, application, and security services in the cloud console."
+  },
+  "/products/compute/elastic-cloud-server": {
+    title: "Elastic Cloud Server | HTG Clouds",
+    description:
+      "Deploy scalable virtual cloud servers with secure networking, flexible compute, high availability, and production-ready performance."
+  },
+  "/products/compute/cloud-container-engine": {
+    title: "Cloud Container Engine | HTG Clouds",
+    description:
+      "Run Kubernetes workloads with HTG Clouds managed container clusters, worker nodes, load balancers, and cloud integrations."
+  },
+  "/products/compute/image-management-service": {
+    title: "Image Management Service | HTG Clouds",
+    description:
+      "Create, manage, replicate, and deploy standardized cloud images across HTG Clouds compute environments."
+  },
+  "/products/compute/bare-metal-server": {
+    title: "Bare Metal Server | HTG Clouds",
+    description:
+      "Run dedicated physical servers with predictable performance, cloud operations, and enterprise-grade infrastructure control."
+  },
+  "/products/compute/auto-scaling": {
+    title: "Auto Scaling | HTG Clouds",
+    description:
+      "Automatically adjust ECS capacity based on workload demand with scheduled, policy-based, and health-aware scaling."
+  },
+  "/products/storage/elastic-volume-service": {
+    title: "Elastic Volume Service | HTG Clouds",
+    description:
+      "Attach persistent block storage to cloud servers with elastic capacity, snapshots, encryption, and reliable production storage."
+  },
+  "/products/storage/object-storage-service": {
+    title: "Object Storage Service | HTG Clouds",
+    description:
+      "Store unstructured data, backups, media, and application objects with scalable, durable, and secure cloud object storage."
+  },
+  "/products/storage/scalable-file-service": {
+    title: "Scalable File Service | HTG Clouds",
+    description:
+      "Share file storage across multiple cloud servers with elastic capacity, high availability, and centralized management."
+  },
+  "/products/storage/cloud-server-backup-service": {
+    title: "Cloud Server Backup | HTG Clouds",
+    description:
+      "Protect cloud servers with encrypted online backups, rapid recovery, durable storage, and centralized backup management."
+  },
+  "/products/storage/volume-backup-service": {
+    title: "Volume Backup Service | HTG Clouds",
+    description:
+      "Back up cloud volumes with point-in-time recovery, encrypted backup storage, cross-AZ protection, and disk resilience."
+  },
+  "/products/network/virtual-private-cloud": {
+    title: "Virtual Private Cloud | HTG Clouds",
+    description:
+      "Create isolated private cloud networks with subnets, routing, security controls, and scalable infrastructure connectivity."
+  },
+  "/products/network/elastic-ip": {
+    title: "Elastic IP | HTG Clouds",
+    description:
+      "Assign static public IP addresses to cloud resources with flexible binding, bandwidth control, and production connectivity."
+  },
+  "/products/network/elastic-load-balance": {
+    title: "Elastic Load Balance | HTG Clouds",
+    description:
+      "Distribute application traffic across cloud servers with health checks, scalable balancing, and resilient service delivery."
+  },
+  "/products/network/virtual-private-network": {
+    title: "Virtual Private Network | HTG Clouds",
+    description:
+      "Connect private networks securely with encrypted VPN tunnels for hybrid cloud, branch, and enterprise connectivity."
+  },
+  "/products/network/domain-name-service": {
+    title: "Domain Name Service | HTG Clouds",
+    description:
+      "Manage DNS records, domain resolution, routing, and reliable name services for cloud applications and public services."
+  },
+  "/products/database/rds-for-mysql": {
+    title: "RDS for MySQL | HTG Clouds",
+    description:
+      "Run managed MySQL databases with backups, monitoring, availability, and simplified operations on HTG Clouds."
+  },
+  "/products/database/data-replication-service": {
+    title: "Data Replication Service | HTG Clouds",
+    description:
+      "Replicate and migrate databases with secure data synchronization, migration workflows, and operational continuity."
+  },
+  "/products/database/gaussdb": {
+    title: "GaussDB | HTG Clouds",
+    description:
+      "Deploy enterprise database workloads with distributed architecture, reliability, security, and scalable cloud operations."
+  },
+  "/products/application/simple-message-notification": {
+    title: "Simple Message Notification | HTG Clouds",
+    description:
+      "Send reliable application notifications, alerts, and messages through scalable cloud messaging workflows."
+  },
+  "/products/application/roma-connect": {
+    title: "ROMA Connect | HTG Clouds",
+    description:
+      "Integrate applications, data, APIs, and systems with HTG Clouds ROMA Connect for enterprise digital workflows."
+  },
+  "/products/security/web-application-firewall": {
+    title: "Web Application Firewall | HTG Clouds",
+    description:
+      "Protect web applications from common attacks with WAF policies, traffic inspection, and centralized security controls."
+  },
+  "/products/security/cloud-bastion-host": {
+    title: "Cloud Bastion Host | HTG Clouds",
+    description:
+      "Control privileged access to cloud resources with secure bastion sessions, auditing, and centralized account governance."
+  },
+  "/solutions/fintech/moneypro": {
+    title: "MoneyPro Fintech | HTG Clouds",
+    description:
+      "Explore MoneyPro, a secure fintech solution for digital finance, wallet services, payments, and financial operations."
+  },
+  "/solutions/fintech/connectpay": {
+    title: "ConnectPay Fintech | HTG Clouds",
+    description:
+      "Discover ConnectPay, a unified digital platform for communication, entertainment, payments, and financial services."
+  },
+  "/solutions/fintech/flexipay": {
+    title: "FlexiPay Fintech | HTG Clouds",
+    description:
+      "Learn how FlexiPay supports secure digital payments, merchant transactions, and flexible financial service workflows."
+  },
+  "/solutions/telecom/autoassist": {
+    title: "AutoAssist Telecom | HTG Clouds",
+    description:
+      "Deliver omni-channel telecom self-care across SMS, USSD, IVR, and mobile apps with AutoAssist."
+  },
+  "/solutions/telecom/chargeone": {
+    title: "ChargeOne Billing | HTG Clouds",
+    description:
+      "Modernize telecom charging and billing with scalable rating, payments, tariff controls, and secure financial operations."
+  },
+  "/solutions/telecom/bizflow": {
+    title: "BizFlow BSS OSS | HTG Clouds",
+    description:
+      "Optimize telecom customer management, revenue growth, service journeys, and BSS/OSS operations with BizFlow."
+  },
+  "/solutions/telecom/policypro": {
+    title: "PolicyPro Charging | HTG Clouds",
+    description:
+      "Manage telecom policy control, charging, usage monitoring, and differentiated service plans with PolicyPro."
+  },
+  "/legal": {
+    title: "Legal Documents | HTG Clouds",
+    description:
+      "Review HTG Clouds legal policies, subscription terms, service levels, acceptable use rules, and responsibility guidance."
+  },
+  "/legal/privacy-policy": {
+    title: "Privacy Policy | HTG Clouds",
+    description:
+      "Read the HTG Clouds Privacy Policy covering personal data collection, use, retention, security, and customer rights."
+  },
+  "/legal/acceptable-use-policy": {
+    title: "Acceptable Use Policy | HTG Clouds",
+    description:
+      "Review acceptable and prohibited uses of HTG Clouds services, including abuse, security, content, and reporting rules."
+  },
+  "/legal/online-subscription-and-ordering-terms": {
+    title: "Online Ordering Terms | HTG Clouds",
+    description:
+      "Read HTG Clouds online subscription and ordering terms for purchasing, billing, renewals, service use, and account obligations."
+  },
+  "/legal/service-level-agreement": {
+    title: "Service Level Agreement | HTG Clouds",
+    description:
+      "Review the HTG Clouds Service Level Agreement for availability commitments, exclusions, maintenance, and customer responsibilities."
+  },
+  "/legal/shared-responsibility-matrix": {
+    title: "Shared Responsibility | HTG Clouds",
+    description:
+      "Understand how HTG Clouds and customers share responsibility for cloud security, access, data, applications, and operations."
+  }
+};
+
+function normalizeMetadataPath(route) {
+  const pathname = route.split("?")[0] || "/";
+  return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+}
+
+function getPageMetadata(route) {
+  const metadataPath = normalizeMetadataPath(route);
+  return pageMetadata[metadataPath] || defaultPageMetadata;
+}
+
+function updateRouteMetadata(route) {
+  const { title, description } = getPageMetadata(route);
+  document.title = title;
+  updateMetaDescription(description);
+}
+
 function App() {
   const [route, setRoute] = useState(window.location.pathname + window.location.search);
   const path = route.split("?")[0];
@@ -620,6 +998,11 @@ function App() {
     return () => window.removeEventListener("popstate", handleRoute);
   }, []);
 
+  useEffect(() => {
+    const metadataTimer = window.setTimeout(() => updateRouteMetadata(route), 0);
+    return () => window.clearTimeout(metadataTimer);
+  }, [route]);
+
   if (path === "/signup") return <SignUpPage />;
   if (path === "/signin") return <SignInPage />;
   if (path === "/verify-email") return <VerifyEmailPage />;
@@ -630,6 +1013,7 @@ function App() {
   if (path === "/dashboard") return <DashboardRoute />;
   if (path === "/services") return <ServicesRoute />;
   if (path === "/about" || path === "/about-us") return <AboutPage />;
+  if (path === "/why-htg-clouds") return <WhyHTGCloudsPage />;
   if (legalPath === "/legal") return <LegalHubPage />;
   const legalDocument = publicLegalDocuments.find((documentItem) => documentItem.path === legalPath);
   if (legalDocument) return <LegalDocumentPage legalDocument={legalDocument} />;
@@ -1109,6 +1493,181 @@ function AboutPage() {
             }}
           >
             Start Building Today
+          </a>
+        </div>
+      </section>
+
+      <Footer />
+    </main>
+  );
+}
+
+function EastAfricaPresenceMap() {
+  return (
+    <figure className="why-map-card" aria-label="HTG Clouds presence in Kenya, Ethiopia, Somalia, and Somaliland">
+      <div className="why-map-header">
+        <span>Regional Presence</span>
+        <strong>Kenya, Ethiopia, Somalia, Somaliland</strong>
+      </div>
+      <svg className="why-map-svg" viewBox="0 0 520 420" role="img" aria-labelledby="why-map-title">
+        <title id="why-map-title">Simplified East Africa map showing HTG Clouds presence in Kenya, Ethiopia, Somalia, and Somaliland</title>
+        <defs>
+          <linearGradient id="whyMapPresence" x1="18%" y1="10%" x2="84%" y2="88%">
+            <stop offset="0%" stopColor="#7ce7e5" />
+            <stop offset="100%" stopColor="#13a9b2" />
+          </linearGradient>
+          <filter id="whyMapShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="16" stdDeviation="18" floodColor="#0b3940" floodOpacity="0.18" />
+          </filter>
+        </defs>
+        <g filter="url(#whyMapShadow)">
+          <path className="why-map-neighbor" data-country="Tanzania" d="M215.9 255.6 L218.2 256.9 L267.4 279.3 L268.4 285.6 L287.9 296.6 L281.6 310.2 L282.4 316.4 L291.1 320.4 L291.5 323.3 L287.8 329.9 L288.5 333.3 L287.6 338.5 L292.4 345.4 L298 356.3 L303 358.7 L292.2 365.1 L277.3 369.3 L269.2 369.2 L264.4 372.5 L254.9 372.7 L251.4 374.1 L235.1 371 L224.8 371.9 L221 357 L216.4 351.8 L213.7 348.8 L200.4 346.7 L192.7 343.4 L184.1 341.6 L178.7 339.7 L173 336.9 L165.7 323.1 L157.8 316.9 L155.1 310.5 L156.4 304.8 L154 294.7 L159.6 294.2 L164.5 290.2 L169.8 284.5 L173.2 282.2 L173 278.6 L170.1 276.1 L169.3 271.8 L173.2 270.4 L174 263.9 L168.6 257.7 L173.4 256.4 L188.3 256.5 L215.9 255.6 Z" />
+          <path className="why-map-neighbor" data-country="Sudan" d="M89.2 154.7 L78.9 149.9 L74.2 146.7 L73.3 143.3 L75.5 138.7 L75.5 134.2 L67.6 127.3 L66.1 122.6 L66.3 120 L61.3 116.7 L61.1 110.3 L58.3 106.1 L53.5 106.7 L54.9 102.7 L58.4 98.1 L56.8 93.5 L61.3 90.2 L58.5 87.6 L62.1 80.8 L68.3 72.7 L80 73.5 L79.3 29.8 L79.5 25.2 L95.1 25.2 L95.1 3.2 L149.6 3.2 L202.3 3.2 L256.1 3.2 L260.5 14 L257.5 16 L259.5 27.3 L264.5 40.4 L269.7 43.2 L277.1 47.2 L270.2 53.5 L260.2 55.3 L256 58.7 L254.6 66 L248.8 82.2 L250.2 86.6 L248.1 96 L242.5 106.8 L234.4 112.3 L228.5 120.7 L227.2 125.2 L220.7 128.3 L216.7 139.8 L216.9 149.7 L216.7 141.1 L214.9 140.9 L215.1 135.4 L213.5 131.6 L206.5 127.3 L204.8 119.3 L206.5 111.2 L200.2 110.5 L199.3 112.9 L191.1 113.5 L194.4 116.7 L195.5 123.3 L188.1 129.4 L181.3 137.3 L174.3 138.4 L162.9 132 L157.8 134.3 L156.4 137.5 L149.4 139.6 L148.9 141.8 L135.4 141.8 L133.5 139.6 L123.8 139.2 L118.9 141.1 L115.1 140.1 L108.1 133.7 L105.8 130.7 L96 132.2 L92.3 137.3 L88.8 147.1 L84.1 149.2 L80 150.4 L89.2 154.7 Z" />
+          <path className="why-map-neighbor" data-country="Eritrea" d="M250.2 86.6 L248.8 82.2 L254.6 66 L256 58.7 L260.2 55.3 L270.2 53.5 L277.1 47.2 L285 60 L288.7 70.1 L296.2 75.4 L314.7 85.8 L322.2 92.1 L329.6 98.4 L333.8 102.2 L340.5 105.5 L336.4 108.2 L330.6 107.2 L326 103.7 L320.4 97.2 L314.4 93.7 L310.9 89.9 L299 85.5 L289.7 85.4 L286.5 83.1 L278.5 85.6 L270.3 80.6 L266 88.9 L250.2 86.6 Z" />
+          <path className="why-map-neighbor" data-country="Djibouti" d="M330.6 107.2 L336.4 108.2 L340.5 105.5 L343.7 108.9 L343.3 113.5 L335.5 116.1 L341.4 119.1 L336.4 125 L333.4 123 L330.1 123.8 L322.5 123.6 L322.3 120.3 L321.2 117.3 L325.8 112.1 L330.6 107.2 Z" />
+          <path className="why-map-neighbor" data-country="Uganda" d="M215.9 255.6 L188.3 256.5 L173.4 256.4 L168.6 257.7 L160.5 261.1 L157.2 260 L157.4 251.7 L160.5 247.5 L161.3 238.6 L164.1 233.5 L169.3 227.8 L174.5 224.9 L178.9 221 L173.4 219.5 L174.3 206.6 L179.9 203.6 L188.5 206.1 L199.4 203.5 L209 203.5 L217.3 198.5 L223.7 206.1 L225.3 211.6 L231.3 224.2 L226.4 232.3 L219.7 239.5 L215.8 244 L215.9 255.6 Z" />
+          <path className="why-map-neighbor" data-country="South Sudan" d="M174.3 206.6 L162.3 199.3 L159.1 194.6 L151.5 196.9 L145.3 196.2 L141.6 198 L135.5 196.7 L127.3 187.6 L125.1 184.1 L115 179.8 L111.6 173.2 L105.9 168.4 L96.8 162.7 L96.6 159.1 L89.2 154.7 L80 150.4 L84.1 149.2 L88.8 147.1 L92.3 137.3 L96 132.2 L105.8 130.7 L108.1 133.7 L115.1 140.1 L118.9 141.1 L123.8 139.2 L133.5 139.6 L135.4 141.8 L148.9 141.8 L149.4 139.6 L156.4 137.5 L157.8 134.3 L162.9 132 L174.3 138.4 L181.3 137.3 L188.1 129.4 L195.5 123.3 L194.4 116.7 L191.1 113.5 L199.3 112.9 L200.2 110.5 L206.5 111.2 L204.8 119.3 L206.5 127.3 L213.5 131.6 L215.1 135.4 L214.9 140.9 L216.7 141.1 L216.9 149.7 L214.9 153 L207.7 153.3 L203 159.6 L211.4 160.4 L218.3 165.7 L220.6 170.1 L226.8 172.7 L234.9 184.6 L225.7 191.9 L217.3 198.5 L209 203.5 L199.4 203.5 L188.5 206.1 L179.9 203.6 L174.3 206.6 Z" />
+          <path className="why-map-presence" data-country="Somalia" d="M320.2 263.7 L312.2 254.6 L312 214.6 L323.9 202.1 L327.6 198.6 L336.3 198.4 L348.4 190.7 L366.1 190.2 L404.4 157.2 L413.9 148 L420 141.2 L420 135.5 L420 124.4 L420.1 119.9 L420.1 119.7 L424.5 119.5 L430.7 117.8 L437.9 116.7 L444.4 113 L449.5 112.9 L449.8 116 L448.6 122.4 L448.6 128.2 L445.7 132.1 L441.9 144 L435.4 156.3 L427 170.3 L415.3 186.5 L403.8 198.8 L387.8 213.8 L374.2 222.7 L353.9 233.6 L341.3 242 L326.4 255.3 L323.3 261.1 L320.2 263.7 Z" />
+          <path className="why-map-presence" data-country="Kenya" d="M287.9 296.6 L268.4 285.6 L267.4 279.3 L218.2 256.9 L215.9 255.6 L215.8 244 L219.7 239.5 L226.4 232.3 L231.3 224.2 L225.3 211.6 L223.7 206.1 L217.3 198.5 L225.7 191.9 L234.9 184.6 L241.9 186.5 L241.9 192.7 L246.5 196.3 L256 196.3 L273.2 205.6 L277.5 205.7 L280.6 205.4 L283.7 206.7 L292.7 207.6 L296.7 203 L309.1 198.4 L314.6 202.1 L323.9 202.1 L312 214.6 L312.2 254.6 L320.2 263.7 L310.7 268.1 L307.3 272.7 L302.3 273.5 L300.3 281.3 L296 285.7 L293.3 293 L287.9 296.6 Z" />
+          <path className="why-map-presence" data-country="Ethiopia" d="M404.4 157.2 L366.1 190.2 L348.4 190.7 L336.3 198.4 L327.6 198.6 L323.9 202.1 L314.6 202.1 L309.1 198.4 L296.7 203 L292.7 207.6 L283.7 206.7 L280.6 205.4 L277.5 205.7 L273.2 205.6 L256 196.3 L246.5 196.3 L241.9 192.7 L241.9 186.5 L234.9 184.6 L226.8 172.7 L220.6 170.1 L218.3 165.7 L211.4 160.4 L203 159.6 L207.7 153.3 L214.9 153 L216.9 149.7 L216.7 139.8 L220.7 128.3 L227.2 125.2 L228.5 120.7 L234.4 112.3 L242.5 106.8 L248.1 96 L250.2 86.6 L266 88.9 L270.3 80.6 L278.5 85.6 L286.5 83.1 L289.7 85.4 L299 85.5 L310.9 89.9 L314.4 93.7 L320.4 97.2 L326 103.7 L330.6 107.2 L325.8 112.1 L321.2 117.3 L322.3 120.3 L322.5 123.6 L330.1 123.8 L333.4 123 L336.4 125 L333.4 128.9 L338.4 135 L343.4 140.3 L348.6 144.2 L393 157.2 L404.4 157.2 Z" />
+          <path className="why-map-presence" data-country="Somaliland" d="M420.1 119.7 L420.1 119.9 L420 124.4 L420 135.5 L420 141.2 L413.9 148 L404.4 157.2 L393 157.2 L348.6 144.2 L343.4 140.3 L338.4 135 L333.4 128.9 L336.4 125 L341.4 119.1 L345.8 121.1 L348.5 125.7 L354.6 130.3 L361.3 130.3 L374.1 127.5 L388.9 126.2 L400.8 122.8 L407.6 122.1 L412.4 120.1 L420.1 119.7 Z" />
+        </g>
+        <g className="why-map-label" transform="translate(382.8 181.4)">
+          <text>Somalia</text>
+        </g>
+        <g className="why-map-label" transform="translate(270.2 238.6)">
+          <text>Kenya</text>
+        </g>
+        <g className="why-map-label" transform="translate(289.2 151.7)">
+          <text>Ethiopia</text>
+        </g>
+        <g className="why-map-label" transform="translate(370.6 137.4)">
+          <text>Somaliland</text>
+        </g>
+      </svg>
+      <div className="why-map-foot">
+        <span>Local access paths</span>
+        <span>Regional cloud operations</span>
+      </div>
+    </figure>
+  );
+}
+
+function WhyHTGCloudsPage() {
+  return (
+    <main className="why-page">
+      <Navigation />
+
+      <section className="why-hero">
+        <div className="why-hero-glow why-hero-glow-left" aria-hidden="true" />
+        <div className="why-hero-glow why-hero-glow-right" aria-hidden="true" />
+        <div className="why-hero-layout">
+          <div className="why-hero-content">
+          <span className="hero-eyebrow">WHY HTG CLOUDS</span>
+          <h1>Built for East Africa. Engineered for Enterprise.</h1>
+          <p>
+            The cloud was designed for global markets, but businesses operate locally. HTG Clouds brings
+            enterprise-grade cloud infrastructure closer to your customers, your teams, and your markets
+            — combining powerful cloud technology with deep regional connectivity, local integrations,
+            and operational expertise.
+          </p>
+          <div className="hero-actions why-hero-actions">
+            <a
+              className="button button-dark hero-cta"
+              href="/signup"
+              onClick={(event) => {
+                event.preventDefault();
+                navigateTo("/signup");
+              }}
+            >
+              Get Started
+            </a>
+            <a
+              className="button hero-cta hero-cta-secondary"
+              href="/signup"
+              onClick={(event) => {
+                event.preventDefault();
+                navigateTo("/signup");
+              }}
+            >
+              Contact Sales
+            </a>
+          </div>
+          </div>
+          <EastAfricaPresenceMap />
+        </div>
+      </section>
+
+      <section className="why-section why-advantage">
+        <div className="why-section-header">
+          <span className="hero-eyebrow">REGIONAL ADVANTAGE</span>
+          <h2>Powerful Cloud. Local Advantage.</h2>
+        </div>
+        <div className="why-advantage-grid">
+          {whyCloudAdvantages.map(({ icon: Icon, title, text }) => (
+            <article className="why-advantage-card" key={title}>
+              <div className="why-card-topline">
+                <Icon size={20} />
+              </div>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="why-section why-trust">
+        <div className="why-trust-panel">
+          <div className="why-section-header why-trust-header">
+            <span className="hero-eyebrow">TRUST CENTER</span>
+            <h2>Your Data. Your Control. Your Confidence.</h2>
+          </div>
+          <div className="why-trust-grid">
+            {trustCenterCards.map(({ icon: Icon, title, items, signal, summary }) => (
+              <article className="why-trust-card" key={title}>
+                <div className="why-trust-visual" aria-hidden="true">
+                  <span className="why-trust-icon">
+                    <Icon size={22} />
+                  </span>
+                  <strong>{signal}</strong>
+                  <div>
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                </div>
+                <h3>{title}</h3>
+                <p>{summary}</p>
+                <ul>
+                  {items.map((item) => (
+                    <li key={item}>
+                      <CircleCheck size={15} />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="why-final-cta">
+        <h2>Enterprise Cloud Technology. Regional Expertise.</h2>
+        <div>
+          <p>
+            HTG Clouds delivers a modern cloud platform built on proven enterprise cloud principles —
+            high availability, security, automation, and performance — empowering organizations across
+            East Africa.
+          </p>
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/signup");
+            }}
+          >
+            Get Started Today
           </a>
         </div>
       </section>
