@@ -6,6 +6,7 @@ import crypto from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
+import { sendVerificationCodeEmail, sendPasswordResetEmail } from "./mailer.js";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -121,9 +122,7 @@ app.post("/api/auth/signup", async (request, response) => {
     }
 
     console.log("[AUTH] User created");
-    console.log("========================================");
-    console.log("[AUTH] Verification code for", email, ":", code);
-    console.log("========================================");
+    await sendVerificationCodeEmail({ to: email, code, fullName });
 
     return response.status(201).json({
       ok: true,
@@ -138,6 +137,10 @@ app.post("/api/auth/signup", async (request, response) => {
 });
 
 app.get("/api/auth/dev-code", async (request, response) => {
+  if (!devResetTokenEndpointEnabled) {
+    return response.status(404).json({ error: "Not found." });
+  }
+
   const email = clean(request.query.email).toLowerCase();
 
   if (!isEmail(email)) {
@@ -208,7 +211,7 @@ app.post("/api/auth/resend-verification", async (request, response) => {
       });
     });
 
-    console.log(`[AUTH] Resent verification code for ${email}: ${code}`);
+    await sendVerificationCodeEmail({ to: email, code, fullName: user.fullName });
 
     return response.json({
       success: true,
@@ -669,16 +672,7 @@ function passwordResetUrl(token) {
 }
 
 async function deliverPasswordReset({ email, resetUrl }) {
-  console.log("=====================================================");
-  console.log("HTGCLOUD PASSWORD RESET (TEST MODE)");
-  console.log("");
-  console.log("Email:");
-  console.log(email);
-  console.log("");
-  console.log("Reset URL:");
-  console.log(resetUrl);
-  console.log("");
-  console.log("=====================================================");
+  await sendPasswordResetEmail({ to: email, resetUrl });
 }
 
 function hashToken(token) {

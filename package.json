@@ -16,10 +16,11 @@
     "dotenv": "latest",
     "express": "latest",
     "jsonwebtoken": "latest",
-    "vite": "latest",
+    "lucide-react": "latest",
+    "nodemailer": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest"
+    "vite": "latest"
   },
   "devDependencies": {
     "concurrently": "latest",
