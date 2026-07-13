@@ -51,6 +51,8 @@ import "./styles.css";
 
 const logoPath = "/logo.png";
 const authPanelPath = "/auth-side-panel.png";
+const externalSignInUrl =
+  "https://auth.htgclouds.com/mounisso/login.action/authenticate?service=https:%2F%2Fauth.htgclouds.com%2Fmounisso%2Fv1%2Fsc%2Fcas%2Flogin%3Fservice%3Dhttps%253A%252F%252Fservice.htgclouds.com%252Fmotenantconsolehomewebsite%252F";
 const FAVORITES_KEY = "htgclouds_favorite_services";
 const publicLegalDocuments = legalDocuments.filter(
   (legalDocument) =>
@@ -1815,11 +1817,7 @@ function Navigation() {
         </a>
         <a
           className="signin"
-          href="/signin"
-          onClick={(event) => {
-            event.preventDefault();
-            navigateTo("/signin");
-          }}
+          href={externalSignInUrl}
         >
           Sign In
         </a>
@@ -14079,11 +14077,7 @@ function SignUpPage() {
           <p className="signup-signin">
             Already have an account?{" "}
             <a
-              href="/signin"
-              onClick={(event) => {
-                event.preventDefault();
-                navigateTo("/signin");
-              }}
+              href={externalSignInUrl}
             >
               Sign In
             </a>
@@ -14703,7 +14697,13 @@ function ResetPasswordPage() {
               Your password has been reset successfully. You can now sign in with your new password.
             </p>
           </header>
-          <button className="auth-submit" type="button" onClick={() => navigateTo("/signin")}>
+          <button
+            className="auth-submit"
+            type="button"
+            onClick={() => {
+              window.location.href = externalSignInUrl;
+            }}
+          >
             Back to Sign In
           </button>
         </div>

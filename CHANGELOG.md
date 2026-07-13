@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-07-13: Pointed visible Sign In links to the external HTGCloud auth portal. Status: complete.
 - 2026-07-12: Confirmed and fixed Why HTG Clouds closing CTA rendered line count. Status: complete.
 - 2026-07-12: Refined Why HTG Clouds closing CTA headline wrapping and weight. Status: complete.
 - 2026-07-12: Refined Why HTG Clouds headline wrapping and section header weights. Status: complete.
