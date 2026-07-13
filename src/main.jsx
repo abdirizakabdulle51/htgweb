@@ -13803,17 +13803,18 @@ function Infrastructure() {
             </div>
             <div className="mini-dashboard">
               <div className="dashboard-head">
-                <span>Deployment Speed</span>
-                <b>V2.3</b>
+                <span>Deployment Timeline</span>
+                <b>Live</b>
               </div>
-              <div className="speed-metrics">
-                <span>
-                  MAX in Minutes <b>14.0</b>
-                </span>
-                <em>vs</em>
-                <span>
-                  MIN in Minutes <b>0.8</b>
-                </span>
+              <div className="deployment-metric">
+                <span>Average deploy time</span>
+                <strong>Under 1 min</strong>
+                <p>From approved template to running cloud service.</p>
+              </div>
+              <div className="deployment-steps" aria-label="Deployment steps">
+                <span>Template</span>
+                <span>Provision</span>
+                <span>Live</span>
               </div>
             </div>
           </article>
@@ -13828,16 +13829,26 @@ function Infrastructure() {
               <a href="#">Explore our Pricing</a>
             </div>
             <div className="control-panel">
-              <div className="tabs">
-                <span>vCPU</span>
-                <span>RAM</span>
+              <div className="cost-breakdown-head">
+                <span>Monthly Estimate</span>
+                <b>$71.00</b>
               </div>
-              <label>
-                vCPU performance <b>100%</b>
-                <input type="range" min="2" max="80" defaultValue="54" />
-              </label>
-              <div className="toggle-row">
-                Spending limit <span />
+              <div className="cost-breakdown">
+                <span>
+                  <small>Compute</small>
+                  <b>$34.00</b>
+                </span>
+                <span>
+                  <small>Storage</small>
+                  <b>$25.00</b>
+                </span>
+                <span>
+                  <small>Network</small>
+                  <b>$12.00</b>
+                </span>
+              </div>
+              <div className="estimate-note">
+                Transparent line items before you deploy
               </div>
             </div>
           </article>
@@ -13884,6 +13895,30 @@ function UseCases() {
 }
 
 function Testimonials() {
+  const testimonials = [
+    {
+      quote:
+        "Managing a rapidly growing super-app ecosystem means our infrastructure needs to scale instantly without sacrificing localized performance. HTG Clouds has been instrumental in supporting this growth. Their robust infrastructure provides the rock-solid uptime and low-latency connectivity required to keep our distributed services seamlessly connected. They don't just hit their SLAs—they provide the foundational reliability that modern, data-driven applications need to scale confidently.",
+      initials: "MA",
+      name: "Mohamed Ali",
+      title: "IT Manager, WAAFI"
+    },
+    {
+      quote:
+        "HTG Clouds has been instrumental in supporting our rapid growth. The 99.9% uptime SLA is not just a promise - they consistently deliver.",
+      initials: "OD",
+      name: "Olivia Davis",
+      title: "CTO @ Telecom Solutions"
+    },
+    {
+      quote:
+        "HTG Clouds has been instrumental in supporting our rapid growth. The 99.9% uptime SLA is not just a promise - they consistently deliver.",
+      initials: "OD",
+      name: "Olivia Davis",
+      title: "CTO @ Telecom Solutions"
+    }
+  ];
+
   return (
     <section className="section testimonials">
       <h2>Trusted by Leading Businesses</h2>
@@ -13892,23 +13927,19 @@ function Testimonials() {
         connectivity needs.
       </p>
       <div className="testimonial-grid">
-        {[1, 2, 3].map((item) => (
-          <article className="testimonial-card" key={item}>
+        {testimonials.map((testimonial, index) => (
+          <article className="testimonial-card" key={`${testimonial.name}-${index}`}>
             <div className="stars" aria-label="Five star rating">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star key={star} size={14} fill="currentColor" />
               ))}
             </div>
-            <blockquote>
-              "HTG Clouds has been instrumental in supporting our rapid growth.
-              The 99.9% uptime SLA is not just a promise - they consistently
-              deliver."
-            </blockquote>
+            <blockquote>"{testimonial.quote}"</blockquote>
             <div className="author">
-              <span className="avatar">OD</span>
+              <span className="avatar">{testimonial.initials}</span>
               <span>
-                <strong>Olivia Davis</strong>
-                CTO @ Telecom Solutions
+                <strong>{testimonial.name}</strong>
+                {testimonial.title}
               </span>
             </div>
           </article>
