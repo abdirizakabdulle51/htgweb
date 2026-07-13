@@ -13799,7 +13799,15 @@ function Infrastructure() {
                 <li>Infrastructure as Code support</li>
                 <li>Integrated monitoring and observability</li>
               </ul>
-              <a href="#">View Deployment Guide</a>
+              <a
+                href="/signup"
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateTo("/signup");
+                }}
+              >
+                View Deployment Guide
+              </a>
             </div>
             <div className="mini-dashboard">
               <div className="dashboard-head">
@@ -13826,7 +13834,15 @@ function Infrastructure() {
                 Scale resources as needed or secure dedicated enterprise
                 agreements.
               </p>
-              <a href="#">Explore our Pricing</a>
+              <a
+                href="/pricing"
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateTo("/pricing");
+                }}
+              >
+                Explore our Pricing
+              </a>
             </div>
             <div className="control-panel">
               <div className="cost-breakdown-head">
