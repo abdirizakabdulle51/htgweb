@@ -8164,6 +8164,10 @@ blockquote {
   align-items: stretch;
 }
 
+.provisioning-card .onboarding-logo {
+  margin-bottom: 64px;
+}
+
 .provisioning-step {
   flex: 0 0 auto;
 }
