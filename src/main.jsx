@@ -4,7 +4,6 @@ import {
   Boxes,
   ChevronDown,
   CircleCheck,
-  Clock,
   Cloud,
   Code2,
   CreditCard,
@@ -15011,9 +15010,7 @@ function ProvisioningPendingPage() {
         <a className="auth-logo signup-logo onboarding-logo" href="/">
           <img src={logoPath} alt="HTGClouds" />
         </a>
-        <div className="provisioning-icon" aria-hidden="true">
-          <Clock size={30} strokeWidth={2.4} />
-        </div>
+        <div className="provisioning-icon" aria-hidden="true" />
         <section className="onboarding-step provisioning-step">
           <h1>Your account is being provisioned</h1>
           <p>

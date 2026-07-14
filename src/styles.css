@@ -8177,11 +8177,6 @@ blockquote {
   box-shadow: 0 16px 34px rgba(35, 184, 190, 0.14);
 }
 
-.provisioning-icon svg {
-  color: var(--brand-dark);
-  stroke: currentColor;
-}
-
 .provisioning-step {
   flex: 0 0 auto;
 }
