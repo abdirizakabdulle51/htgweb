@@ -1748,6 +1748,21 @@ function useCurrentUser() {
 function Navigation() {
   const [isProductMenuOpen, setProductMenuOpen] = useState(false);
   const [isSolutionsMenuOpen, setSolutionsMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
+  const [mobileSolutionsOpen, setMobileSolutionsOpen] = useState(false);
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
+    setMobileProductsOpen(false);
+    setMobileSolutionsOpen(false);
+  }
+
+  function handleMobileNavigate(event, path) {
+    event.preventDefault();
+    closeMobileMenu();
+    navigateTo(path);
+  }
 
   return (
     <header className="site-header">
@@ -1829,11 +1844,157 @@ function Navigation() {
         >
           Sign In
         </a>
-        <button className="menu-button" aria-label="Open navigation">
-          <Menu size={20} />
+        <button
+          className="menu-button"
+          type="button"
+          aria-expanded={isMobileMenuOpen}
+          aria-label={isMobileMenuOpen ? "Close navigation" : "Open navigation"}
+          onClick={() => setMobileMenuOpen((current) => !current)}
+        >
+          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
+      {isMobileMenuOpen && (
+        <MobileNavPanel
+          onClose={closeMobileMenu}
+          onNavigate={handleMobileNavigate}
+          productsOpen={mobileProductsOpen}
+          setProductsOpen={setMobileProductsOpen}
+          solutionsOpen={mobileSolutionsOpen}
+          setSolutionsOpen={setMobileSolutionsOpen}
+        />
+      )}
     </header>
+  );
+}
+
+function MobileNavPanel({
+  onClose,
+  onNavigate,
+  productsOpen,
+  setProductsOpen,
+  solutionsOpen,
+  setSolutionsOpen
+}) {
+  const visibleProductCategories = productCategories.filter(
+    (category) => category.label !== "Management Tools"
+  );
+
+  return (
+    <div className="mobile-nav-panel" aria-label="Mobile navigation">
+      <button
+        className="mobile-nav-toggle"
+        type="button"
+        aria-expanded={productsOpen}
+        onClick={() => {
+          setProductsOpen((current) => !current);
+          setSolutionsOpen(false);
+        }}
+      >
+        Products
+        <ChevronDown size={16} />
+      </button>
+      {productsOpen && (
+        <div className="mobile-nav-submenu">
+          {visibleProductCategories.map(({ label, icon: Icon }) => (
+            <section className="mobile-nav-group" key={label}>
+              <h3>
+                <Icon size={17} />
+                {label}
+              </h3>
+              <div>
+                {(productMenuItems[label] || []).map((product) => (
+                  <a
+                    key={product.name}
+                    href={product.path}
+                    onClick={(event) => {
+                      if (product.path === "#") {
+                        event.preventDefault();
+                        return;
+                      }
+                      onNavigate(event, product.path);
+                    }}
+                  >
+                    {product.name}
+                  </a>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      <button
+        className="mobile-nav-toggle"
+        type="button"
+        aria-expanded={solutionsOpen}
+        onClick={() => {
+          setSolutionsOpen((current) => !current);
+          setProductsOpen(false);
+        }}
+      >
+        Solutions
+        <ChevronDown size={16} />
+      </button>
+      {solutionsOpen && (
+        <div className="mobile-nav-submenu">
+          {solutionGroups.map(({ label, icon: Icon, products }) => (
+            <section className="mobile-nav-group" key={label}>
+              <h3>
+                <Icon size={17} />
+                {label}
+              </h3>
+              <div>
+                {products.map((product) => {
+                  const productPath = solutionProductPaths[product] || "#";
+                  return (
+                    <a
+                      key={product}
+                      href={productPath}
+                      onClick={(event) => {
+                        if (productPath === "#") {
+                          event.preventDefault();
+                          return;
+                        }
+                        onNavigate(event, productPath);
+                      }}
+                    >
+                      {product}
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {navItems
+        .filter((item) => !item.hasMenu)
+        .map((item) => (
+          <a
+            className="mobile-nav-link"
+            key={item.label}
+            href={item.path}
+            onClick={(event) => onNavigate(event, item.path)}
+          >
+            {item.label}
+          </a>
+        ))}
+
+      <div className="mobile-nav-actions">
+        <a
+          className="button button-dark"
+          href="/signup"
+          onClick={(event) => onNavigate(event, "/signup")}
+        >
+          Start for Free
+        </a>
+        <a className="mobile-signin" href={externalSignInUrl} onClick={onClose}>
+          Sign In
+        </a>
+      </div>
+    </div>
   );
 }
 
