@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-07-14: Added dedicated Open Graph banner image for link previews. Status: complete.
 - 2026-07-14: Generated properly sized favicon assets and updated browser icon links. Status: complete.
 - 2026-07-14: Wired up the mobile hamburger navigation with expandable Products and Solutions sections. Status: complete.
 - 2026-07-14: Restored top spacing on the provisioning screen after badge removal. Status: complete.
