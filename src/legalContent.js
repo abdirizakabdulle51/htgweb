@@ -235,15 +235,19 @@ export const legalDocuments = [
           ],
           [
             "Privacy Contact",
-            "[privacy@htgclouds.com / Insert official email]"
+            "support@htgclouds.com"
           ],
           [
             "Security Contact",
-            "[security@htgclouds.com / Insert official email]"
+            "support@htgclouds.com"
           ],
           [
-            "Postal Address",
-            "[Insert registered office address]"
+            "Registered Office – Kenya",
+            "4th Floor, 401, Crawford Business Park, State House Road, Nairobi, Kenya"
+          ],
+          [
+            "Registered Office – Somalia",
+            "Wadada Jayga, off Airport Road, Masjid Ali Jimale, Mogadishu, Somalia"
           ]
         ]
       }
@@ -698,6 +702,14 @@ export const legalDocuments = [
           [
             "Emergency Contact",
             "To be completed in the customer-specific contact schedule where applicable"
+          ],
+          [
+            "Registered Office – Kenya",
+            "HTG Clouds Limited, 4th Floor, 401, Crawford Business Park, State House Road, Nairobi, Kenya"
+          ],
+          [
+            "Registered Office – Somalia",
+            "HTG Clouds Limited, Wadada Jayga, off Airport Road, Masjid Ali Jimale, Mogadishu, Somalia"
           ]
         ]
       },
