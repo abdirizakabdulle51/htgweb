@@ -21,6 +21,8 @@ const jwtSecret = process.env.JWT_SECRET || "replace-with-secure-random-secret";
 const authCookieName = "htgclouds_token";
 const allowedOrigins = new Set([
   clientUrl,
+  "https://htgclouds.com",
+  "https://www.htgclouds.com",
   "https://htgweb.abdirizak-abdulle.workers.dev",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
