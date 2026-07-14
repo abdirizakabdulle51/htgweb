@@ -689,19 +689,15 @@ export const legalDocuments = [
           ],
           [
             "Abuse Contact",
-            "abuse@htgclouds.com or other address published by HTG Clouds"
+            "support@htgclouds.com"
           ],
           [
             "Security Contact",
-            "security@htgclouds.com or approved support channel"
+            "support@htgclouds.com"
           ],
           [
             "Customer Support",
-            "Customer portal, support ticket system, registered email, or approved communication channel"
-          ],
-          [
-            "Emergency Contact",
-            "To be completed in the customer-specific contact schedule where applicable"
+            "support@htgclouds.com"
           ],
           [
             "Registered Office – Kenya",
