@@ -15012,7 +15012,7 @@ function ProvisioningPendingPage() {
           <img src={logoPath} alt="HTGClouds" />
         </a>
         <div className="provisioning-icon" aria-hidden="true">
-          <Clock size={28} />
+          <Clock size={30} strokeWidth={2.4} />
         </div>
         <section className="onboarding-step provisioning-step">
           <h1>Your account is being provisioned</h1>
