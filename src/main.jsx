@@ -1387,7 +1387,7 @@ function AboutPage() {
             </p>
             <p>HTG Clouds was founded in 2024 to solve these challenges.</p>
             <p>
-              Headquartered in Nairobi, Kenya, and operating across Kenya and Somalia, we are building
+              With offices and operations across Kenya and Somalia, we are building
               an AI-first cloud platform designed specifically for African businesses. Our regional
               infrastructure enables organizations to deploy applications, train AI models, and scale
               mission-critical workloads closer to their customers with enterprise-grade security,
