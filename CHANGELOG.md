@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-07-14: Removed the provisioning screen badge circle entirely. Status: complete.
 - 2026-07-14: Removed the icon glyph from the provisioning screen badge. Status: complete.
 - 2026-07-14: Improved the provisioning screen clock badge clarity and centering. Status: complete.
 - 2026-07-14: Added provisioning-pending screen and redirected completed auth flows away from the mock dashboard. Status: complete.

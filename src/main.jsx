@@ -15010,7 +15010,6 @@ function ProvisioningPendingPage() {
         <a className="auth-logo signup-logo onboarding-logo" href="/">
           <img src={logoPath} alt="HTGClouds" />
         </a>
-        <div className="provisioning-icon" aria-hidden="true" />
         <section className="onboarding-step provisioning-step">
           <h1>Your account is being provisioned</h1>
           <p>

@@ -8164,19 +8164,6 @@ blockquote {
   align-items: stretch;
 }
 
-.provisioning-icon {
-  width: 68px;
-  height: 68px;
-  display: grid;
-  place-items: center;
-  margin: 0 auto 22px;
-  border: 1px solid rgba(35, 184, 190, 0.36);
-  border-radius: 50%;
-  color: var(--brand-dark);
-  background: var(--soft-cyan);
-  box-shadow: 0 16px 34px rgba(35, 184, 190, 0.14);
-}
-
 .provisioning-step {
   flex: 0 0 auto;
 }
