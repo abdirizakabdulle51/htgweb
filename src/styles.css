@@ -8160,6 +8160,148 @@ blockquote {
   opacity: 0.45;
 }
 
+.provisioning-card {
+  align-items: stretch;
+}
+
+.provisioning-icon {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  margin: 0 0 22px;
+  border: 1px solid rgba(35, 184, 190, 0.36);
+  border-radius: 50%;
+  color: var(--brand-dark);
+  background: var(--soft-cyan);
+  box-shadow: 0 16px 34px rgba(35, 184, 190, 0.14);
+}
+
+.provisioning-step {
+  flex: 0 0 auto;
+}
+
+.provisioning-step p {
+  margin-bottom: 26px;
+}
+
+.provisioning-status-card {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(17, 24, 39, 0.06);
+}
+
+.provisioning-status-item {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.provisioning-status-item > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--brand-dark);
+  background: var(--soft-cyan);
+  border: 1px solid rgba(35, 184, 190, 0.38);
+}
+
+.provisioning-status-item.complete > span {
+  color: #ffffff;
+  border-color: var(--brand-dark);
+  background: var(--brand-dark);
+}
+
+.provisioning-status-item.current svg {
+  animation: provisioning-spin 1.2s linear infinite;
+}
+
+.provisioning-status-item.pending {
+  color: #8a96a3;
+}
+
+.provisioning-status-item.pending > span {
+  color: #8a96a3;
+  border-color: #e3e8ee;
+  background: #f3f6f8;
+}
+
+.provisioning-status-item strong {
+  display: block;
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.provisioning-status-item.pending strong {
+  color: #7b8794;
+}
+
+.provisioning-status-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.provisioning-status-item.pending p {
+  color: #9aa4af;
+}
+
+.provisioning-contact {
+  margin: 22px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.provisioning-contact a {
+  color: var(--brand-dark);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.provisioning-actions {
+  display: flex;
+  padding-top: 22px;
+}
+
+.provisioning-actions a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 18px;
+  color: var(--ink);
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.provisioning-actions a:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand-dark);
+  color: var(--brand-dark);
+}
+
+@keyframes provisioning-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .solution-page {
   background:
     radial-gradient(circle at 50% 0%, rgba(72, 212, 211, 0.08), transparent 34%),

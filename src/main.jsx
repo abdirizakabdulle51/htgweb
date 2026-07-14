@@ -4,6 +4,7 @@ import {
   Boxes,
   ChevronDown,
   CircleCheck,
+  Clock,
   Cloud,
   Code2,
   CreditCard,
@@ -13,7 +14,9 @@ import {
   Globe2,
   HardDrive,
   Headphones,
+  LoaderCircle,
   Lock,
+  Mail,
   Maximize2,
   Menu,
   MousePointerClick,
@@ -791,6 +794,11 @@ const pageMetadata = {
     description:
       "Manage HTG Clouds services, projects, regions, favorites, and cloud resources from the customer dashboard."
   },
+  "/provisioning": {
+    title: "Setting Up Your Account | HTG Clouds",
+    description:
+      "Your HTG Clouds account is being provisioned. You'll receive an email with your console login shortly."
+  },
   "/services": {
     title: "Cloud Services | HTG Clouds",
     description:
@@ -1013,6 +1021,7 @@ function App() {
   if (path === "/recovery-link-sent") return <RecoveryLinkSentPage />;
   if (path === "/onboarding") return <OnboardingPage />;
   if (path === "/dashboard") return <DashboardRoute />;
+  if (path === "/provisioning") return <ProvisioningPendingPage />;
   if (path === "/services") return <ServicesRoute />;
   if (path === "/about" || path === "/about-us") return <AboutPage />;
   if (path === "/why-htg-clouds") return <WhyHTGCloudsPage />;
@@ -14339,7 +14348,7 @@ function SignInPage() {
         throw new Error("Please verify your email before signing in.");
       }
 
-      const redirectTarget = data.onboardingCompleted ? "/dashboard" : "/onboarding";
+      const redirectTarget = data.onboardingCompleted ? "/provisioning" : "/onboarding";
       console.log(`[SIGNIN] Redirecting to ${redirectTarget}`);
       navigateTo(redirectTarget);
     } catch (error) {
@@ -14472,7 +14481,7 @@ function VerifyEmailPage() {
       const data = await verifyEmail({ email: pendingEmail, code: joined });
       console.log("[AUTH] verification success");
       console.log("[AUTH] onboarding status", data.onboardingCompleted);
-      const redirectTarget = data.onboardingCompleted ? "/dashboard" : "/onboarding";
+      const redirectTarget = data.onboardingCompleted ? "/provisioning" : "/onboarding";
       console.log("[AUTH] redirect target", redirectTarget);
       navigateTo(redirectTarget);
     } catch (error) {
@@ -14968,6 +14977,82 @@ function ConsoleTopBar({ context }) {
   );
 }
 
+function ProvisioningPendingPage() {
+  const isFresh = new URLSearchParams(window.location.search).get("fresh") === "true";
+  const statusItems = [
+    {
+      title: "Account created",
+      text: "Your details were verified and saved.",
+      state: "complete",
+      icon: <CircleCheck size={17} />
+    },
+    {
+      title: "Provisioning your console",
+      text: "Our team is setting up your tenant and resources.",
+      state: "current",
+      icon: <LoaderCircle size={17} />
+    },
+    {
+      title: "Login details emailed to you",
+      text: isFresh ? "Usually within 2 hours." : "We'll email you as soon as it's ready.",
+      state: "pending",
+      icon: <Mail size={17} />
+    }
+  ];
+
+  return (
+    <AuthLayout
+      className="signup-auth-page onboarding-auth-page provisioning-auth-page"
+      shellClassName="signup-shell onboarding-shell"
+      sideLabel="HTGCloud onboarding trust panel"
+      sideContent={<SignupValuePanel />}
+    >
+      <div className="onboarding-card provisioning-card">
+        <a className="auth-logo signup-logo onboarding-logo" href="/">
+          <img src={logoPath} alt="HTGClouds" />
+        </a>
+        <div className="provisioning-icon" aria-hidden="true">
+          <Clock size={28} />
+        </div>
+        <section className="onboarding-step provisioning-step">
+          <h1>Your account is being provisioned</h1>
+          <p>
+            {isFresh
+              ? "Thanks for signing up. Our team is setting up your HTG Clouds console now. You'll get an email within 2 hours with your login and next steps."
+              : "Our team has been notified and is setting up your HTG Clouds console. You'll get an email with your login and next steps as soon as it's ready."}
+          </p>
+        </section>
+        <div className="provisioning-status-card">
+          {statusItems.map((item) => (
+            <article className={`provisioning-status-item ${item.state}`} key={item.title}>
+              <span>{item.icon}</span>
+              <div>
+                <strong>{item.title}</strong>
+                <p>{item.text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+        <p className="provisioning-contact">
+          Questions in the meantime?{" "}
+          <a href="mailto:support@htgclouds.com">support@htgclouds.com</a>
+        </p>
+        <div className="provisioning-actions">
+          <a
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/");
+            }}
+          >
+            Back to homepage
+          </a>
+        </div>
+      </div>
+    </AuthLayout>
+  );
+}
+
 function DashboardPage({ user }) {
   const { user: loadedUser } = useCurrentUser();
   const context = getConsoleContext(user || loadedUser);
@@ -15227,8 +15312,8 @@ function OnboardingPage() {
 
   if (user.onboardingCompleted) {
     return (
-      <ReplacePath to="/dashboard">
-        <DashboardPage user={user} />
+      <ReplacePath to="/provisioning">
+        <ProvisioningPendingPage />
       </ReplacePath>
     );
   }
@@ -15302,8 +15387,8 @@ function OnboardingWizard({ user }) {
     console.log("[AUTH] onboarding status", false);
     await saveOnboarding(form);
     console.log("[AUTH] onboarding status", true);
-    console.log("[AUTH] redirect target", "/dashboard");
-    navigateTo("/dashboard");
+    console.log("[AUTH] redirect target", "/provisioning");
+    navigateTo("/provisioning?fresh=true");
   }
 
   return (

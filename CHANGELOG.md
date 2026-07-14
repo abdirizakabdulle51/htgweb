@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-07-14: Added provisioning-pending screen and redirected completed auth flows away from the mock dashboard. Status: complete.
 - 2026-07-14: Replaced AUP placeholder contact language with support email and registered offices. Status: complete.
 - 2026-07-14: Added real legal contact emails and registered office addresses to Privacy Policy and AUP. Status: complete.
 - 2026-07-14: Hid duplicate placeholder testimonials and centered the single active testimonial card. Status: complete.
