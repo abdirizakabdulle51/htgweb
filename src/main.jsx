@@ -13911,29 +13911,35 @@ function UseCases() {
 }
 
 function Testimonials() {
+  // active: false entries stay in the code for later but are not rendered.
+  // Both Olivia Davis entries currently share identical placeholder text —
+  // give each a real, distinct quote before switching it back to active: true.
   const testimonials = [
     {
       quote:
         "Managing a rapidly growing super-app ecosystem means our infrastructure needs to scale instantly without sacrificing localized performance. HTG Clouds has been instrumental in supporting this growth. Their robust infrastructure provides the rock-solid uptime and low-latency connectivity required to keep our distributed services seamlessly connected. They don't just hit their SLAs—they provide the foundational reliability that modern, data-driven applications need to scale confidently.",
       initials: "MA",
       name: "Mohamed Ali",
-      title: "IT Manager, WAAFI"
+      title: "IT Manager, WAAFI",
+      active: true
     },
     {
       quote:
         "HTG Clouds has been instrumental in supporting our rapid growth. The 99.9% uptime SLA is not just a promise - they consistently deliver.",
       initials: "OD",
       name: "Olivia Davis",
-      title: "CTO @ Telecom Solutions"
+      title: "CTO @ Telecom Solutions",
+      active: false
     },
     {
       quote:
         "HTG Clouds has been instrumental in supporting our rapid growth. The 99.9% uptime SLA is not just a promise - they consistently deliver.",
       initials: "OD",
       name: "Olivia Davis",
-      title: "CTO @ Telecom Solutions"
+      title: "CTO @ Telecom Solutions",
+      active: false
     }
-  ];
+  ].filter((testimonial) => testimonial.active);
 
   return (
     <section className="section testimonials">

@@ -1468,6 +1468,11 @@ img {
   gap: 28px;
 }
 
+.testimonial-grid:has(.testimonial-card:only-child) {
+  grid-template-columns: minmax(0, 640px);
+  justify-content: center;
+}
+
 .testimonial-card {
   padding: 30px;
   border-radius: 8px;

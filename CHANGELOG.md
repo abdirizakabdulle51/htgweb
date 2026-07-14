@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-07-14: Hid duplicate placeholder testimonials and centered the single active testimonial card. Status: complete.
 - 2026-07-13: Added SMTP delivery for verification codes and password resets. Status: complete.
 - 2026-07-13: Wired homepage infrastructure suite pricing and deployment links. Status: complete.
 - 2026-07-13: Centered Products dropdown as a contained nav card. Status: complete.
