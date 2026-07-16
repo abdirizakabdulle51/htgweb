@@ -13145,8 +13145,7 @@ function getFilteredSkus(skus, query) {
       sku.type,
       sku.features,
       sku.vcpu !== undefined ? `${sku.vcpu} vcpu` : "",
-      sku.ramGb !== undefined ? `${sku.ramGb} gb ram` : "",
-      sku.cpuOvercommitRatio ? `cpu ratio ${sku.cpuOvercommitRatio}` : ""
+      sku.ramGb !== undefined ? `${sku.ramGb} gb ram` : ""
     ]
       .filter(Boolean)
       .join(" ")
@@ -13166,7 +13165,6 @@ function getFriendlySkuTitle(sku) {
 function getSkuDetailLine(sku) {
   const details = [];
   if (sku.storageGb !== undefined) details.push(`${sku.storageGb} GB storage`);
-  if (sku.cpuOvercommitRatio) details.push(`CPU Ratio ${sku.cpuOvercommitRatio}`);
   if (sku.includedTraffic) details.push(`${sku.includedTraffic} traffic`);
   if (sku.includedStorage) details.push(`${sku.includedStorage} included`);
   if (sku.retentionPolicy) details.push(`${sku.retentionPolicy} retention`);
@@ -13485,7 +13483,6 @@ function InstanceOptionCard({ sku, service, billingPeriod, selected, onSelect })
         {sku.vcpu !== undefined && <small>{sku.vcpu} vCPU</small>}
         {sku.ramGb !== undefined && <small>{sku.ramGb} GB RAM</small>}
         {sku.storageGb !== undefined && <small>{sku.storageGb} GB storage</small>}
-        {sku.cpuOvercommitRatio && <small>CPU Ratio {sku.cpuOvercommitRatio}</small>}
         {sku.unit === "gb" && <small>Per GB</small>}
         {sku.unit === "mbps" && <small>Per Mbps</small>}
         {sku.unit === "quantity" && <small>Per {sku.unitLabel}</small>}
@@ -13546,12 +13543,6 @@ function SkuPreview({ sku, service, billingPeriod, region }) {
           <div>
             <dt>Storage</dt>
             <dd>{sku.storageGb} GB</dd>
-          </div>
-        )}
-        {sku.cpuOvercommitRatio && (
-          <div>
-            <dt>CPU Ratio</dt>
-            <dd>{sku.cpuOvercommitRatio}</dd>
           </div>
         )}
       </dl>
