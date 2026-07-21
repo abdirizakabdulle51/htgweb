@@ -17,12 +17,19 @@ type AuthUser = {
   productsInterest?: string[];
   budget?: string;
   timeline?: string;
+  provisioningStatus?: string;
+  provisioningUsername?: string;
+  manageOneUserId?: string;
+  manageOneVdcId?: string;
+  manageOneDomainId?: string;
+  provisionedAt?: string;
 };
 
 type SignUpPayload = {
   fullName: string;
   email: string;
   password: string;
+  username?: string;
   company: string;
   country?: string;
   countryCode?: string;
@@ -49,6 +56,7 @@ export async function signUp(payload: SignUpPayload) {
       fullName: payload.fullName,
       email: payload.email,
       password: payload.password,
+      username: payload.username,
       country: payload.country,
       phoneNumber: payload.phone,
       companyName: payload.company

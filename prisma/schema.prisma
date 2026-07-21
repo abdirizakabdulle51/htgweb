@@ -8,20 +8,29 @@ datasource db {
 }
 
 model User {
-  id                  String             @id @default(cuid())
-  fullName            String
-  email               String             @unique
-  passwordHash        String
-  country             String?
-  phoneNumber         String?
-  companyName         String?
-  emailVerified       Boolean            @default(false)
-  onboardingCompleted Boolean            @default(false)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  verificationCodes   VerificationCode[]
-  passwordResetTokens PasswordResetToken[]
-  onboarding          Onboarding?
+  id                             String               @id @default(cuid())
+  fullName                       String
+  email                          String               @unique
+  passwordHash                   String
+  country                        String?
+  phoneNumber                    String?
+  companyName                    String?
+  emailVerified                  Boolean              @default(false)
+  onboardingCompleted            Boolean              @default(false)
+  manageOneVdcId                 String?
+  manageOneDomainId              String?
+  manageOneGroupId               String?
+  manageOneUserId                String?
+  provisioningStatus             String?
+  provisioningError              String?
+  provisioningUsername           String?
+  provisioningPasswordCiphertext String?
+  provisionedAt                  DateTime?
+  createdAt                      DateTime             @default(now())
+  updatedAt                      DateTime             @updatedAt
+  verificationCodes              VerificationCode[]
+  passwordResetTokens            PasswordResetToken[]
+  onboarding                     Onboarding?
 }
 
 model VerificationCode {

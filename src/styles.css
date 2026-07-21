@@ -7216,6 +7216,91 @@ blockquote {
   background: #eefafa;
 }
 
+.signup-password-label {
+  position: relative;
+}
+
+.password-policy-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  margin-top: 0;
+  padding: 12px;
+  border: 1px solid #dde8eb;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(16, 22, 28, 0.12);
+  color: #4d5a64;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.password-policy-popover ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.password-policy-popover li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-weight: 500;
+}
+
+.password-policy-popover li span {
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+}
+
+.password-policy-popover li.valid span {
+  color: #18b985;
+}
+
+.password-policy-popover li.invalid span {
+  color: #ef5b51;
+}
+
+.password-strength {
+  display: grid;
+  grid-template-columns: auto minmax(84px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #edf3f5;
+  color: #5f6e79;
+  font-size: 11px;
+}
+
+.password-strength div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.password-strength i {
+  height: 4px;
+  border-radius: 999px;
+  background: #d7e0e5;
+}
+
+.password-strength i.active {
+  background: var(--brand-dark);
+}
+
+.password-strength strong {
+  color: #10161c;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .signup-card .auth-field-row {
   column-gap: 16px;
   row-gap: 0;
@@ -7245,6 +7330,15 @@ blockquote {
   background: #17212a;
   box-shadow: 0 14px 26px rgba(16, 22, 28, 0.18);
   transform: translateY(-1px);
+}
+
+.signup-card .auth-submit:disabled,
+.signup-card .auth-submit:disabled:hover {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #10161c;
+  box-shadow: none;
+  transform: none;
 }
 
 .signup-card .auth-error {
@@ -8182,6 +8276,36 @@ blockquote {
   margin-bottom: 26px;
 }
 
+.provisioning-login-card {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(35, 184, 190, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(35, 184, 190, 0.1), rgba(255, 255, 255, 0.92));
+}
+
+.provisioning-login-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.provisioning-login-card strong {
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.provisioning-login-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .provisioning-status-card {
   display: grid;
   gap: 18px;
@@ -8287,10 +8411,23 @@ blockquote {
   transition: transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+.provisioning-actions a.primary {
+  border-color: var(--ink);
+  color: #ffffff;
+  background: var(--ink);
+  box-shadow: 0 14px 30px rgba(17, 24, 39, 0.12);
+}
+
 .provisioning-actions a:hover {
   transform: translateY(-1px);
   border-color: var(--brand-dark);
   color: var(--brand-dark);
+}
+
+.provisioning-actions a.primary:hover {
+  border-color: var(--brand-dark);
+  color: #ffffff;
+  background: var(--brand-dark);
 }
 
 @keyframes provisioning-spin {

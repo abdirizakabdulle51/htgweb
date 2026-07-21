@@ -16,6 +16,7 @@
     "dotenv": "latest",
     "express": "latest",
     "jsonwebtoken": "latest",
+    "libphonenumber-js": "^1.13.9",
     "lucide-react": "latest",
     "nodemailer": "latest",
     "react": "latest",

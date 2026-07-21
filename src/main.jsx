@@ -40,6 +40,8 @@ import {
   signUp,
   verifyEmail
 } from "./lib/auth";
+import { passwordStrength, validateManageOnePassword } from "./lib/passwordPolicy.js";
+import { phoneValidationMessage, validatePhoneNumberForCountry } from "./lib/phone.js";
 import { countries as authCountries } from "./data/countries";
 import { legalDocuments } from "./legalContent";
 import { pricingCatalog, pricingServices } from "./pricing/pricingCatalog";
@@ -14200,8 +14202,38 @@ function SignUpPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const selectedCountry = getAuthCountry(form.country);
   const phonePlaceholder = selectedCountry?.phonePlaceholder || "+1 (415) 123-4567";
+  const passwordValidation = useMemo(
+    () =>
+      validateManageOnePassword(form.password, {
+        username,
+        email: form.email,
+        phone: form.phone
+      }),
+    [form.email, form.password, form.phone, username]
+  );
+  const currentPasswordStrength = passwordStrength(form.password, passwordValidation);
+  const phoneInvalid =
+    Boolean(form.phone.trim()) && !validatePhoneNumberForCountry(form.phone, selectedCountry?.code);
+  const phoneError =
+    fieldErrors.phone ||
+    (phoneInvalid ? phoneValidationMessage(form.country) : "");
+  const requiredFieldsComplete = [
+    form.fullName,
+    form.email,
+    form.password,
+    form.country,
+    form.phone,
+    form.company
+  ].every((value) => String(value || "").trim());
+  const emailValid = !form.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
+  const canContinue =
+    requiredFieldsComplete &&
+    emailValid &&
+    passwordValidation.valid &&
+    validatePhoneNumberForCountry(form.phone, selectedCountry?.code);
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -14228,12 +14260,22 @@ function SignUpPage() {
       if (!String(nextForm[field] || "").trim()) errors[field] = message;
     });
 
-    if (nextForm.password && nextForm.password.length < 8) {
-      errors.password = "Password must be at least 8 characters.";
+    const nextPasswordValidation = validateManageOnePassword(nextForm.password, {
+      username,
+      email: nextForm.email,
+      phone: nextForm.phone
+    });
+
+    if (nextForm.password && !nextPasswordValidation.valid) {
+      errors.password = "Password must meet all console requirements below.";
     }
 
     if (nextForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextForm.email.trim())) {
       errors.email = "Enter a valid work email.";
+    }
+
+    if (nextForm.phone && !validatePhoneNumberForCountry(nextForm.phone, getAuthCountry(nextForm.country)?.code)) {
+      errors.phone = phoneValidationMessage(nextForm.country);
     }
 
     return errors;
@@ -14257,6 +14299,7 @@ function SignUpPage() {
       await signUp({
         ...nextForm,
         email,
+        username: username.trim(),
         countryCode: selectedCountry?.code || "",
         phoneCountryCode: selectedCountry?.phoneCode || ""
       });
@@ -14326,20 +14369,31 @@ function SignUpPage() {
             Create username
             <input
               value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="abdirizak_htg"
+              onChange={(event) => {
+                setUsername(event.target.value);
+                setFieldErrors((current) => {
+                  if (!current.password) return current;
+                  const next = { ...current };
+                  delete next.password;
+                  return next;
+                });
+              }}
+              placeholder="Enter a username"
             />
           </label>
-          <label>
+          <label className="signup-password-label">
             <RequiredLabel>Password</RequiredLabel>
             <span className="signup-password-field">
               <input
                 required
                 type={showPassword ? "text" : "password"}
                 minLength={8}
+                maxLength={32}
                 value={form.password}
                 onChange={(event) => updateField("password", event.target.value)}
-                placeholder="At least 8 characters"
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+                placeholder="8-32 characters, meets all requirements below"
                 aria-invalid={Boolean(fieldErrors.password)}
               />
               <button
@@ -14350,6 +14404,27 @@ function SignUpPage() {
                 {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
             </span>
+            {passwordFocused && !passwordValidation.valid && (
+              <div className="password-policy-popover">
+                <ul>
+                  {passwordValidation.results.map((rule) => (
+                    <li key={rule.id} className={rule.valid ? "valid" : "invalid"}>
+                      <span>{rule.valid ? <CircleCheck size={15} /> : <X size={15} />}</span>
+                      {rule.label}
+                    </li>
+                  ))}
+                </ul>
+                <div className="password-strength">
+                  <span>Password Strength</span>
+                  <div aria-hidden="true">
+                    <i className={currentPasswordStrength !== "Weak" ? "active" : ""} />
+                    <i className={currentPasswordStrength === "Strong" ? "active" : ""} />
+                    <i className={currentPasswordStrength === "Strong" ? "active" : ""} />
+                  </div>
+                  <strong>{currentPasswordStrength}</strong>
+                </div>
+              </div>
+            )}
             {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
           </label>
         </div>
@@ -14361,9 +14436,9 @@ function SignUpPage() {
               value={form.phone}
               onChange={(event) => updateField("phone", event.target.value)}
               placeholder={phonePlaceholder}
-              aria-invalid={Boolean(fieldErrors.phone)}
+              aria-invalid={Boolean(phoneError)}
             />
-            {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+            {phoneError && <span className="field-error">{phoneError}</span>}
           </label>
           <label>
             <RequiredLabel>Country</RequiredLabel>
@@ -14399,7 +14474,7 @@ function SignUpPage() {
           {fieldErrors.company && <span className="field-error">{fieldErrors.company}</span>}
         </label>
         {error && <p className="auth-error">{error}</p>}
-        <button className="auth-submit" type="submit">
+        <button className="auth-submit" type="submit" disabled={!canContinue}>
           Continue →
         </button>
         <p className="auth-terms">
@@ -15130,6 +15205,10 @@ function ConsoleTopBar({ context }) {
 
 function ProvisioningPendingPage() {
   const isFresh = new URLSearchParams(window.location.search).get("fresh") === "true";
+  const { user } = useCurrentUser();
+  const isProvisioned = user?.provisioningStatus === "provisioned" || Boolean(user?.manageOneUserId);
+  const hasProvisioningFailed = user?.provisioningStatus === "failed";
+  const consoleUsername = user?.provisioningUsername || user?.email || "your console username";
   const statusItems = [
     {
       title: "Account created",
@@ -15138,16 +15217,24 @@ function ProvisioningPendingPage() {
       icon: <CircleCheck size={17} />
     },
     {
-      title: "Provisioning your console",
-      text: "Our team is setting up your tenant and resources.",
-      state: "current",
-      icon: <LoaderCircle size={17} />
+      title: isProvisioned ? "Console ready" : hasProvisioningFailed ? "Setup needs review" : "Preparing your console",
+      text: isProvisioned
+        ? "Your cloud console is available now."
+        : hasProvisioningFailed
+          ? "Our team has been notified and will review your account."
+          : "Your cloud console is being prepared.",
+      state: isProvisioned ? "complete" : "current",
+      icon: isProvisioned ? <CircleCheck size={17} /> : <LoaderCircle size={17} />
     },
     {
-      title: "Login details emailed to you",
-      text: isFresh ? "Usually within 2 hours." : "We'll email you as soon as it's ready.",
-      state: "pending",
-      icon: <Mail size={17} />
+      title: isProvisioned ? "Sign in with your password" : "Sign-in details",
+      text: isProvisioned
+        ? "Use the password you created during signup."
+        : isFresh
+          ? "Your sign-in details will be ready when setup is complete."
+          : "We'll email you as soon as it's ready.",
+      state: isProvisioned ? "complete" : "pending",
+      icon: isProvisioned ? <CircleCheck size={17} /> : <Mail size={17} />
     }
   ];
 
@@ -15163,13 +15250,22 @@ function ProvisioningPendingPage() {
           <img src={logoPath} alt="HTGClouds" />
         </a>
         <section className="onboarding-step provisioning-step">
-          <h1>Your account is being provisioned</h1>
+          <h1>{isProvisioned ? "Your cloud console is ready" : "Your account is being provisioned"}</h1>
           <p>
-            {isFresh
-              ? "Thanks for signing up. Our team is setting up your HTG Clouds console now. You'll get an email within 2 hours with your login and next steps."
-              : "Our team has been notified and is setting up your HTG Clouds console. You'll get an email with your login and next steps as soon as it's ready."}
+            {isProvisioned
+              ? "Your account has been created successfully. Sign in to your cloud console with the username below and the password you created during signup."
+              : isFresh
+                ? "Thanks for signing up. Your HTG Clouds console setup has started."
+                : "Our team has been notified and is setting up your HTG Clouds console. You'll get an email with your login and next steps as soon as it's ready."}
           </p>
         </section>
+        {isProvisioned && (
+          <div className="provisioning-login-card">
+            <span>Console username</span>
+            <strong>{consoleUsername}</strong>
+            <small>For security, your password is never shown here.</small>
+          </div>
+        )}
         <div className="provisioning-status-card">
           {statusItems.map((item) => (
             <article className={`provisioning-status-item ${item.state}`} key={item.title}>
@@ -15186,6 +15282,11 @@ function ProvisioningPendingPage() {
           <a href="mailto:support@htgclouds.com">support@htgclouds.com</a>
         </p>
         <div className="provisioning-actions">
+          {isProvisioned && (
+            <a className="primary" href={externalSignInUrl}>
+              Open cloud console
+            </a>
+          )}
           <a
             href="/"
             onClick={(event) => {

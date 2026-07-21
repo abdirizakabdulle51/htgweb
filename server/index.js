@@ -7,6 +7,13 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { sendVerificationCodeEmail, sendPasswordResetEmail } from "./mailer.js";
+import * as manageOne from "./manageone.js";
+import { validateManageOnePassword } from "../src/lib/passwordPolicy.js";
+import {
+  normalizePhoneNumberForCountry,
+  phoneValidationMessage,
+  validatePhoneNumberForCountry
+} from "../src/lib/phone.js";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -19,6 +26,7 @@ const devResetTokenEndpointEnabled =
   process.env.ENABLE_DEV_RESET_TOKEN_ENDPOINT === "true" && process.env.NODE_ENV !== "production";
 const jwtSecret = process.env.JWT_SECRET || "replace-with-secure-random-secret";
 const authCookieName = "htgclouds_token";
+const provisioningPasswordKey = crypto.scryptSync(jwtSecret, "manageone-provisioning", 32);
 const allowedOrigins = new Set([
   clientUrl,
   "https://htgclouds.com",
@@ -62,8 +70,9 @@ app.post("/api/auth/signup", async (request, response) => {
     const email = clean(request.body.email).toLowerCase();
     const password = request.body.password || "";
     const country = clean(request.body.country) || null;
-    const phoneNumber = clean(request.body.phoneNumber) || null;
+    let phoneNumber = clean(request.body.phoneNumber) || null;
     const companyName = clean(request.body.companyName) || null;
+    const username = clean(request.body.username) || null;
 
     console.log("[AUTH] Signup request:", email);
 
@@ -75,9 +84,20 @@ app.post("/api/auth/signup", async (request, response) => {
       throw new HttpError("Enter a valid email address.", 400);
     }
 
-    if (password.length < 8) {
-      throw new HttpError("Password must be at least 8 characters.", 400);
+    const passwordValidation = validateManageOnePassword(password, {
+      username,
+      email,
+      phone: phoneNumber
+    });
+
+    if (!passwordValidation.valid) {
+      throw new HttpError("Password must meet the HTG Clouds console password requirements.", 400);
     }
+
+    if (phoneNumber && !validatePhoneNumberForCountry(phoneNumber, country)) {
+      throw new HttpError(phoneValidationMessage(country), 400);
+    }
+    phoneNumber = phoneNumber ? normalizePhoneNumberForCountry(phoneNumber, country) : null;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser?.emailVerified) {
@@ -86,6 +106,9 @@ app.post("/api/auth/signup", async (request, response) => {
 
     const code = verificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const provisioningEnabled = process.env.MANAGEONE_ENABLED === "true";
+    const provisioningPasswordCiphertext = provisioningEnabled ? encryptProvisioningPassword(password) : null;
+    const provisioningUsername = provisioningEnabled ? username || email : null;
     let user = existingUser;
 
     if (existingUser) {
@@ -101,6 +124,10 @@ app.post("/api/auth/signup", async (request, response) => {
           country,
           phoneNumber,
           companyName,
+          provisioningStatus: provisioningPasswordCiphertext ? "pending_onboarding" : existingUser.provisioningStatus,
+          provisioningError: provisioningPasswordCiphertext ? null : existingUser.provisioningError,
+          provisioningPasswordCiphertext,
+          provisioningUsername,
           verificationCodes: {
             create: { code, expiresAt }
           }
@@ -116,6 +143,9 @@ app.post("/api/auth/signup", async (request, response) => {
           country,
           phoneNumber,
           companyName,
+          provisioningStatus: provisioningPasswordCiphertext ? "pending_onboarding" : null,
+          provisioningPasswordCiphertext,
+          provisioningUsername,
           verificationCodes: {
             create: { code, expiresAt }
           }
@@ -124,6 +154,7 @@ app.post("/api/auth/signup", async (request, response) => {
     }
 
     console.log("[AUTH] User created");
+
     await sendVerificationCodeEmail({ to: email, code, fullName });
 
     return response.status(201).json({
@@ -535,7 +566,7 @@ app.post("/api/onboarding", requireAuth, async (request, response) => {
     ? request.body.selectedProducts.filter((product) => typeof product === "string")
     : [];
 
-  const user = await prisma.$transaction(async (tx) => {
+  let user = await prisma.$transaction(async (tx) => {
     await tx.onboarding.upsert({
       where: { userId: request.user.id },
       update: {
@@ -563,6 +594,51 @@ app.post("/api/onboarding", requireAuth, async (request, response) => {
       include: { onboarding: true }
     });
   });
+
+  if (process.env.MANAGEONE_ENABLED === "true" && !user.manageOneUserId) {
+    try {
+      if (!user.provisioningPasswordCiphertext) {
+        throw new Error("Missing encrypted provisioning password handoff.");
+      }
+
+      const provisioningResult = await manageOne.provisionTenant({
+        companyName: user.companyName,
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        username: user.provisioningUsername || user.email,
+        plaintextPassword: decryptProvisioningPassword(user.provisioningPasswordCiphertext)
+      });
+
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          manageOneVdcId: provisioningResult.vdcId,
+          manageOneDomainId: provisioningResult.domainId,
+          manageOneGroupId: provisioningResult.groupId,
+          manageOneUserId: provisioningResult.userId,
+          provisioningStatus: "provisioned",
+          provisioningError: null,
+          provisioningPasswordCiphertext: null,
+          provisionedAt: new Date()
+        },
+        include: { onboarding: true }
+      });
+      console.log(`[MANAGEONE] Tenant provisioned for ${user.email}`);
+    } catch (error) {
+      const provisioningError = safeProvisioningError(error);
+      console.error("[MANAGEONE] Tenant provisioning failed:", provisioningError);
+
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          provisioningStatus: "failed",
+          provisioningError
+        },
+        include: { onboarding: true }
+      });
+    }
+  }
 
   response.json({ ok: true, user: userSummary(user) });
 });
@@ -647,6 +723,12 @@ function userSummary(user) {
     selectedRegion: "US-East",
     emailVerified: user.emailVerified,
     onboardingCompleted: user.onboardingCompleted,
+    provisioningStatus: user.provisioningStatus,
+    provisioningUsername: user.provisioningUsername,
+    manageOneUserId: user.manageOneUserId,
+    manageOneVdcId: user.manageOneVdcId,
+    manageOneDomainId: user.manageOneDomainId,
+    provisionedAt: user.provisionedAt,
     useCase: user.onboarding?.useCase || null,
     alreadyUsesCloudProvider: user.onboarding?.usesCloudProvider || null,
     productsInterest: user.onboarding?.selectedProducts || []
@@ -679,6 +761,43 @@ async function deliverPasswordReset({ email, resetUrl }) {
 
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function encryptProvisioningPassword(password) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", provisioningPasswordKey, iv);
+  const encrypted = Buffer.concat([cipher.update(password, "utf8"), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+
+  return `v1:${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+function decryptProvisioningPassword(ciphertext) {
+  const [version, ivHex, authTagHex, encryptedHex] = String(ciphertext || "").split(":");
+  if (version !== "v1" || !ivHex || !authTagHex || !encryptedHex) {
+    throw new Error("Invalid encrypted provisioning password format.");
+  }
+
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    provisioningPasswordKey,
+    Buffer.from(ivHex, "hex")
+  );
+  decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
+
+  return Buffer.concat([
+    decipher.update(Buffer.from(encryptedHex, "hex")),
+    decipher.final()
+  ]).toString("utf8");
+}
+
+function safeProvisioningError(error) {
+  const message = error instanceof Error ? error.message : String(error || "Unknown ManageOne error");
+  return message
+    .replace(/("password"\s*:\s*")[^"]+/gi, "$1[REDACTED]")
+    .replace(/(password=)[^&\s]+/gi, "$1[REDACTED]")
+    .replace(/(Cookie:\s*)[^\n]+/gi, "$1[REDACTED]")
+    .slice(0, 1000);
 }
 
 class HttpError extends Error {
