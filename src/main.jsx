@@ -14195,7 +14195,7 @@ function SignUpPage() {
     email: "",
     password: "",
     country: "Somalia",
-    phone: "",
+    phone: "+252 ",
     company: ""
   });
   const [username, setUsername] = useState("");
@@ -14241,6 +14241,33 @@ function SignUpPage() {
       if (!current[field]) return current;
       const next = { ...current };
       delete next[field];
+      return next;
+    });
+  }
+
+  function handleCountryChange(value) {
+    const nextCountry = getAuthCountry(value);
+    setForm((current) => {
+      const currentCountry = getAuthCountry(current.country);
+      const phone = String(current.phone || "").trim();
+      const shouldReplacePhone =
+        !phone ||
+        phone === currentCountry?.phoneCode ||
+        phone === `${currentCountry?.phoneCode} ` ||
+        phone === selectedCountry?.phoneCode ||
+        phone === `${selectedCountry?.phoneCode} `;
+
+      return {
+        ...current,
+        country: value,
+        phone: shouldReplacePhone && nextCountry?.phoneCode ? `${nextCountry.phoneCode} ` : current.phone
+      };
+    });
+    setFieldErrors((current) => {
+      if (!current.country && !current.phone) return current;
+      const next = { ...current };
+      delete next.country;
+      delete next.phone;
       return next;
     });
   }
@@ -14445,7 +14472,7 @@ function SignUpPage() {
             <select
               required
               value={form.country}
-              onChange={(event) => updateField("country", event.target.value)}
+              onChange={(event) => handleCountryChange(event.target.value)}
               aria-invalid={Boolean(fieldErrors.country)}
             >
               {authCountries.map((country) => (
