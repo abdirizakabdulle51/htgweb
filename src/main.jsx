@@ -723,9 +723,9 @@ function updateMetaDescription(description) {
 }
 
 const defaultPageMetadata = {
-  title: "HTG Clouds | Enterprise Cloud Platform",
+  title: "HTG Clouds | AI-First Cloud Platform for Africa",
   description:
-    "Build, deploy, and scale with HTG Clouds compute, storage, networking, databases, security, and application services."
+    "HTG Clouds provides compute, storage, networking, databases, security, and AI-ready cloud infrastructure for businesses across Africa."
 };
 
 const pageMetadata = {
