@@ -14478,7 +14478,16 @@ function SignUpPage() {
           Continue →
         </button>
         <p className="auth-terms">
-          By creating an account, you agree to our <a href="#">Privacy policy</a>
+          By creating an account, you agree to our{" "}
+          <a
+            href="/legal/privacy-policy"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/legal/privacy-policy");
+            }}
+          >
+            Privacy policy
+          </a>
         </p>
       </form>
     </AuthLayout>
