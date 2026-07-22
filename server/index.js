@@ -596,6 +596,29 @@ app.post("/api/onboarding", requireAuth, async (request, response) => {
   });
 
   if (process.env.MANAGEONE_ENABLED === "true" && !user.manageOneUserId) {
+    const provisioningLock = await prisma.user.updateMany({
+      where: {
+        id: user.id,
+        manageOneUserId: null,
+        NOT: {
+          provisioningStatus: "provisioning"
+        }
+      },
+      data: {
+        provisioningStatus: "provisioning",
+        provisioningError: null
+      }
+    });
+
+    if (provisioningLock.count === 0) {
+      user = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: { onboarding: true }
+      });
+      console.log(`[MANAGEONE] Provisioning already in progress for ${user.email}`);
+      return response.json({ ok: true, user: userSummary(user) });
+    }
+
     try {
       if (!user.provisioningPasswordCiphertext) {
         throw new Error("Missing encrypted provisioning password handoff.");
