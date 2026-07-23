@@ -95,6 +95,17 @@ app.post("/api/auth/signup", async (request, response) => {
       if (!validateManageOneUsername(username)) {
         throw new HttpError(manageOneUsernameMessage, 400);
       }
+
+      try {
+        await manageOne.assertTenantUsernameAvailable(username);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "");
+        if (/already exists in ManageOne|username already exists|movdc-01109/i.test(message)) {
+          throw new HttpError("This username is already used by another cloud account. Choose a different username.", 409);
+        }
+
+        console.warn(`[AUTH] ManageOne username preflight skipped for ${username}: ${safeProvisioningError(error)}`);
+      }
     }
 
     const passwordValidation = validateManageOnePassword(password, {
