@@ -98,11 +98,14 @@ function config() {
 export async function provisionTenant({ companyName, fullName, email, phoneNumber, username, plaintextPassword }) {
   const cfg = config();
   const tenantName = normalizeTenantName(companyName || username || email);
+  const tenantUsername = normalizeUsername(username || email);
   console.log(
     `[MANAGEONE] Provisioning ${tenantName} in ${cfg.regionProfile} (${cfg.regions
       .map((region) => region.regionId)
       .join(", ")})`
   );
+
+  await assertTenantUsernameAvailable(tenantUsername);
 
   const vdc = await createTenantVdc({
     name: tenantName,
@@ -114,7 +117,6 @@ export async function provisionTenant({ companyName, fullName, email, phoneNumbe
 
   await bindRegion(vdc.vdcId);
   const group = await findVdcAdminGroup(vdc.vdcId);
-  const tenantUsername = normalizeUsername(username || email);
   const user = await createTenantUser(vdc.vdcId, {
     username: tenantUsername,
     email,
@@ -690,6 +692,67 @@ export async function createTenantUser(vdcId, { username, email, phoneNumber, pl
   }
 
   throw lastError || new ManageOneError("create tenant user", "No candidate endpoint succeeded");
+}
+
+export async function assertTenantUsernameAvailable(username) {
+  const cfg = config();
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername) {
+    throw new ManageOneError("check tenant username", "Username is required");
+  }
+
+  const encodedUsername = encodeURIComponent(normalizedUsername);
+  const candidateUrls = [
+    `${cfg.authBaseUrl}/v3/users?name=${encodedUsername}`,
+    `${cfg.baseUrl}/v3.2/users?name=${encodedUsername}`,
+    `${cfg.baseUrl}/v3.0/users?name=${encodedUsername}`
+  ];
+
+  for (const url of candidateUrls) {
+    try {
+      const response = await apiRequest("check tenant username", url, {
+        method: "GET",
+        expectedStatuses: [200]
+      });
+      const users = Array.isArray(response?.users)
+        ? response.users
+        : Array.isArray(response?.user)
+          ? response.user
+          : [];
+      const usernameExists = users.some(
+        (user) => String(user?.name || "").trim().toLowerCase() === normalizedUsername
+      );
+
+      if (usernameExists) {
+        throw new ManageOneError(
+          "check tenant username",
+          `Username ${normalizedUsername} already exists in ManageOne`
+        );
+      }
+
+      return;
+    } catch (error) {
+      if (
+        error instanceof ManageOneError &&
+        /already exists in ManageOne/i.test(error.message)
+      ) {
+        throw error;
+      }
+
+      if (
+        !(error instanceof ManageOneError) ||
+        !/HTTP 400|HTTP 403|HTTP 404|HTTP 405|Route Not Found|Method Not Allowed|required permissions/i.test(
+          error.message
+        )
+      ) {
+        throw error;
+      }
+    }
+  }
+
+  console.warn(
+    `[MANAGEONE] Username availability preflight skipped for ${normalizedUsername}; no supported lookup endpoint succeeded`
+  );
 }
 
 export async function updateTenantUserContactAndMfa(userId, { email, phoneNumber }) {
