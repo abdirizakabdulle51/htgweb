@@ -743,6 +743,7 @@ export async function assertTenantUsernameAvailable(username) {
     `${cfg.baseUrl}/v3.2/users?name=${encodedUsername}`,
     `${cfg.baseUrl}/v3.0/users?name=${encodedUsername}`
   ];
+  let checkedAnyEndpoint = false;
 
   for (const url of candidateUrls) {
     try {
@@ -750,6 +751,7 @@ export async function assertTenantUsernameAvailable(username) {
         method: "GET",
         expectedStatuses: [200]
       });
+      checkedAnyEndpoint = true;
       const users = Array.isArray(response?.users)
         ? response.users
         : Array.isArray(response?.user)
@@ -765,8 +767,6 @@ export async function assertTenantUsernameAvailable(username) {
           `Username ${normalizedUsername} already exists in ManageOne`
         );
       }
-
-      return;
     } catch (error) {
       if (
         error instanceof ManageOneError &&
@@ -786,9 +786,11 @@ export async function assertTenantUsernameAvailable(username) {
     }
   }
 
-  console.warn(
-    `[MANAGEONE] Username availability preflight skipped for ${normalizedUsername}; no supported lookup endpoint succeeded`
-  );
+  if (!checkedAnyEndpoint) {
+    console.warn(
+      `[MANAGEONE] Username availability preflight skipped for ${normalizedUsername}; no supported lookup endpoint succeeded`
+    );
+  }
 }
 
 export async function updateTenantUserContactAndMfa(userId, { email, phoneNumber }) {
