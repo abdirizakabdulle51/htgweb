@@ -42,6 +42,11 @@ import {
 } from "./lib/auth";
 import { passwordStrength, validateManageOnePassword } from "./lib/passwordPolicy.js";
 import { phoneValidationMessage, validatePhoneNumberForCountry } from "./lib/phone.js";
+import {
+  manageOneUsernameMessage,
+  normalizeManageOneUsername,
+  validateManageOneUsername
+} from "./lib/usernamePolicy.js";
 import { countries as authCountries } from "./data/countries";
 import { legalDocuments } from "./legalContent";
 import { pricingCatalog, pricingServices } from "./pricing/pricingCatalog";
@@ -14263,9 +14268,12 @@ function SignUpPage() {
   const phoneError =
     fieldErrors.phone ||
     (phoneInvalid ? phoneValidationMessage(form.country) : "");
+  const normalizedUsername = normalizeManageOneUsername(username);
+  const usernameValid = validateManageOneUsername(username);
   const requiredFieldsComplete = [
     form.fullName,
     form.email,
+    username,
     form.password,
     form.country,
     form.phone,
@@ -14275,6 +14283,7 @@ function SignUpPage() {
   const canContinue =
     requiredFieldsComplete &&
     emailValid &&
+    usernameValid &&
     passwordValidation.valid &&
     validatePhoneNumberForCountry(form.phone, selectedCountry?.code);
 
@@ -14340,6 +14349,10 @@ function SignUpPage() {
       errors.password = "Password must meet all console requirements below.";
     }
 
+    if (!validateManageOneUsername(username)) {
+      errors.username = manageOneUsernameMessage;
+    }
+
     if (nextForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextForm.email.trim())) {
       errors.email = "Enter a valid work email.";
     }
@@ -14369,7 +14382,7 @@ function SignUpPage() {
       await signUp({
         ...nextForm,
         email,
-        username: username.trim(),
+        username: normalizedUsername,
         countryCode: selectedCountry?.code || "",
         phoneCountryCode: selectedCountry?.phoneCode || ""
       });
@@ -14436,20 +14449,23 @@ function SignUpPage() {
         </div>
         <div className="auth-field-row">
           <label>
-            Create username
+            <RequiredLabel>Create username</RequiredLabel>
             <input
               value={username}
               onChange={(event) => {
                 setUsername(event.target.value);
                 setFieldErrors((current) => {
-                  if (!current.password) return current;
+                  if (!current.password && !current.username) return current;
                   const next = { ...current };
                   delete next.password;
+                  delete next.username;
                   return next;
                 });
               }}
               placeholder="Enter a username"
+              aria-invalid={Boolean(fieldErrors.username)}
             />
+            {fieldErrors.username && <span className="field-error">{fieldErrors.username}</span>}
           </label>
           <label className="signup-password-label">
             <RequiredLabel>Password</RequiredLabel>

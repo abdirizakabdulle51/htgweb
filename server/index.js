@@ -14,6 +14,11 @@ import {
   phoneValidationMessage,
   validatePhoneNumberForCountry
 } from "../src/lib/phone.js";
+import {
+  manageOneUsernameMessage,
+  normalizeManageOneUsername,
+  validateManageOneUsername
+} from "../src/lib/usernamePolicy.js";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -72,7 +77,7 @@ app.post("/api/auth/signup", async (request, response) => {
     const country = clean(request.body.country) || null;
     let phoneNumber = clean(request.body.phoneNumber) || null;
     const companyName = clean(request.body.companyName) || null;
-    const username = clean(request.body.username) || null;
+    let username = clean(request.body.username) || null;
 
     console.log("[AUTH] Signup request:", email);
 
@@ -82,6 +87,14 @@ app.post("/api/auth/signup", async (request, response) => {
 
     if (!isEmail(email)) {
       throw new HttpError("Enter a valid email address.", 400);
+    }
+
+    const provisioningEnabled = process.env.MANAGEONE_ENABLED === "true";
+    if (provisioningEnabled) {
+      username = normalizeManageOneUsername(username);
+      if (!validateManageOneUsername(username)) {
+        throw new HttpError(manageOneUsernameMessage, 400);
+      }
     }
 
     const passwordValidation = validateManageOnePassword(password, {
@@ -106,7 +119,6 @@ app.post("/api/auth/signup", async (request, response) => {
 
     const code = verificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-    const provisioningEnabled = process.env.MANAGEONE_ENABLED === "true";
     const provisioningPasswordCiphertext = provisioningEnabled ? encryptProvisioningPassword(password) : null;
     const provisioningUsername = provisioningEnabled ? username || email : null;
     let user = existingUser;
