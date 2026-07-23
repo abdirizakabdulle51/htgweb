@@ -5689,6 +5689,10 @@ blockquote {
   gap: 14px;
 }
 
+.os-selector {
+  display: grid;
+}
+
 .service-picker,
 .family-selector,
 .instance-selector {
@@ -5947,6 +5951,67 @@ blockquote {
   padding: 12px;
   border-radius: 10px;
   background: #f4f8f9;
+}
+
+.selected-config-list .selected-config-storage {
+  position: relative;
+  overflow: visible;
+  border: 2px solid var(--brand-dark);
+  background: var(--brand-dark);
+  animation: included-storage-pulse 3.2s ease-in-out infinite;
+}
+
+.selected-config-list .selected-config-storage dt,
+.selected-config-list .selected-config-storage dd {
+  color: #ffffff;
+  font-weight: 950;
+}
+
+.selected-config-list .selected-config-storage dd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.selected-config-list .selected-config-storage dt {
+  font-size: 11px;
+}
+
+.selected-config-list .selected-config-storage svg {
+  flex: 0 0 auto;
+  stroke-width: 3;
+}
+
+.storage-free-ribbon {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  padding: 0 7px;
+  background: #ffffff;
+  color: var(--brand-dark);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+@keyframes included-storage-pulse {
+  0%,
+  86%,
+  100% {
+    transform: scale(1);
+  }
+
+  93% {
+    transform: scale(1.02);
+  }
 }
 
 .selected-config-list dt {
@@ -11628,6 +11693,7 @@ blockquote {
 
   .calculator-grid-two,
   .estimate-item dl,
+  .os-selector,
   .selected-config-list,
   .service-choice-grid,
   .family-card-grid,

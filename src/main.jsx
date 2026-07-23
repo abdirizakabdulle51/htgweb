@@ -13028,6 +13028,15 @@ const calculatorCategories = [
 
 const calculatorBillingPeriods = ["hourly", "monthly", "yearly"];
 
+const calculatorOperatingSystems = [
+  { label: "Ubuntu 20.04", storageGb: 41 },
+  { label: "AlmaLinux 10.1", storageGb: 51 },
+  { label: "CentOS Stream 9", storageGb: 50 },
+  { label: "Oracle Linux", storageGb: 51 },
+  { label: "RedHat 7.5", storageGb: 61 },
+  { label: "Windows 10 Pro", storageGb: 60 }
+];
+
 function getCalculatorServices(category) {
   return pricingServices.filter((service) => service.category === category);
 }
@@ -13188,6 +13197,7 @@ function PricingCalculatorPage() {
   const [skuSearch, setSkuSearch] = useState("");
   const [region, setRegion] = useState(pricingCatalog.regions[0]);
   const [billingPeriod, setBillingPeriod] = useState(pricingCatalog.defaultBillingPeriod);
+  const [selectedOperatingSystem, setSelectedOperatingSystem] = useState(calculatorOperatingSystems[0].label);
   const [amount, setAmount] = useState(pricingCatalog.services.ECS.defaultQuantity);
   const [estimateItems, setEstimateItems] = useState([]);
 
@@ -13197,6 +13207,9 @@ function PricingCalculatorPage() {
   const activeFamily = familyGroups.find((family) => family.id === selectedFamilyId) || familyGroups[0];
   const visibleSkus = getFilteredSkus(activeFamily?.skus || selectedService.skus, skuSearch);
   const quantityField = getQuantityField(selectedService);
+  const selectedOsStorage =
+    calculatorOperatingSystems.find((item) => item.label === selectedOperatingSystem) || calculatorOperatingSystems[0];
+  const includedStorageLabel = `${selectedOsStorage.storageGb} GB SSD`;
   const previewLine = calculateItemSubtotal({
     serviceId: selectedService.id,
     skuId: selectedSku.id,
@@ -13367,6 +13380,22 @@ function PricingCalculatorPage() {
             </div>
           </section>
 
+          <section className="os-selector" aria-label="Choose operating system">
+            <label>
+              Operating system
+              <select
+                value={selectedOperatingSystem}
+                onChange={(event) => setSelectedOperatingSystem(event.target.value)}
+              >
+                {calculatorOperatingSystems.map((item) => (
+                  <option key={item.label} value={item.label}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </section>
+
           <section className="instance-selector" aria-label="Choose instance type">
             <div className="config-subheading">
               <span>{selectedService.pricingModel === "flavor" ? "Instance type" : "Type / Tier"}</span>
@@ -13398,7 +13427,13 @@ function PricingCalculatorPage() {
             </div>
           </section>
 
-          <SkuPreview sku={selectedSku} service={selectedService} billingPeriod={billingPeriod} region={region} />
+          <SkuPreview
+            sku={selectedSku}
+            service={selectedService}
+            billingPeriod={billingPeriod}
+            region={region}
+            includedStorageLabel={includedStorageLabel}
+          />
 
           <label>
             {quantityField === "capacityGb" ? "Capacity (GB)" : selectedService.quantityLabel}
@@ -13497,7 +13532,7 @@ function InstanceOptionCard({ sku, service, billingPeriod, selected, onSelect })
   );
 }
 
-function SkuPreview({ sku, service, billingPeriod, region }) {
+function SkuPreview({ sku, service, billingPeriod, region, includedStorageLabel }) {
   const serviceId = service.id;
   const priceLine = calculateItemSubtotal({
     serviceId,
@@ -13541,6 +13576,14 @@ function SkuPreview({ sku, service, billingPeriod, region }) {
             <dd>{sku.ramGb} GB</dd>
           </div>
         )}
+        <div className="selected-config-storage" key={includedStorageLabel}>
+          <span className="storage-free-ribbon">FREE</span>
+          <dt>Included Storage</dt>
+          <dd>
+            <CircleCheck size={14} aria-hidden="true" />
+            {includedStorageLabel}
+          </dd>
+        </div>
         {sku.storageGb !== undefined && (
           <div>
             <dt>Storage</dt>
