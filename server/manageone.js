@@ -798,48 +798,62 @@ export async function assertTenantPhoneAvailable(phoneNumber) {
   const phone = parseManageOnePhone(phoneNumber);
   if (!phone?.phone || !phone?.areacode) return;
 
-  const encodedPhone = encodeURIComponent(phone.phone);
-  const encodedAreaCode = encodeURIComponent(phone.areacode);
-  const candidateUrls = [
-    `${cfg.baseUrl}/v3.0/users?phone=${encodedPhone}`,
-    `${cfg.baseUrl}/v3.0/users?areacode=${encodedAreaCode}&phone=${encodedPhone}`
+  const maxPages = Math.max(1, Number(process.env.MANAGEONE_PHONE_LOOKUP_MAX_PAGES || 20));
+  const pageSize = 100;
+  const candidateBuilders = [
+    (start) => `${cfg.baseUrl}/v3.0/users?start=${start}&limit=${pageSize}&has_phone=true`,
+    (start) => `${cfg.baseUrl}/v3.0/users?start=${start}&limit=${pageSize}`
   ];
   let checkedAnyEndpoint = false;
 
-  for (const url of candidateUrls) {
-    try {
-      const response = await apiRequest("check tenant phone", url, {
-        method: "GET",
-        expectedStatuses: [200]
-      });
-      checkedAnyEndpoint = true;
-      const users = Array.isArray(response?.users)
-        ? response.users
-        : Array.isArray(response?.user)
-          ? response.user
-          : [];
-      const phoneExists = users.some((user) => manageOnePhonesMatch(user, phone));
+  for (const buildUrl of candidateBuilders) {
+    for (let page = 0; page < maxPages; page += 1) {
+      const start = page * pageSize;
+      const url = buildUrl(start);
 
-      if (phoneExists) {
-        throw new ManageOneError("check tenant phone", "Phone number already exists in ManageOne");
-      }
-    } catch (error) {
-      if (
-        error instanceof ManageOneError &&
-        /phone number already exists in ManageOne/i.test(error.message)
-      ) {
-        throw error;
-      }
+      try {
+        const response = await apiRequest("check tenant phone", url, {
+          method: "GET",
+          expectedStatuses: [200]
+        });
+        checkedAnyEndpoint = true;
+        const users = Array.isArray(response?.users)
+          ? response.users
+          : Array.isArray(response?.user)
+            ? response.user
+            : [];
+        const phoneExists = users.some((user) => manageOnePhonesMatch(user, phone));
 
-      if (
-        !(error instanceof ManageOneError) ||
-        !/HTTP 400|HTTP 403|HTTP 404|HTTP 405|Route Not Found|Method Not Allowed|required permissions/i.test(
-          error.message
-        )
-      ) {
-        throw error;
+        if (phoneExists) {
+          throw new ManageOneError("check tenant phone", "Phone number already exists in ManageOne");
+        }
+
+        const total = Number(response?.total ?? response?.total_count ?? users.length);
+        if (!users.length || start + users.length >= total) {
+          break;
+        }
+      } catch (error) {
+        if (
+          error instanceof ManageOneError &&
+          /phone number already exists in ManageOne/i.test(error.message)
+        ) {
+          throw error;
+        }
+
+        if (
+          !(error instanceof ManageOneError) ||
+          !/HTTP 400|HTTP 403|HTTP 404|HTTP 405|Route Not Found|Method Not Allowed|required permissions/i.test(
+            error.message
+          )
+        ) {
+          throw error;
+        }
+
+        break;
       }
     }
+
+    if (checkedAnyEndpoint) break;
   }
 
   if (!checkedAnyEndpoint) {
