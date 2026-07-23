@@ -123,6 +123,22 @@ app.post("/api/auth/signup", async (request, response) => {
     }
     phoneNumber = phoneNumber ? normalizePhoneNumberForCountry(phoneNumber, country) : null;
 
+    if (provisioningEnabled && phoneNumber) {
+      try {
+        await manageOne.assertTenantPhoneAvailable(phoneNumber);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "");
+        if (/phone number already exists in ManageOne|phone number already exists|movdc-01111/i.test(message)) {
+          throw new HttpError(
+            "This phone number is already linked to another cloud account. Use a different number or contact support.",
+            409
+          );
+        }
+
+        console.warn(`[AUTH] ManageOne phone preflight skipped for ${phoneNumber}: ${safeProvisioningError(error)}`);
+      }
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser?.emailVerified) {
       throw new HttpError("An account with this email already exists.", 409);

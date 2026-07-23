@@ -793,6 +793,60 @@ export async function assertTenantUsernameAvailable(username) {
   }
 }
 
+export async function assertTenantPhoneAvailable(phoneNumber) {
+  const cfg = config();
+  const phone = parseManageOnePhone(phoneNumber);
+  if (!phone?.phone || !phone?.areacode) return;
+
+  const encodedPhone = encodeURIComponent(phone.phone);
+  const encodedAreaCode = encodeURIComponent(phone.areacode);
+  const candidateUrls = [
+    `${cfg.baseUrl}/v3.0/users?phone=${encodedPhone}`,
+    `${cfg.baseUrl}/v3.0/users?areacode=${encodedAreaCode}&phone=${encodedPhone}`
+  ];
+  let checkedAnyEndpoint = false;
+
+  for (const url of candidateUrls) {
+    try {
+      const response = await apiRequest("check tenant phone", url, {
+        method: "GET",
+        expectedStatuses: [200]
+      });
+      checkedAnyEndpoint = true;
+      const users = Array.isArray(response?.users)
+        ? response.users
+        : Array.isArray(response?.user)
+          ? response.user
+          : [];
+      const phoneExists = users.some((user) => manageOnePhonesMatch(user, phone));
+
+      if (phoneExists) {
+        throw new ManageOneError("check tenant phone", "Phone number already exists in ManageOne");
+      }
+    } catch (error) {
+      if (
+        error instanceof ManageOneError &&
+        /phone number already exists in ManageOne/i.test(error.message)
+      ) {
+        throw error;
+      }
+
+      if (
+        !(error instanceof ManageOneError) ||
+        !/HTTP 400|HTTP 403|HTTP 404|HTTP 405|Route Not Found|Method Not Allowed|required permissions/i.test(
+          error.message
+        )
+      ) {
+        throw error;
+      }
+    }
+  }
+
+  if (!checkedAnyEndpoint) {
+    console.warn("[MANAGEONE] Phone availability preflight skipped; no supported lookup endpoint succeeded");
+  }
+}
+
 export async function updateTenantUserContactAndMfa(userId, { email, phoneNumber }) {
   const cfg = config();
   const contact = cfg.bindUserContact ? manageOneUserContact({ email, phoneNumber }) : {};
@@ -1176,6 +1230,24 @@ function manageOneUserContact({ email, phoneNumber }) {
   }
 
   return contact;
+}
+
+function manageOnePhonesMatch(user, phone) {
+  const userPhone = normalizeDigits(user?.phone);
+  const expectedPhone = normalizeDigits(phone?.phone);
+  if (!userPhone || !expectedPhone || userPhone !== expectedPhone) return false;
+
+  const userAreaCode = normalizeAreaCode(user?.areacode);
+  const expectedAreaCode = normalizeAreaCode(phone?.areacode);
+  return !userAreaCode || !expectedAreaCode || userAreaCode === expectedAreaCode;
+}
+
+function normalizeDigits(value) {
+  return String(value || "").replace(/\D+/g, "");
+}
+
+function normalizeAreaCode(value) {
+  return normalizeDigits(value).replace(/^0+/, "");
 }
 
 function normalizeTenantName(value) {
