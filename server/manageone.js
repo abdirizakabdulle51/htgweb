@@ -115,14 +115,25 @@ export async function provisionTenant({ companyName, fullName, email, phoneNumbe
     managerPhone: phoneNumber
   });
 
-  await bindRegion(vdc.vdcId);
-  const group = await findVdcAdminGroup(vdc.vdcId);
-  const user = await createTenantUser(vdc.vdcId, {
-    username: tenantUsername,
-    email,
-    phoneNumber,
-    plaintextPassword
-  });
+  let group;
+  let user;
+
+  try {
+    await bindRegion(vdc.vdcId);
+    group = await findVdcAdminGroup(vdc.vdcId);
+    user = await createTenantUser(vdc.vdcId, {
+      username: tenantUsername,
+      email,
+      phoneNumber,
+      plaintextPassword
+    });
+  } catch (error) {
+    if (isDuplicateUsernameError(error)) {
+      await cleanupCreatedTenantVdc(vdc.vdcId, tenantName, error);
+    }
+    throw error;
+  }
+
   await updateTenantUserContactAndMfa(user.userId, { email, phoneNumber });
   await bindUserToGroup(user.userId, group.groupId, vdc.vdcId);
   await waitForVdcAdminMembership(user.userId, group.groupId, vdc.vdcId);
@@ -682,6 +693,10 @@ export async function createTenantUser(vdcId, { username, email, phoneNumber, pl
       const detail = error instanceof Error ? error.message : String(error || "Unknown error");
       console.warn(`[MANAGEONE] create tenant user candidate failed: ${candidate.url} => ${safeDetail(detail)}`);
 
+      if (isDuplicateUsernameError(error)) {
+        throw error;
+      }
+
       if (
         !(error instanceof ManageOneError) ||
         !/HTTP 400|HTTP 404|HTTP 405|Route Not Found|Method Not Allowed|project\.id|user\.id/i.test(error.message)
@@ -692,6 +707,27 @@ export async function createTenantUser(vdcId, { username, email, phoneNumber, pl
   }
 
   throw lastError || new ManageOneError("create tenant user", "No candidate endpoint succeeded");
+}
+
+export async function deleteTenantVdc(vdcId) {
+  const cfg = config();
+  await apiRequest("delete tenant/VDC", `${cfg.baseUrl}/v3.0/vdcs/${encodeURIComponent(vdcId)}?is_domain=true`, {
+    method: "DELETE",
+    expectedStatuses: [200, 202, 204]
+  });
+}
+
+async function cleanupCreatedTenantVdc(vdcId, tenantName, originalError) {
+  try {
+    await deleteTenantVdc(vdcId);
+    console.warn(`[MANAGEONE] Rolled back tenant ${tenantName} after duplicate username failure`);
+  } catch (cleanupError) {
+    const detail = cleanupError instanceof Error ? cleanupError.message : String(cleanupError || "Unknown error");
+    console.error(
+      `[MANAGEONE] Failed to roll back tenant ${tenantName} after duplicate username failure: ${safeDetail(detail)}`
+    );
+    console.error(`[MANAGEONE] Original duplicate username failure: ${safeDetail(originalError.message)}`);
+  }
 }
 
 export async function assertTenantUsernameAvailable(username) {
@@ -1117,6 +1153,10 @@ function isPermissionDenied(error) {
 
 function isDuplicatePhoneError(error) {
   return error instanceof ManageOneError && /movdc-01111|phone number already exists/i.test(error.message);
+}
+
+function isDuplicateUsernameError(error) {
+  return error instanceof ManageOneError && /movdc-01109|username already exists/i.test(error.message);
 }
 
 function manageOneUserContact({ email, phoneNumber }) {
