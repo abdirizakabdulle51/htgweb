@@ -3,7 +3,7 @@ export default {
     {
       name: "manageone-tenant-sync",
       script: "server/jobs/sync-manageone-tenants.js",
-      cron_restart: "0 * * * *",
+      cron_restart: "0 3 * * *",
       autorestart: false,
       instances: 1,
       exec_mode: "fork",
