@@ -717,6 +717,36 @@ export async function deleteTenantVdc(vdcId) {
   });
 }
 
+export async function listAllVdcs(filters = {}) {
+  const cfg = config();
+  const pageLimit = 1000;
+  let start = 0;
+  let total = Infinity;
+  const allVdcs = [];
+
+  while (start < total) {
+    const params = new URLSearchParams({
+      ...filters,
+      start: String(start),
+      limit: String(pageLimit)
+    });
+
+    const data = await apiRequest("list VDCs", `${cfg.baseUrl}/v3.0/vdcs?${params}`, {
+      method: "GET",
+      expectedStatuses: [200]
+    });
+
+    const vdcs = Array.isArray(data?.vdcs) ? data.vdcs : [];
+    allVdcs.push(...vdcs);
+
+    total = Number(data?.total ?? allVdcs.length);
+    start += pageLimit;
+  }
+
+  console.log(`[MANAGEONE] listAllVdcs: fetched ${allVdcs.length} VDC(s)`);
+  return allVdcs;
+}
+
 async function cleanupCreatedTenantVdc(vdcId, tenantName, originalError) {
   try {
     await deleteTenantVdc(vdcId);
