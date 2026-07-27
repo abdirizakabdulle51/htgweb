@@ -43,6 +43,62 @@ function dateFromMilliseconds(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function mapTenantForCrm(tenant) {
+  return {
+    vdcId: tenant.vdc_id,
+    domainId: tenant.domain_id,
+    name: tenant.name,
+    level: tenant.level,
+    upperVdcId: tenant.upper_vdc_id,
+    enabled: tenant.enabled,
+    managerName: tenant.manager_name,
+    managerPhone: tenant.manager_phone,
+    managerEmail: tenant.manager_email,
+    ecsUsed: numberOrNull(tenant.ecs_used),
+    evsUsed: numberOrNull(tenant.evs_used),
+    projectCount: tenant.project_count
+  };
+}
+
+async function loadSyncedTenantsForCrm() {
+  return prisma.$queryRaw`
+    SELECT
+      vdc_id, domain_id, name, level, upper_vdc_id, enabled,
+      manager_name, manager_phone, manager_email,
+      ecs_used, evs_used, project_count
+    FROM manageone_tenants
+    ORDER BY name ASC
+  `;
+}
+
+async function pushTenantsToCrm() {
+  const syncUrl = process.env.CRM_SYNC_URL;
+  const syncSecret = process.env.CRM_SYNC_SECRET;
+
+  if (!syncUrl || !syncSecret) {
+    console.warn("[MANAGEONE SYNC] CRM push skipped: CRM_SYNC_URL or CRM_SYNC_SECRET is not configured");
+    return;
+  }
+
+  const tenants = await loadSyncedTenantsForCrm();
+  const payload = tenants.map(mapTenantForCrm);
+  const response = await fetch(syncUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Sync-Secret": syncSecret
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`CRM sync failed: HTTP ${response.status}${body ? ` ${body}` : ""}`);
+  }
+
+  console.log(`[MANAGEONE SYNC] CRM push success: ${payload.length} tenant(s) sent`);
+}
+
 async function syncManageOneTenants() {
   const [run] = await prisma.$queryRaw`
     INSERT INTO manageone_sync_runs (started_at, status)
@@ -52,7 +108,7 @@ async function syncManageOneTenants() {
   const runId = run.id;
 
   try {
-    const vdcs = await listAllVdcs({ upper_vdc_id: "0" });
+    const vdcs = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
 
     for (const vdc of vdcs) {
       const extra = parseExtra(vdc.extra);
@@ -88,6 +144,13 @@ async function syncManageOneTenants() {
           last_synced_at = now(),
           raw_payload = EXCLUDED.raw_payload
       `;
+    }
+
+    try {
+      await pushTenantsToCrm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.error("[MANAGEONE SYNC] CRM push failed:", message);
     }
 
     await prisma.$executeRaw`
