@@ -5,6 +5,16 @@ import { authenticate, listAllVdcs } from "../manageone.js";
 const prisma = new PrismaClient();
 const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
 const RESOURCE_USAGE_REQUEST_DELAY_MS = 500;
+const RESOURCE_USAGE_RATE_LIMIT_RETRIES = 2;
+const RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS = 5000;
+
+class HttpStatusError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = "HttpStatusError";
+    this.status = status;
+  }
+}
 
 function parseExtra(value) {
   if (!value) return {};
@@ -149,10 +159,30 @@ async function fetchTenantResourceUsage(vdcId, session) {
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}${text ? ` ${text}` : ""}`);
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
   }
 
   return text ? JSON.parse(text) : {};
+}
+
+async function fetchTenantResourceUsageWithRetry(vdc, session) {
+  for (let attempt = 0; attempt <= RESOURCE_USAGE_RATE_LIMIT_RETRIES; attempt += 1) {
+    try {
+      return await fetchTenantResourceUsage(vdc.id, session);
+    } catch (error) {
+      if (error?.status !== 429 || attempt === RESOURCE_USAGE_RATE_LIMIT_RETRIES) {
+        throw error;
+      }
+
+      const nextAttempt = attempt + 2;
+      console.warn(
+        `[MANAGEONE SYNC] resource usage rate-limited for ${vdc.name || vdc.id}; retrying attempt ${nextAttempt}/${RESOURCE_USAGE_RATE_LIMIT_RETRIES + 1} after ${RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS}ms`
+      );
+      await delay(RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS);
+    }
+  }
+
+  return {};
 }
 
 async function pushTenantsToCrm() {
@@ -206,7 +236,7 @@ async function syncManageOneTenants() {
           await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
         }
 
-        resourceUsagePayload = JSON.stringify(await fetchTenantResourceUsage(vdc.id, session));
+        resourceUsagePayload = JSON.stringify(await fetchTenantResourceUsageWithRetry(vdc, session));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
         console.error(`[MANAGEONE SYNC] resource usage skipped for ${vdc.name || vdc.id}: ${message}`);
