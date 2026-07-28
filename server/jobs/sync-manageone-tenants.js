@@ -126,9 +126,22 @@ function resourceUsageIndicatesEcs(resourceUsage) {
   });
 }
 
+function resourceUsageIndicatesEvs(resourceUsage) {
+  return flattenResourceUsage(resourceUsage).some((resource) => {
+    const serviceId = String(resource.serviceId || "").toLowerCase();
+    const resourceName = String(resource.resource || "").toLowerCase();
+    return serviceId.includes("evs") && /(volume|gigabyte)/i.test(resourceName) && Number(resource.used) > 0;
+  });
+}
+
 function shouldFetchEcsFlavorBreakdown(vdc, resourceUsage) {
   const ecsUsed = numberOrNull(vdc.ecs_used);
   return (ecsUsed !== null && ecsUsed > 0) || resourceUsageIndicatesEcs(resourceUsage);
+}
+
+function shouldFetchEvsVolumeTypeBreakdown(vdc, resourceUsage) {
+  const evsUsed = numberOrNull(vdc.evs_used);
+  return (evsUsed !== null && evsUsed > 0) || resourceUsageIndicatesEvs(resourceUsage);
 }
 
 function parseEcsFlavor(rawFlavor) {
@@ -168,6 +181,49 @@ function aggregateEcsFlavorBreakdown(nativeResourceResponses) {
   }
 
   return [...flavorsByName.values()].sort((a, b) => a.flavorName.localeCompare(b.flavorName));
+}
+
+function parseEvsVolume(volume) {
+  const properties = volume?.properties || {};
+  const rawVolumeType = properties.volume_type;
+  const volumeType = typeof rawVolumeType === "string" ? rawVolumeType.trim() : "";
+  if (!volumeType) return null;
+
+  const diskSize = numberOrNull(properties.disk_size);
+  if (diskSize === null) return null;
+
+  return {
+    volumeType,
+    volumeTypeKey: volumeType.toLowerCase(),
+    diskSize
+  };
+}
+
+function aggregateEvsVolumeTypeBreakdown(nativeResourceResponses) {
+  const volumesByType = new Map();
+
+  for (const response of nativeResourceResponses) {
+    const resources = listFromResponse(response, ["resources", "resource_list", "native_resources"]);
+
+    for (const resource of resources) {
+      const parsed = parseEvsVolume(resource);
+      if (!parsed) continue;
+
+      const existing = volumesByType.get(parsed.volumeTypeKey);
+      if (existing) {
+        existing.count += 1;
+        existing.totalGb += parsed.diskSize;
+      } else {
+        volumesByType.set(parsed.volumeTypeKey, {
+          volumeType: parsed.volumeType,
+          totalGb: parsed.diskSize,
+          count: 1
+        });
+      }
+    }
+  }
+
+  return [...volumesByType.values()].sort((a, b) => a.volumeType.localeCompare(b.volumeType));
 }
 
 function flattenResourceUsage(resourceUsage) {
@@ -227,7 +283,8 @@ function mapTenantForCrm(tenant) {
     evsUsed: numberOrNull(tenant.evs_used),
     projectCount: tenant.project_count,
     resources: flattenResourceUsage(tenant.resource_usage),
-    ecsFlavors: tenant.ecs_flavor_breakdown || []
+    ecsFlavors: tenant.ecs_flavor_breakdown || [],
+    evsVolumeTypes: tenant.evs_volume_type_breakdown || []
   };
 }
 
@@ -236,7 +293,7 @@ async function loadSyncedTenantsForCrm() {
     SELECT
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
-      ecs_used, evs_used, project_count, resource_usage, ecs_flavor_breakdown
+      ecs_used, evs_used, project_count, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
   `;
@@ -387,6 +444,63 @@ async function fetchProjectNativeEcsResources(vdc, projectId, session) {
   return responses;
 }
 
+async function fetchNativeEvsResourcePage(vdc, projectId, session, start, limit) {
+  const params = new URLSearchParams({
+    service_id: "evs",
+    resource_type_name: "CLOUD_EVS_INSTANCE",
+    project_id: projectId,
+    start: String(start),
+    limit: String(limit)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchProjectNativeEvsResources(vdc, projectId, session) {
+  const limit = NATIVE_RESOURCE_PAGE_LIMIT;
+  let start = 0;
+  let total = Infinity;
+  const responses = [];
+  let page = 0;
+
+  while (start < total) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `Native EVS resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id} project ${projectId}`
+      );
+    }
+
+    const body = await retryRateLimited(
+      `native EVS resource lookup for ${vdc.name || vdc.id} project ${projectId}`,
+      () => fetchNativeEvsResourcePage(vdc, projectId, session, start, limit)
+    );
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    total = Number.isFinite(Number(body?.total)) ? Number(body.total) : start + pageResources.length;
+    start += limit;
+
+    if (start < total) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
 async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
   if (!shouldFetchEcsFlavorBreakdown(vdc, resourceUsage)) {
     return [];
@@ -406,6 +520,28 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
 
   const breakdown = aggregateEcsFlavorBreakdown(nativeResourceResponses);
   console.log(`[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s)`);
+  return breakdown;
+}
+
+async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
+  if (!shouldFetchEvsVolumeTypeBreakdown(vdc, resourceUsage)) {
+    return [];
+  }
+
+  const projects = await listTenantProjects(vdc, session);
+  const nativeResourceResponses = [];
+  console.log(`[MANAGEONE SYNC] EVS volume-type lookup for ${vdc.name || vdc.id}: ${projects.length} project(s)`);
+
+  for (const project of projects) {
+    const projectId = project.id || project.project_id;
+    if (!projectId) continue;
+
+    await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    nativeResourceResponses.push(...(await fetchProjectNativeEvsResources(vdc, String(projectId), session)));
+  }
+
+  const breakdown = aggregateEvsVolumeTypeBreakdown(nativeResourceResponses);
+  console.log(`[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s)`);
   return breakdown;
 }
 
@@ -461,6 +597,7 @@ async function syncManageOneTenants() {
       let resourceUsagePayload = null;
       let resourceUsage = null;
       let ecsFlavorBreakdownPayload = null;
+      let evsVolumeTypeBreakdownPayload = null;
 
       try {
         if (index > 0) {
@@ -481,12 +618,20 @@ async function syncManageOneTenants() {
         console.error(`[MANAGEONE SYNC] ECS flavor breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
       }
 
+      try {
+        evsVolumeTypeBreakdownPayload = JSON.stringify(await fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[MANAGEONE SYNC] EVS volume-type breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
+
       await prisma.$executeRaw`
         INSERT INTO manageone_tenants
           (vdc_id, domain_id, name, level, upper_vdc_id, enabled,
            manager_name, manager_phone, manager_email,
            ecs_used, evs_used, project_count, create_user_name,
-           manageone_create_at, last_synced_at, raw_payload, resource_usage, ecs_flavor_breakdown)
+           manageone_create_at, last_synced_at, raw_payload, resource_usage,
+           ecs_flavor_breakdown, evs_volume_type_breakdown)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
@@ -494,7 +639,7 @@ async function syncManageOneTenants() {
            ${numberOrNull(vdc.ecs_used)}, ${numberOrNull(vdc.evs_used)}, ${integerOrNull(vdc.project_count)},
            ${vdc.create_user_name ?? null}, ${dateFromMilliseconds(vdc.create_at)}, now(),
            CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb),
-           CAST(${ecsFlavorBreakdownPayload} AS jsonb))
+           CAST(${ecsFlavorBreakdownPayload} AS jsonb), CAST(${evsVolumeTypeBreakdownPayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
           domain_id = EXCLUDED.domain_id,
           name = EXCLUDED.name,
@@ -512,7 +657,8 @@ async function syncManageOneTenants() {
           last_synced_at = now(),
           raw_payload = EXCLUDED.raw_payload,
           resource_usage = COALESCE(EXCLUDED.resource_usage, manageone_tenants.resource_usage),
-          ecs_flavor_breakdown = COALESCE(EXCLUDED.ecs_flavor_breakdown, manageone_tenants.ecs_flavor_breakdown)
+          ecs_flavor_breakdown = COALESCE(EXCLUDED.ecs_flavor_breakdown, manageone_tenants.ecs_flavor_breakdown),
+          evs_volume_type_breakdown = COALESCE(EXCLUDED.evs_volume_type_breakdown, manageone_tenants.evs_volume_type_breakdown)
       `;
     }
 
