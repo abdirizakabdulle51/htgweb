@@ -7,6 +7,11 @@ const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
 const RESOURCE_USAGE_REQUEST_DELAY_MS = 2000;
 const RESOURCE_USAGE_RATE_LIMIT_RETRIES = 2;
 const RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS = 5000;
+const MANAGEONE_READ_TIMEOUT_MS = 30000;
+const PROJECT_PAGE_LIMIT = 100;
+const PROJECT_MAX_PAGES = 20;
+const NATIVE_RESOURCE_PAGE_LIMIT = 1000;
+const NATIVE_RESOURCE_MAX_PAGES = 20;
 
 class HttpStatusError extends Error {
   constructor(status, message) {
@@ -80,6 +85,28 @@ function manageOneRootUrl() {
 
 function resourceEndpointBaseUrl() {
   return `${manageOneRootUrl()}/rest/resource`;
+}
+
+async function fetchTextWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), MANAGEONE_READ_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    const text = await response.text();
+    return { response, text };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`HTTP request timed out after ${MANAGEONE_READ_TIMEOUT_MS}ms`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function listFromResponse(body, keys) {
@@ -218,7 +245,7 @@ async function loadSyncedTenantsForCrm() {
 async function fetchTenantResourceUsage(vdcId, session) {
   const baseUrl = stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
   const url = `${baseUrl}/v3.0/capacity/${encodeURIComponent(vdcId)}/statics?inherit=true`;
-  const response = await fetch(url, {
+  const { response, text } = await fetchTextWithTimeout(url, {
     method: "GET",
     headers: {
       Accept: "application/json, text/plain, */*",
@@ -226,7 +253,6 @@ async function fetchTenantResourceUsage(vdcId, session) {
     },
     redirect: "manual"
   });
-  const text = await response.text();
 
   if (!response.ok) {
     throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
@@ -258,7 +284,7 @@ async function retryRateLimited(label, callback) {
 async function fetchProjectPage(vdc, session, start, limit) {
   const baseUrl = stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
   const url = `${baseUrl}/v3.1/vdcs/${encodeURIComponent(vdc.id)}/projects?start=${start}&limit=${limit}`;
-  const response = await fetch(url, {
+  const { response, text } = await fetchTextWithTimeout(url, {
     method: "GET",
     headers: {
       Accept: "application/json, text/plain, */*",
@@ -266,7 +292,6 @@ async function fetchProjectPage(vdc, session, start, limit) {
     },
     redirect: "manual"
   });
-  const text = await response.text();
 
   if (!response.ok) {
     throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
@@ -276,12 +301,18 @@ async function fetchProjectPage(vdc, session, start, limit) {
 }
 
 async function listTenantProjects(vdc, session) {
-  const limit = 100;
+  const limit = PROJECT_PAGE_LIMIT;
   let start = 0;
   let total = Infinity;
   const projects = [];
+  let page = 0;
 
   while (start < total) {
+    page += 1;
+    if (page > PROJECT_MAX_PAGES) {
+      throw new Error(`Project pagination exceeded ${PROJECT_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`);
+    }
+
     const body = await retryRateLimited(
       `resource-space lookup for ${vdc.name || vdc.id}`,
       () => fetchProjectPage(vdc, session, start, limit)
@@ -308,7 +339,7 @@ async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit)
     limit: String(limit)
   });
   const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
-  const response = await fetch(url, {
+  const { response, text } = await fetchTextWithTimeout(url, {
     method: "GET",
     headers: {
       Accept: "application/json, text/plain, */*",
@@ -316,7 +347,6 @@ async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit)
     },
     redirect: "manual"
   });
-  const text = await response.text();
 
   if (!response.ok) {
     throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
@@ -326,12 +356,20 @@ async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit)
 }
 
 async function fetchProjectNativeEcsResources(vdc, projectId, session) {
-  const limit = 1000;
+  const limit = NATIVE_RESOURCE_PAGE_LIMIT;
   let start = 0;
   let total = Infinity;
   const responses = [];
+  let page = 0;
 
   while (start < total) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `Native ECS resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id} project ${projectId}`
+      );
+    }
+
     const body = await retryRateLimited(
       `native ECS resource lookup for ${vdc.name || vdc.id} project ${projectId}`,
       () => fetchNativeEcsResourcePage(vdc, projectId, session, start, limit)
@@ -356,6 +394,7 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
 
   const projects = await listTenantProjects(vdc, session);
   const nativeResourceResponses = [];
+  console.log(`[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: ${projects.length} project(s)`);
 
   for (const project of projects) {
     const projectId = project.id || project.project_id;
@@ -365,7 +404,9 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
     nativeResourceResponses.push(...(await fetchProjectNativeEcsResources(vdc, String(projectId), session)));
   }
 
-  return aggregateEcsFlavorBreakdown(nativeResourceResponses);
+  const breakdown = aggregateEcsFlavorBreakdown(nativeResourceResponses);
+  console.log(`[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s)`);
+  return breakdown;
 }
 
 async function fetchTenantResourceUsageWithRetry(vdc, session) {
@@ -414,6 +455,7 @@ async function syncManageOneTenants() {
 
     for (let index = 0; index < vdcs.length; index += 1) {
       const vdc = vdcs[index];
+      console.log(`[MANAGEONE SYNC] syncing tenant ${index + 1}/${vdcs.length}: ${vdc.name || vdc.id}`);
       const extra = parseExtra(vdc.extra);
       const rawPayload = JSON.stringify(vdc);
       let resourceUsagePayload = null;
