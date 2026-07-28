@@ -4,6 +4,7 @@ import { authenticate, listAllVdcs } from "../manageone.js";
 
 const prisma = new PrismaClient();
 const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
+const RESOURCE_USAGE_REQUEST_DELAY_MS = 500;
 
 function parseExtra(value) {
   if (!value) return {};
@@ -43,6 +44,10 @@ function dateFromMilliseconds(value) {
 
   const date = new Date(milliseconds);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function stripTrailingSlash(value) {
@@ -190,12 +195,17 @@ async function syncManageOneTenants() {
     const vdcs = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
     const session = await authenticate();
 
-    for (const vdc of vdcs) {
+    for (let index = 0; index < vdcs.length; index += 1) {
+      const vdc = vdcs[index];
       const extra = parseExtra(vdc.extra);
       const rawPayload = JSON.stringify(vdc);
       let resourceUsagePayload = null;
 
       try {
+        if (index > 0) {
+          await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+        }
+
         resourceUsagePayload = JSON.stringify(await fetchTenantResourceUsage(vdc.id, session));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
