@@ -1,8 +1,9 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { listAllVdcs } from "../manageone.js";
+import { authenticate, listAllVdcs } from "../manageone.js";
 
 const prisma = new PrismaClient();
+const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
 
 function parseExtra(value) {
   if (!value) return {};
@@ -16,6 +17,7 @@ function parseExtra(value) {
 }
 
 function numberOrNull(value) {
+  if (value === undefined || value === null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -43,6 +45,62 @@ function dateFromMilliseconds(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function stripTrailingSlash(value) {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function firstDefined(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== "");
+}
+
+function resourceTotal(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const total = numberOrNull(value);
+  return total === null || total === -1 ? undefined : total;
+}
+
+function flattenResourceUsage(resourceUsage) {
+  const resources = [];
+
+  function walk(value, serviceId = null) {
+    if (!value || typeof value !== "object") return;
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        walk(item, serviceId);
+      }
+      return;
+    }
+
+    const currentServiceId = firstDefined(value.service_id, value.serviceId, serviceId);
+    const resource = firstDefined(value.resource, value.resource_name, value.resourceName, value.name);
+    const used = firstDefined(value.used, value.used_value, value.usedValue);
+    const total = firstDefined(value.total, value.total_value, value.totalValue);
+
+    if (currentServiceId && resource && used !== undefined && used !== null && used !== "") {
+      const item = {
+        serviceId: currentServiceId,
+        resource,
+        used: numberOrNull(used)
+      };
+      const normalizedTotal = resourceTotal(total);
+
+      if (normalizedTotal !== undefined) {
+        item.total = normalizedTotal;
+      }
+
+      resources.push(item);
+    }
+
+    for (const child of Object.values(value)) {
+      walk(child, currentServiceId);
+    }
+  }
+
+  walk(resourceUsage);
+  return resources;
+}
+
 function mapTenantForCrm(tenant) {
   return {
     vdcId: tenant.vdc_id,
@@ -56,7 +114,8 @@ function mapTenantForCrm(tenant) {
     managerEmail: tenant.manager_email,
     ecsUsed: numberOrNull(tenant.ecs_used),
     evsUsed: numberOrNull(tenant.evs_used),
-    projectCount: tenant.project_count
+    projectCount: tenant.project_count,
+    resources: flattenResourceUsage(tenant.resource_usage)
   };
 }
 
@@ -65,10 +124,30 @@ async function loadSyncedTenantsForCrm() {
     SELECT
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
-      ecs_used, evs_used, project_count
+      ecs_used, evs_used, project_count, resource_usage
     FROM manageone_tenants
     ORDER BY name ASC
   `;
+}
+
+async function fetchTenantResourceUsage(vdcId, session) {
+  const baseUrl = stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
+  const url = `${baseUrl}/v3.0/capacity/${encodeURIComponent(vdcId)}/statics?inherit=true`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
 }
 
 async function pushTenantsToCrm() {
@@ -109,24 +188,33 @@ async function syncManageOneTenants() {
 
   try {
     const vdcs = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
+    const session = await authenticate();
 
     for (const vdc of vdcs) {
       const extra = parseExtra(vdc.extra);
       const rawPayload = JSON.stringify(vdc);
+      let resourceUsagePayload = null;
+
+      try {
+        resourceUsagePayload = JSON.stringify(await fetchTenantResourceUsage(vdc.id, session));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[MANAGEONE SYNC] resource usage skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
 
       await prisma.$executeRaw`
         INSERT INTO manageone_tenants
           (vdc_id, domain_id, name, level, upper_vdc_id, enabled,
            manager_name, manager_phone, manager_email,
            ecs_used, evs_used, project_count, create_user_name,
-           manageone_create_at, last_synced_at, raw_payload)
+           manageone_create_at, last_synced_at, raw_payload, resource_usage)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
            ${extra.manager ?? null}, ${extra.phone ?? null}, ${extra.email ?? null},
            ${numberOrNull(vdc.ecs_used)}, ${numberOrNull(vdc.evs_used)}, ${integerOrNull(vdc.project_count)},
            ${vdc.create_user_name ?? null}, ${dateFromMilliseconds(vdc.create_at)}, now(),
-           CAST(${rawPayload} AS jsonb))
+           CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
           domain_id = EXCLUDED.domain_id,
           name = EXCLUDED.name,
@@ -142,7 +230,8 @@ async function syncManageOneTenants() {
           create_user_name = EXCLUDED.create_user_name,
           manageone_create_at = EXCLUDED.manageone_create_at,
           last_synced_at = now(),
-          raw_payload = EXCLUDED.raw_payload
+          raw_payload = EXCLUDED.raw_payload,
+          resource_usage = COALESCE(EXCLUDED.resource_usage, manageone_tenants.resource_usage)
       `;
     }
 
