@@ -74,6 +74,75 @@ function resourceTotal(value) {
   return total === null || total === -1 ? undefined : total;
 }
 
+function manageOneRootUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL).replace(/\/rest\/vdc$/, "");
+}
+
+function resourceEndpointBaseUrl() {
+  return `${manageOneRootUrl()}/rest/resource`;
+}
+
+function listFromResponse(body, keys) {
+  for (const key of keys) {
+    const value = body?.[key] || body?.data?.[key];
+    if (Array.isArray(value)) return value;
+  }
+
+  return [];
+}
+
+function resourceUsageIndicatesEcs(resourceUsage) {
+  return flattenResourceUsage(resourceUsage).some((resource) => {
+    const serviceId = String(resource.serviceId || "").toLowerCase();
+    const resourceName = String(resource.resource || "").toLowerCase();
+    return serviceId.includes("ecs") && resourceName.includes("instance") && Number(resource.used) > 0;
+  });
+}
+
+function shouldFetchEcsFlavorBreakdown(vdc, resourceUsage) {
+  const ecsUsed = numberOrNull(vdc.ecs_used);
+  return (ecsUsed !== null && ecsUsed > 0) || resourceUsageIndicatesEcs(resourceUsage);
+}
+
+function parseEcsFlavor(rawFlavor) {
+  if (typeof rawFlavor !== "string") return null;
+
+  const [vcpusValue, ramMbValue, ...nameParts] = rawFlavor.split("|");
+  const flavorName = nameParts.join("|").trim();
+  if (!flavorName || flavorName.toLowerCase().startsWith("waf.")) return null;
+
+  return {
+    flavorName,
+    vcpus: numberOrNull(vcpusValue),
+    ramMb: numberOrNull(ramMbValue)
+  };
+}
+
+function aggregateEcsFlavorBreakdown(nativeResourceResponses) {
+  const flavorsByName = new Map();
+
+  for (const response of nativeResourceResponses) {
+    const resources = listFromResponse(response, ["resources", "resource_list", "native_resources"]);
+
+    for (const resource of resources) {
+      const parsed = parseEcsFlavor(resource?.properties?.flavor);
+      if (!parsed) continue;
+
+      const existing = flavorsByName.get(parsed.flavorName);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        flavorsByName.set(parsed.flavorName, {
+          ...parsed,
+          count: 1
+        });
+      }
+    }
+  }
+
+  return [...flavorsByName.values()].sort((a, b) => a.flavorName.localeCompare(b.flavorName));
+}
+
 function flattenResourceUsage(resourceUsage) {
   const resources = [];
 
@@ -130,7 +199,8 @@ function mapTenantForCrm(tenant) {
     ecsUsed: numberOrNull(tenant.ecs_used),
     evsUsed: numberOrNull(tenant.evs_used),
     projectCount: tenant.project_count,
-    resources: flattenResourceUsage(tenant.resource_usage)
+    resources: flattenResourceUsage(tenant.resource_usage),
+    ecsFlavors: tenant.ecs_flavor_breakdown || []
   };
 }
 
@@ -139,7 +209,7 @@ async function loadSyncedTenantsForCrm() {
     SELECT
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
-      ecs_used, evs_used, project_count, resource_usage
+      ecs_used, evs_used, project_count, resource_usage, ecs_flavor_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
   `;
@@ -165,10 +235,10 @@ async function fetchTenantResourceUsage(vdcId, session) {
   return text ? JSON.parse(text) : {};
 }
 
-async function fetchTenantResourceUsageWithRetry(vdc, session) {
+async function retryRateLimited(label, callback) {
   for (let attempt = 0; attempt <= RESOURCE_USAGE_RATE_LIMIT_RETRIES; attempt += 1) {
     try {
-      return await fetchTenantResourceUsage(vdc.id, session);
+      return await callback();
     } catch (error) {
       if (error?.status !== 429 || attempt === RESOURCE_USAGE_RATE_LIMIT_RETRIES) {
         throw error;
@@ -176,13 +246,130 @@ async function fetchTenantResourceUsageWithRetry(vdc, session) {
 
       const nextAttempt = attempt + 2;
       console.warn(
-        `[MANAGEONE SYNC] resource usage rate-limited for ${vdc.name || vdc.id}; retrying attempt ${nextAttempt}/${RESOURCE_USAGE_RATE_LIMIT_RETRIES + 1} after ${RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS}ms`
+        `[MANAGEONE SYNC] ${label} rate-limited; retrying attempt ${nextAttempt}/${RESOURCE_USAGE_RATE_LIMIT_RETRIES + 1} after ${RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS}ms`
       );
       await delay(RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS);
     }
   }
 
-  return {};
+  return null;
+}
+
+async function fetchProjectPage(vdc, session, start, limit) {
+  const baseUrl = stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
+  const url = `${baseUrl}/v3.1/vdcs/${encodeURIComponent(vdc.id)}/projects?start=${start}&limit=${limit}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function listTenantProjects(vdc, session) {
+  const limit = 100;
+  let start = 0;
+  let total = Infinity;
+  const projects = [];
+
+  while (start < total) {
+    const body = await retryRateLimited(
+      `resource-space lookup for ${vdc.name || vdc.id}`,
+      () => fetchProjectPage(vdc, session, start, limit)
+    );
+    const pageProjects = listFromResponse(body, ["projects", "project_list"]);
+    projects.push(...pageProjects);
+    total = Number.isFinite(Number(body?.total)) ? Number(body.total) : projects.length;
+    start += limit;
+
+    if (start < total) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return projects;
+}
+
+async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit) {
+  const params = new URLSearchParams({
+    service_id: "ecs",
+    resource_type_name: "CLOUD_ECS_INSTANCE",
+    project_id: projectId,
+    start: String(start),
+    limit: String(limit)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchProjectNativeEcsResources(vdc, projectId, session) {
+  const limit = 1000;
+  let start = 0;
+  let total = Infinity;
+  const responses = [];
+
+  while (start < total) {
+    const body = await retryRateLimited(
+      `native ECS resource lookup for ${vdc.name || vdc.id} project ${projectId}`,
+      () => fetchNativeEcsResourcePage(vdc, projectId, session, start, limit)
+    );
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    total = Number.isFinite(Number(body?.total)) ? Number(body.total) : start + pageResources.length;
+    start += limit;
+
+    if (start < total) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
+  if (!shouldFetchEcsFlavorBreakdown(vdc, resourceUsage)) {
+    return [];
+  }
+
+  const projects = await listTenantProjects(vdc, session);
+  const nativeResourceResponses = [];
+
+  for (const project of projects) {
+    const projectId = project.id || project.project_id;
+    if (!projectId) continue;
+
+    await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    nativeResourceResponses.push(...(await fetchProjectNativeEcsResources(vdc, String(projectId), session)));
+  }
+
+  return aggregateEcsFlavorBreakdown(nativeResourceResponses);
+}
+
+async function fetchTenantResourceUsageWithRetry(vdc, session) {
+  return retryRateLimited(`resource usage for ${vdc.name || vdc.id}`, () => fetchTenantResourceUsage(vdc.id, session));
 }
 
 async function pushTenantsToCrm() {
@@ -230,16 +417,26 @@ async function syncManageOneTenants() {
       const extra = parseExtra(vdc.extra);
       const rawPayload = JSON.stringify(vdc);
       let resourceUsagePayload = null;
+      let resourceUsage = null;
+      let ecsFlavorBreakdownPayload = null;
 
       try {
         if (index > 0) {
           await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
         }
 
-        resourceUsagePayload = JSON.stringify(await fetchTenantResourceUsageWithRetry(vdc, session));
+        resourceUsage = await fetchTenantResourceUsageWithRetry(vdc, session);
+        resourceUsagePayload = JSON.stringify(resourceUsage);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
         console.error(`[MANAGEONE SYNC] resource usage skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
+
+      try {
+        ecsFlavorBreakdownPayload = JSON.stringify(await fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[MANAGEONE SYNC] ECS flavor breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
       }
 
       await prisma.$executeRaw`
@@ -247,14 +444,15 @@ async function syncManageOneTenants() {
           (vdc_id, domain_id, name, level, upper_vdc_id, enabled,
            manager_name, manager_phone, manager_email,
            ecs_used, evs_used, project_count, create_user_name,
-           manageone_create_at, last_synced_at, raw_payload, resource_usage)
+           manageone_create_at, last_synced_at, raw_payload, resource_usage, ecs_flavor_breakdown)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
            ${extra.manager ?? null}, ${extra.phone ?? null}, ${extra.email ?? null},
            ${numberOrNull(vdc.ecs_used)}, ${numberOrNull(vdc.evs_used)}, ${integerOrNull(vdc.project_count)},
            ${vdc.create_user_name ?? null}, ${dateFromMilliseconds(vdc.create_at)}, now(),
-           CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb))
+           CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb),
+           CAST(${ecsFlavorBreakdownPayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
           domain_id = EXCLUDED.domain_id,
           name = EXCLUDED.name,
@@ -271,7 +469,8 @@ async function syncManageOneTenants() {
           manageone_create_at = EXCLUDED.manageone_create_at,
           last_synced_at = now(),
           raw_payload = EXCLUDED.raw_payload,
-          resource_usage = COALESCE(EXCLUDED.resource_usage, manageone_tenants.resource_usage)
+          resource_usage = COALESCE(EXCLUDED.resource_usage, manageone_tenants.resource_usage),
+          ecs_flavor_breakdown = COALESCE(EXCLUDED.ecs_flavor_breakdown, manageone_tenants.ecs_flavor_breakdown)
       `;
     }
 
