@@ -4,7 +4,7 @@ import { authenticate, listAllVdcs } from "../manageone.js";
 
 const prisma = new PrismaClient();
 const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
-const RESOURCE_USAGE_REQUEST_DELAY_MS = 500;
+const RESOURCE_USAGE_REQUEST_DELAY_MS = 2000;
 const RESOURCE_USAGE_RATE_LIMIT_RETRIES = 2;
 const RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS = 5000;
 
