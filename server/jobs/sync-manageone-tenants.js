@@ -659,7 +659,7 @@ async function syncManageOneTenants() {
     const vdcs = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
     const session = await authenticate();
     const tenantUsageHistoryPayload = [];
-    const syncedAt = new Date().toISOString();
+    const syncedAt = Date.now();
 
     for (let index = 0; index < vdcs.length; index += 1) {
       const vdc = vdcs[index];
