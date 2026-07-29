@@ -124,6 +124,10 @@ function capacityValues(record, label) {
 }
 
 function transformCapacity(region, body) {
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    console.log(`[CLOUD CAPACITY] response keys for ${region.regionName}: ${Object.keys(body).join(", ")}`);
+  }
+
   const records = recordsFromCapacityResponse(body);
   const cpu = capacityValues(findCapacityRecord(records, "cpu"), "cpu");
   const memory = capacityValues(findCapacityRecord(records, "memory"), "memory");
