@@ -53,42 +53,6 @@ function parseJson(text, label) {
   }
 }
 
-function recordsFromCapacityResponse(body) {
-  if (Array.isArray(body)) return body;
-  if (Array.isArray(body?.records)) return body.records;
-  if (Array.isArray(body?.resources)) return body.resources;
-  if (Array.isArray(body?.resourceTypes)) return body.resourceTypes;
-  if (Array.isArray(body?.data)) return body.data;
-  if (body && typeof body === "object") return Object.values(body).filter((value) => value && typeof value === "object");
-  return [];
-}
-
-function resourceTypeOf(record) {
-  const raw = String(
-    record?.resourceType ||
-      record?.resource_type ||
-      record?.resourceTypeName ||
-      record?.resource_type_name ||
-      record?.type ||
-      record?.name ||
-      record?.id ||
-      ""
-  ).toLowerCase();
-
-  return raw.replace(/[_\s]/g, "-");
-}
-
-function findCapacityRecord(records, resourceType) {
-  const expected = resourceType.toLowerCase().replace(/[_\s]/g, "-");
-  const compactExpected = expected.replace(/-/g, "");
-
-  return records.find((record) => {
-    const actual = resourceTypeOf(record);
-    const compactActual = actual.replace(/-/g, "");
-    return actual === expected || actual.includes(expected) || compactActual === compactExpected;
-  });
-}
-
 function numberFrom(value, label) {
   const number = Number(value);
   if (!Number.isFinite(number)) {
@@ -124,14 +88,9 @@ function capacityValues(record, label) {
 }
 
 function transformCapacity(region, body) {
-  if (body && typeof body === "object" && !Array.isArray(body)) {
-    console.log(`[CLOUD CAPACITY] response keys for ${region.regionName}: ${Object.keys(body).join(", ")}`);
-  }
-
-  const records = recordsFromCapacityResponse(body);
-  const cpu = capacityValues(findCapacityRecord(records, "cpu"), "cpu");
-  const memory = capacityValues(findCapacityRecord(records, "memory"), "memory");
-  const storage = capacityValues(findCapacityRecord(records, "storage-pool"), "storage-pool");
+  const cpu = capacityValues(body?.cpu, "cpu");
+  const memory = capacityValues(body?.memory, "memory");
+  const storage = capacityValues(body?.storagePool || body?.storage_pool || body?.["storage-pool"], "storagePool");
 
   return {
     regionId: region.regionId,
