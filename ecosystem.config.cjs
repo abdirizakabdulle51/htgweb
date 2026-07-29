@@ -21,6 +21,28 @@ module.exports = {
       env: {
         NODE_ENV: "production"
       }
+    },
+    {
+      name: "cloud-capacity-sync",
+      script: "server/jobs/sync-cloud-capacity.js",
+      cron_restart: "*/15 * * * *",
+      autorestart: false,
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        NODE_ENV: "production"
+      }
+    },
+    {
+      name: "ping-monitor",
+      script: "server/jobs/ping-monitor.js",
+      cron_restart: "*/2 * * * *",
+      autorestart: false,
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        NODE_ENV: "production"
+      }
     }
   ]
 };
