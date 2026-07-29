@@ -63,6 +63,36 @@ function recommendedTopPriority(recommendations) {
   return first?.rule || first?.recommendedService || null;
 }
 
+function formatMonthlyValue(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  }).format(value) + "/month";
+}
+
+function compactRecommendation(recommendation) {
+  const estimatedMonthlyValue = formatMonthlyValue(recommendation.estimatedMonthlyValue);
+
+  return {
+    rule: recommendation.rule,
+    priority: recommendation.priority,
+    triggerReason: recommendation.triggerReason,
+    recommendedService: recommendation.recommendedService,
+    estimate: estimatedMonthlyValue
+      ? {
+          estimatedMonthlyValue,
+          estimateBasis: recommendation.estimateBasis || null,
+          estimateCatalogItemName: recommendation.estimateCatalogItemName || null
+        }
+      : {
+          estimatedValue: recommendation.estimatedValue || null
+        }
+  };
+}
+
 function groupCompanyContexts(companies) {
   const companiesById = new Map();
 
@@ -91,13 +121,7 @@ function compactCompanyContext(company) {
     companyId: company.companyId,
     companyName: company.companyName,
     sectorName: company.sectorName || null,
-    recommendations: company.recommendations.map((recommendation) => ({
-      rule: recommendation.rule,
-      priority: recommendation.priority,
-      triggerReason: recommendation.triggerReason,
-      recommendedService: recommendation.recommendedService,
-      estimatedValue: recommendation.estimatedValue
-    })),
+    recommendations: company.recommendations.map(compactRecommendation),
     usageSummary: company.usageSummary || {},
     manageOneTenants: (company.manageOneTenants || []).map((tenant) => ({
       name: tenant.name,
