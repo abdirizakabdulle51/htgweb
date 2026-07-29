@@ -84,6 +84,10 @@ function capacityValues(record, label) {
     oversubscriptionTotal: capacityNumber(
       record?.oversubscriptionCapacity?.totalCapacity,
       `${label}.oversubscriptionCapacity.totalCapacity`
+    ),
+    oversubscriptionRatio: numberFrom(
+      record?.oversubscriptionCapacity?.allocatedCapacity?.ratio,
+      `${label}.oversubscriptionCapacity.allocatedCapacity.ratio`
     )
   };
 }
@@ -99,12 +103,15 @@ function transformCapacity(region, body) {
     cpuUsed: cpu.used,
     cpuTotal: cpu.total,
     cpuOversubscriptionCapacity: cpu.oversubscriptionTotal,
+    cpuOversubscriptionRatio: cpu.oversubscriptionRatio,
     memoryUsedGb: memory.used,
     memoryTotalGb: memory.total,
     memoryOversubscriptionCapacityGb: memory.oversubscriptionTotal,
+    memoryOversubscriptionRatio: memory.oversubscriptionRatio,
     storageUsedGb: storage.used * TB_TO_GB,
     storageTotalGb: storage.total * TB_TO_GB,
-    storageOversubscriptionCapacityGb: storage.oversubscriptionTotal * TB_TO_GB
+    storageOversubscriptionCapacityGb: storage.oversubscriptionTotal * TB_TO_GB,
+    storageOversubscriptionRatio: storage.oversubscriptionRatio
   };
 }
 
