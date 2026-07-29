@@ -4,6 +4,7 @@ import { authenticate } from "../manageone.js";
 const CRM_SYNC_URL = "https://crm-api.102-203-134-106.sslip.io/cloud-capacity/sync";
 const CAPACITY_REQUEST_TIMEOUT_MS = Number(process.env.MANAGEONE_TIMEOUT_MS || 30000);
 const CAPACITY_RESOURCE_TYPES = "cpu,memory,storage-pool";
+const TB_TO_GB = 1024;
 const REGIONS = [
   {
     regionId: "3A462C0E713B3BF389CC4359D2618F9D",
@@ -101,9 +102,9 @@ function transformCapacity(region, body) {
     memoryUsedGb: memory.used,
     memoryTotalGb: memory.total,
     memoryOversubscriptionCapacityGb: memory.oversubscriptionTotal,
-    storageUsedGb: storage.used,
-    storageTotalGb: storage.total,
-    storageOversubscriptionCapacityGb: storage.oversubscriptionTotal
+    storageUsedGb: storage.used * TB_TO_GB,
+    storageTotalGb: storage.total * TB_TO_GB,
+    storageOversubscriptionCapacityGb: storage.oversubscriptionTotal * TB_TO_GB
   };
 }
 
