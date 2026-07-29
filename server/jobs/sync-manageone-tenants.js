@@ -287,10 +287,13 @@ function resourceUsed(resources, serviceId, resourceName) {
 
 function mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }) {
   const resources = flattenResourceUsage(resourceUsage);
+  const extra = parseExtra(vdc.extra);
 
   return {
-    linkedCompanyId: String(vdc.id),
+    vdcId: String(vdc.id),
+    domainId: vdc.domain_id ?? null,
     tenantName: String(vdc.name || vdc.id),
+    managerEmail: extra.email ?? null,
     ecsInstances: resourceUsed(resources, "ecs", "instances"),
     ecsCores: resourceUsed(resources, "ecs", "cores"),
     ecsRamGb: resourceUsed(resources, "ecs", "ram"),
