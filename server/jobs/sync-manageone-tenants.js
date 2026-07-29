@@ -4,6 +4,7 @@ import { authenticate, listAllVdcs } from "../manageone.js";
 
 const prisma = new PrismaClient();
 const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
+const TENANT_USAGE_SYNC_URL = "https://crm-api.102-203-134-106.sslip.io/tenant-usage/sync";
 const RESOURCE_USAGE_REQUEST_DELAY_MS = 2000;
 const RESOURCE_USAGE_RATE_LIMIT_RETRIES = 2;
 const RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS = 5000;
@@ -266,6 +267,42 @@ function flattenResourceUsage(resourceUsage) {
 
   walk(resourceUsage);
   return resources;
+}
+
+function normalizedKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function resourceUsed(resources, serviceId, resourceName) {
+  const expectedServiceId = normalizedKey(serviceId);
+  const expectedResourceName = normalizedKey(resourceName);
+  const match = resources.find(
+    (resource) =>
+      normalizedKey(resource.serviceId) === expectedServiceId &&
+      normalizedKey(resource.resource) === expectedResourceName
+  );
+
+  return numberOrNull(match?.used) || 0;
+}
+
+function mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }) {
+  const resources = flattenResourceUsage(resourceUsage);
+
+  return {
+    linkedCompanyId: String(vdc.id),
+    tenantName: String(vdc.name || vdc.id),
+    ecsInstances: resourceUsed(resources, "ecs", "instances"),
+    ecsCores: resourceUsed(resources, "ecs", "cores"),
+    ecsRamGb: resourceUsed(resources, "ecs", "ram"),
+    rdsInstances: resourceUsed(resources, "rds", "instance"),
+    cceClusters: resourceUsed(resources, "cce", "hybrid.resource.type.cce.cluster"),
+    evsGb: resourceUsed(resources, "evs", "gigabytes"),
+    obsGb: resourceUsed(resources, "obsv3", "capacity"),
+    sfsGb: resourceUsed(resources, "sfs", "gigabytes"),
+    publicIps: resourceUsed(resources, "vpc", "publicIp"),
+    wafInstances: resourceUsed(resources, "waf", "waf.instance"),
+    syncedAt
+  };
 }
 
 function mapTenantForCrm(tenant) {
@@ -577,6 +614,36 @@ async function pushTenantsToCrm() {
   console.log(`[MANAGEONE SYNC] CRM push success: ${payload.length} tenant(s) sent`);
 }
 
+async function pushTenantUsageHistoryToCrm(payload) {
+  const syncSecret = process.env.TENANT_HISTORY_SYNC_SECRET;
+
+  if (!syncSecret) {
+    console.warn("[MANAGEONE SYNC] tenant usage history push skipped: TENANT_HISTORY_SYNC_SECRET is not configured");
+    return;
+  }
+
+  if (payload.length === 0) {
+    console.warn("[MANAGEONE SYNC] tenant usage history push skipped: no usage payloads collected");
+    return;
+  }
+
+  const response = await fetch(TENANT_USAGE_SYNC_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Sync-Secret": syncSecret
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`tenant usage history sync failed: HTTP ${response.status}${body ? ` ${body}` : ""}`);
+  }
+
+  console.log(`[MANAGEONE SYNC] tenant usage history push success: ${payload.length} tenant(s) sent`);
+}
+
 async function syncManageOneTenants() {
   const [run] = await prisma.$queryRaw`
     INSERT INTO manageone_sync_runs (started_at, status)
@@ -588,6 +655,8 @@ async function syncManageOneTenants() {
   try {
     const vdcs = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
     const session = await authenticate();
+    const tenantUsageHistoryPayload = [];
+    const syncedAt = new Date().toISOString();
 
     for (let index = 0; index < vdcs.length; index += 1) {
       const vdc = vdcs[index];
@@ -606,6 +675,7 @@ async function syncManageOneTenants() {
 
         resourceUsage = await fetchTenantResourceUsageWithRetry(vdc, session);
         resourceUsagePayload = JSON.stringify(resourceUsage);
+        tenantUsageHistoryPayload.push(mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
         console.error(`[MANAGEONE SYNC] resource usage skipped for ${vdc.name || vdc.id}: ${message}`);
@@ -667,6 +737,13 @@ async function syncManageOneTenants() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || "Unknown error");
       console.error("[MANAGEONE SYNC] CRM push failed:", message);
+    }
+
+    try {
+      await pushTenantUsageHistoryToCrm(tenantUsageHistoryPayload);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.error("[MANAGEONE SYNC] tenant usage history push failed:", message);
     }
 
     await prisma.$executeRaw`
