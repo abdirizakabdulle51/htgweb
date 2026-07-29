@@ -64,7 +64,7 @@ function recordsFromCapacityResponse(body) {
 }
 
 function resourceTypeOf(record) {
-  return String(
+  const raw = String(
     record?.resourceType ||
       record?.resource_type ||
       record?.resourceTypeName ||
@@ -74,11 +74,19 @@ function resourceTypeOf(record) {
       record?.id ||
       ""
   ).toLowerCase();
+
+  return raw.replace(/[_\s]/g, "-");
 }
 
 function findCapacityRecord(records, resourceType) {
-  const expected = resourceType.toLowerCase();
-  return records.find((record) => resourceTypeOf(record) === expected || resourceTypeOf(record).includes(expected));
+  const expected = resourceType.toLowerCase().replace(/[_\s]/g, "-");
+  const compactExpected = expected.replace(/-/g, "");
+
+  return records.find((record) => {
+    const actual = resourceTypeOf(record);
+    const compactActual = actual.replace(/-/g, "");
+    return actual === expected || actual.includes(expected) || compactActual === compactExpected;
+  });
 }
 
 function numberFrom(value, label) {
@@ -89,11 +97,26 @@ function numberFrom(value, label) {
   return number;
 }
 
+function capacityNumber(value, label) {
+  if (value && typeof value === "object" && "capacityValue" in value) {
+    return numberFrom(value.capacityValue, `${label}.capacityValue`);
+  }
+
+  return numberFrom(value, label);
+}
+
 function capacityValues(record, label) {
+  if (!record) {
+    throw new Error(`${label} capacity record missing`);
+  }
+
+  const total = capacityNumber(record?.actualCapacity?.totalCapacity, `${label}.actualCapacity.totalCapacity`);
+  const usedRatio = numberFrom(record?.actualCapacity?.usedCapacity?.ratio, `${label}.actualCapacity.usedCapacity.ratio`);
+
   return {
-    used: numberFrom(record?.actualCapacity?.usedCapacity, `${label}.actualCapacity.usedCapacity`),
-    total: numberFrom(record?.actualCapacity?.totalCapacity, `${label}.actualCapacity.totalCapacity`),
-    oversubscriptionTotal: numberFrom(
+    used: total * (usedRatio / 100),
+    total,
+    oversubscriptionTotal: capacityNumber(
       record?.oversubscriptionCapacity?.totalCapacity,
       `${label}.oversubscriptionCapacity.totalCapacity`
     )
