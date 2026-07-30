@@ -43,6 +43,17 @@ module.exports = {
       env: {
         NODE_ENV: "production"
       }
+    },
+    {
+      name: "service-health-monitor",
+      script: "server/jobs/service-health-monitor.js",
+      cron_restart: "*/2 * * * *",
+      autorestart: false,
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        NODE_ENV: "production"
+      }
     }
   ]
 };
