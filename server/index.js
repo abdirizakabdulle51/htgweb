@@ -6,7 +6,7 @@ import crypto from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
-import { sendVerificationCodeEmail, sendPasswordResetEmail } from "./mailer.js";
+import { sendVerificationCodeEmail, sendPasswordResetEmail, sendRelayEmail } from "./mailer.js";
 import * as manageOne from "./manageone.js";
 import { validateManageOnePassword } from "../src/lib/passwordPolicy.js";
 import {
@@ -32,6 +32,9 @@ const devResetTokenEndpointEnabled =
 const jwtSecret = process.env.JWT_SECRET || "replace-with-secure-random-secret";
 const authCookieName = "htgclouds_token";
 const provisioningPasswordKey = crypto.scryptSync(jwtSecret, "manageone-provisioning", 32);
+const mailRelayRateLimitWindowMs = 60 * 1000;
+const mailRelayRateLimitMax = 30;
+const mailRelayRequests = [];
 const allowedOrigins = new Set([
   clientUrl,
   "https://htgclouds.com",
@@ -58,7 +61,7 @@ app.use(
     credentials: true
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "200kb" }));
 app.use(cookieParser());
 
 app.get("/", (_request, response) => {
@@ -67,6 +70,56 @@ app.get("/", (_request, response) => {
 
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok" });
+});
+
+app.post("/internal/send-email", async (request, response) => {
+  const configuredSecret = process.env.MAIL_RELAY_SECRET;
+  const providedSecret = request.get("X-Mail-Relay-Secret");
+
+  if (!configuredSecret || providedSecret !== configuredSecret) {
+    return response.status(401).json({ success: false, error: "Unauthorized." });
+  }
+
+  if (!allowMailRelayRequest()) {
+    return response.status(429).json({ success: false, error: "Email relay rate limit exceeded." });
+  }
+
+  try {
+    const to = clean(request.body?.to).toLowerCase();
+    const subject = clean(request.body?.subject);
+    const html = typeof request.body?.html === "string" ? request.body.html.trim() : "";
+    const text = typeof request.body?.text === "string" ? request.body.text.trim() : "";
+
+    if (!isEmail(to)) {
+      throw new HttpError("Enter a valid recipient email address.", 400);
+    }
+
+    if (!subject) {
+      throw new HttpError("Email subject is required.", 400);
+    }
+
+    if (!html) {
+      throw new HttpError("Email HTML body is required.", 400);
+    }
+
+    if (Buffer.byteLength(html, "utf8") > 200 * 1024) {
+      throw new HttpError("Email HTML body must be 200KB or smaller.", 400);
+    }
+
+    await sendRelayEmail({ to, subject, html, text });
+    return response.json({ success: true });
+  } catch (error) {
+    const status = error instanceof HttpError ? error.status : 502;
+    const message = error instanceof Error ? error.message : "Email delivery failed.";
+
+    if (status === 502) {
+      const to = clean(request.body?.to).toLowerCase();
+      const subject = clean(request.body?.subject);
+      console.error(`[MAIL RELAY] Failed to send to ${to || "[missing recipient]"} subject="${subject || "[missing subject]"}":`, error);
+    }
+
+    return response.status(status).json({ success: false, error: message });
+  }
 });
 
 app.post("/api/auth/signup", async (request, response) => {
@@ -803,6 +856,20 @@ function clean(value) {
 
 function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function allowMailRelayRequest() {
+  const now = Date.now();
+  while (mailRelayRequests.length && mailRelayRequests[0] <= now - mailRelayRateLimitWindowMs) {
+    mailRelayRequests.shift();
+  }
+
+  if (mailRelayRequests.length >= mailRelayRateLimitMax) {
+    return false;
+  }
+
+  mailRelayRequests.push(now);
+  return true;
 }
 
 function verificationCode() {

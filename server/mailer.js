@@ -48,6 +48,41 @@ async function sendMail({ to, subject, html, text, logLabel }) {
   }
 }
 
+function htmlToText(html) {
+  return String(html || "")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export async function sendRelayEmail({ to, subject, html, text }) {
+  const result = await sendMail({
+    to,
+    subject,
+    html,
+    text: text || htmlToText(html),
+    logLabel: "MAIL RELAY"
+  });
+
+  if (!result.delivered) {
+    throw result.error || new Error("Email delivery is not configured.");
+  }
+
+  return result;
+}
+
 function emailShell(bodyHtml) {
   return `
   <div style="background:#f6f8f8;padding:32px 16px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;">
