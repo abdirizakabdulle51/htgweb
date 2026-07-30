@@ -181,9 +181,10 @@ function capacityShapeSummary(body) {
 }
 
 async function discoverAvailableZones(session) {
-  const discovered = [];
+  const discoveredByRegion = new Map();
 
   for (const region of REGIONS) {
+    const discovered = [];
     const url = `${authBaseUrl()}/rest/serviceaccess/v3.0/available-zones?cloud_infra_id=${encodeURIComponent(
       region.cloudInfraId
     )}`;
@@ -199,29 +200,48 @@ async function discoverAvailableZones(session) {
         region,
         azoneId: String(id),
         cloudInfraId: region.cloudInfraId,
+        azType: record?.type ? String(record.type) : "unknown",
         record
       });
     }
+
+    discoveredByRegion.set(region.regionId, discovered);
   }
 
-  return discovered;
+  return discoveredByRegion;
 }
 
 async function verifyAzCapacity(session) {
-  const candidates = await discoverAvailableZones(session);
+  const discoveredByRegion = await discoverAvailableZones(session);
+  const candidates = [];
 
   for (const region of REGIONS) {
+    const discovered = discoveredByRegion.get(region.regionId) || [];
+    const kvmDiscovered = discovered.filter((candidate) => candidate.azType.toUpperCase() === "KVM");
+
+    if (kvmDiscovered.length > 0) {
+      candidates.push(...kvmDiscovered);
+      continue;
+    }
+
+    console.log(
+      `[AZ CAPACITY] No KVM AZ discovered for ${region.regionName}; falling back to all discovered/configured AZ candidates`
+    );
+    candidates.push(...discovered);
+
     for (const azoneId of region.azoneCandidates) {
       candidates.push({
         source: azoneId === region.regionId ? "direct-region-id-as-azone" : "configured-az-candidate",
         region,
         azoneId,
-        cloudInfraId: region.cloudInfraId
+        cloudInfraId: region.cloudInfraId,
+        azType: azoneId.startsWith("az1.") ? "KVM-candidate" : "unknown"
       });
     }
   }
 
   const seen = new Set();
+  const successfulChecks = [];
 
   for (const candidate of candidates) {
     const key = `${candidate.cloudInfraId}|${candidate.azoneId}`;
@@ -232,7 +252,7 @@ async function verifyAzCapacity(session) {
       candidate.azoneId
     )}?cloud_infra_id=${encodeURIComponent(candidate.cloudInfraId)}`;
     const result = await tryGet(
-      `AZ CAPACITY ${candidate.region.regionName} via ${candidate.source}`,
+      `AZ CAPACITY ${candidate.region.regionName} az=${candidate.azoneId} type=${candidate.azType} via ${candidate.source}`,
       url,
       session
     );
@@ -242,25 +262,36 @@ async function verifyAzCapacity(session) {
       console.log("[AZ CAPACITY] Shape summary:");
       console.log(JSON.stringify(summary, null, 2));
 
-      return {
-        status: "working",
-        realDataConfirmed:
-          summary.hasCpuMemoryCpu &&
-          summary.hasCpuMemoryMemory &&
-          summary.hasStorageCapacityList &&
-          summary.hasVmCountVm,
+      const realDataConfirmed =
+        summary.hasCpuMemoryCpu &&
+        summary.hasCpuMemoryMemory &&
+        summary.hasStorageCapacityList &&
+        summary.hasVmCountVm;
+
+      successfulChecks.push({
+        realDataConfirmed,
         approach: candidate.source,
         azoneId: candidate.azoneId,
+        azType: candidate.azType,
         cloudInfraId: candidate.cloudInfraId,
         summary
-      };
+      });
     }
+  }
+
+  const confirmed = successfulChecks.find((check) => check.realDataConfirmed) || successfulChecks[0];
+  if (confirmed) {
+    return {
+      status: confirmed.realDataConfirmed ? "working" : "broken",
+      ...confirmed
+    };
   }
 
   return {
     status: "broken",
     realDataConfirmed: false,
-    approach: "none"
+    approach: "none",
+    azType: "unknown"
   };
 }
 
@@ -421,7 +452,7 @@ async function main() {
   console.log("\n================ SUMMARY ================");
   console.log(
     `AZ_CAPACITY: ${azCapacity.status}, real data confirmed ${azCapacity.realDataConfirmed ? "yes" : "no"}${
-      azCapacity.azoneId ? `, approach=${azCapacity.approach}, azone_id=${azCapacity.azoneId}, cloud_infra_id=${azCapacity.cloudInfraId}` : ""
+      azCapacity.azoneId ? `, tested_az=${azCapacity.azoneId}, az_type=${azCapacity.azType}` : ""
     }`
   );
   console.log(
