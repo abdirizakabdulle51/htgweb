@@ -2,6 +2,7 @@ import "dotenv/config";
 import { authenticate } from "../manageone.js";
 
 const CRM_SYNC_URL = "https://crm-api.102-203-134-106.sslip.io/cloud-capacity/sync";
+const CRM_SNAPSHOT_URL = "https://crm-api.102-203-134-106.sslip.io/cloud-capacity/snapshot";
 const CAPACITY_REQUEST_TIMEOUT_MS = Number(process.env.MANAGEONE_TIMEOUT_MS || 30000);
 const CAPACITY_RESOURCE_TYPES = "cpu,memory,storage-pool";
 const TB_TO_GB = 1024;
@@ -153,6 +154,30 @@ async function pushCapacityToCrm(syncSecret, payload) {
   }
 }
 
+async function pushCapacitySnapshotToCrm(syncSecret, payload) {
+  const snapshotAt = Date.now();
+  const snapshotPayload = payload.map((region) => ({
+    ...region,
+    snapshotAt
+  }));
+
+  const { response, text } = await fetchTextWithTimeout(CRM_SNAPSHOT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-Sync-Secret": syncSecret
+    },
+    body: JSON.stringify(snapshotPayload)
+  });
+
+  if (!response.ok) {
+    throw new Error(`CRM capacity snapshot sync failed: HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  console.log(`[CLOUD CAPACITY] snapshot push success: ${snapshotPayload.length} region snapshot(s) sent`);
+}
+
 async function main() {
   const syncSecret = requireEnv("CLOUD_HEALTH_SYNC_SECRET");
   const session = await authenticate();
@@ -174,6 +199,12 @@ async function main() {
 
   if (payload.length > 0) {
     await pushCapacityToCrm(syncSecret, payload);
+    try {
+      await pushCapacitySnapshotToCrm(syncSecret, payload);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.error(`[CLOUD CAPACITY] snapshot push failed: ${message}`);
+    }
   } else {
     console.warn("[CLOUD CAPACITY] CRM push skipped: no region capacity payloads were collected");
   }

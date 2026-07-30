@@ -33,6 +33,18 @@ function parseExtra(value) {
   }
 }
 
+function parseJsonObject(value) {
+  if (!value) return {};
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function numberOrNull(value) {
   if (value === undefined || value === null || value === "") return null;
   const number = Number(value);
@@ -86,6 +98,10 @@ function manageOneRootUrl() {
 
 function resourceEndpointBaseUrl() {
   return `${manageOneRootUrl()}/rest/resource`;
+}
+
+function vdcEndpointBaseUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
 }
 
 async function fetchTextWithTimeout(url, options = {}) {
@@ -285,6 +301,42 @@ function resourceUsed(resources, serviceId, resourceName) {
   return numberOrNull(match?.used) || 0;
 }
 
+function parseLocalizedName(value) {
+  if (!value) return null;
+  if (typeof value === "object") {
+    return value.en_us || value.en_US || value["en-us"] || value.zh_cn || value.zh_CN || null;
+  }
+
+  if (typeof value !== "string") return null;
+
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object") {
+      return parsed.en_us || parsed.en_US || parsed["en-us"] || parsed.zh_cn || parsed.zh_CN || value;
+    }
+  } catch {
+    return value;
+  }
+
+  return value;
+}
+
+function extractTenantRegion(detail) {
+  const body = detail?.vdc || detail?.VDC || detail;
+  const regions = Array.isArray(body?.regions) ? body.regions : [];
+  const region = regions[0];
+  if (!region) return null;
+
+  const regionId = region.region_id || region.regionId || region.id;
+  const regionName = parseLocalizedName(region.region_name || region.regionName || region.name);
+  if (!regionId || !regionName) return null;
+
+  return {
+    regionId: String(regionId),
+    regionName: String(regionName)
+  };
+}
+
 function mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }) {
   const resources = flattenResourceUsage(resourceUsage);
   const extra = parseExtra(vdc.extra);
@@ -309,6 +361,7 @@ function mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }) {
 }
 
 function mapTenantForCrm(tenant) {
+  const rawPayload = parseJsonObject(tenant.raw_payload);
   return {
     vdcId: tenant.vdc_id,
     domainId: tenant.domain_id,
@@ -319,6 +372,8 @@ function mapTenantForCrm(tenant) {
     managerName: tenant.manager_name,
     managerPhone: tenant.manager_phone,
     managerEmail: tenant.manager_email,
+    ...(rawPayload.regionId ? { regionId: rawPayload.regionId } : {}),
+    ...(rawPayload.regionName ? { regionName: rawPayload.regionName } : {}),
     ecsUsed: numberOrNull(tenant.ecs_used),
     evsUsed: numberOrNull(tenant.evs_used),
     projectCount: tenant.project_count,
@@ -333,10 +388,33 @@ async function loadSyncedTenantsForCrm() {
     SELECT
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
-      ecs_used, evs_used, project_count, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown
+      ecs_used, evs_used, project_count, raw_payload, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
   `;
+}
+
+async function fetchTenantRegion(vdc, session) {
+  const url = `${vdcEndpointBaseUrl()}/v3.0/vdcs/${encodeURIComponent(vdc.id)}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  const region = extractTenantRegion(text ? JSON.parse(text) : {});
+  if (!region) {
+    throw new Error("No region found in VDC detail response");
+  }
+
+  return region;
 }
 
 async function fetchTenantResourceUsage(vdcId, session) {
@@ -665,11 +743,22 @@ async function syncManageOneTenants() {
       const vdc = vdcs[index];
       console.log(`[MANAGEONE SYNC] syncing tenant ${index + 1}/${vdcs.length}: ${vdc.name || vdc.id}`);
       const extra = parseExtra(vdc.extra);
-      const rawPayload = JSON.stringify(vdc);
       let resourceUsagePayload = null;
       let resourceUsage = null;
       let ecsFlavorBreakdownPayload = null;
       let evsVolumeTypeBreakdownPayload = null;
+
+      try {
+        const region = await fetchTenantRegion(vdc, session);
+        vdc.regionId = region.regionId;
+        vdc.regionName = region.regionName;
+        console.log(`[MANAGEONE SYNC] tenant region for ${vdc.name || vdc.id}: ${region.regionName}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.warn(`[MANAGEONE SYNC] tenant region skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
+
+      const rawPayload = JSON.stringify(vdc);
 
       try {
         if (index > 0) {
