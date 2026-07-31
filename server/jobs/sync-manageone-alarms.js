@@ -7,7 +7,7 @@ const CRM_ALARMS_SYNC_URL =
 const ALARM_REQUEST_TIMEOUT_MS = Number(process.env.MANAGEONE_TIMEOUT_MS || 30000);
 const ALARM_QUERY_SIZE = Number(process.env.MANAGEONE_ALARM_QUERY_SIZE || 1000);
 const ALARM_DETAIL_BATCH_SIZE = Number(process.env.MANAGEONE_ALARM_DETAIL_BATCH_SIZE || 50);
-const DEFAULT_ALARM_SEVERITIES = ["1", "2", "3", "4"];
+const DEFAULT_ALARM_SEVERITIES = ["1", "2"];
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -119,8 +119,7 @@ function normalizeAlarm(alarm, syncedAt) {
   };
 }
 
-async function fetchAlarmCsns(session) {
-  const severities = alarmSeverities();
+async function fetchAlarmCsnsForSeverity(session, severity) {
   const { response, text } = await fetchTextWithTimeout(`${OC_ALARMS_BASE_URL}/rest/fault/v1/current-alarms/csns`, {
     method: "POST",
     headers: {
@@ -135,7 +134,7 @@ async function fetchAlarmCsns(session) {
             name: "severity",
             field: "severity",
             operator: "in",
-            values: severities
+            values: [severity]
           }
         ],
         expression: "and"
@@ -152,16 +151,31 @@ async function fetchAlarmCsns(session) {
 
   const body = parseJson(text, "ManageOne alarm CSN response");
   if (!response.ok) {
-    throw new Error(`ManageOne alarm CSN query failed: HTTP ${response.status}${text ? ` ${text}` : ""}`);
+    throw new Error(
+      `ManageOne alarm CSN query failed for severity ${severity}: HTTP ${response.status}${text ? ` ${text}` : ""}`
+    );
   }
 
   if (body?.sizeExceeded) {
     throw new Error(
-      `ManageOne alarm CSN query exceeded requested size ${ALARM_QUERY_SIZE}; refusing to push a partial alarm sync`
+      `ManageOne alarm CSN query for severity ${severity} exceeded requested size ${ALARM_QUERY_SIZE}; refusing to push a partial alarm sync`
     );
   }
 
-  return [...new Set(normalizeCsnList(body))];
+  return normalizeCsnList(body);
+}
+
+async function fetchAlarmCsns(session) {
+  const csns = [];
+  const severities = alarmSeverities();
+
+  for (const severity of severities) {
+    const severityCsns = await fetchAlarmCsnsForSeverity(session, severity);
+    console.log(`[MANAGEONE ALARMS] severity ${severity}: fetched ${severityCsns.length} active alarm CSN(s)`);
+    csns.push(...severityCsns);
+  }
+
+  return [...new Set(csns)];
 }
 
 async function fetchAlarmDetails(session, csns) {
