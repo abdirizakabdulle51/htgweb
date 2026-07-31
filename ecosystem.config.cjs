@@ -54,6 +54,17 @@ module.exports = {
       env: {
         NODE_ENV: "production"
       }
+    },
+    {
+      name: "manageone-alarm-sync",
+      script: "server/jobs/sync-manageone-alarms.js",
+      cron_restart: "*/2 * * * *",
+      autorestart: false,
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        NODE_ENV: "production"
+      }
     }
   ]
 };
