@@ -65,6 +65,17 @@ module.exports = {
       env: {
         NODE_ENV: "production"
       }
+    },
+    {
+      name: "manageone-host-groups-sync",
+      script: "server/jobs/sync-manageone-host-groups.js",
+      cron_restart: "*/15 * * * *",
+      autorestart: false,
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        NODE_ENV: "production"
+      }
     }
   ]
 };
