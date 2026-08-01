@@ -265,14 +265,13 @@ function normalizeHostGroup(cluster, hosts, performanceByHostId, syncedAt) {
   const enrichedHosts = hosts.map((host) => {
     const id = hostId(host);
     const metrics = performanceByHostId.get(id) || {};
-    const payload = {
+    return {
       hostId: id,
       hostName: hostName(host),
-      manageIp: hostManageIp(host)
+      manageIp: hostManageIp(host),
+      cpuPercent: roundPercent(numberValue(metrics.cpuPercent, 0)),
+      memoryPercent: roundPercent(numberValue(metrics.memoryPercent, 0))
     };
-    if (Number.isFinite(metrics.cpuPercent)) payload.cpuPercent = roundPercent(metrics.cpuPercent);
-    if (Number.isFinite(metrics.memoryPercent)) payload.memoryPercent = roundPercent(metrics.memoryPercent);
-    return payload;
   });
 
   const cpuValues = enrichedHosts.map((host) => numberValue(host.cpuPercent)).filter(Number.isFinite);
