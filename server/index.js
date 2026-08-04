@@ -159,9 +159,12 @@ app.post("/internal/send-invoice-email", async (request, response) => {
       throw new HttpError("Email HTML body must be 200KB or smaller.", 400);
     }
 
+    const requestStartedAt = Date.now();
     validateInvoiceSnapshot(invoice);
 
+    const pdfStartedAt = Date.now();
     const pdfBuffer = await generateInvoicePdf(invoice);
+    const pdfDurationMs = Date.now() - pdfStartedAt;
     if (pdfBuffer.byteLength > 5 * 1024 * 1024) {
       throw new HttpError("Generated invoice PDF must be 5MB or smaller.", 400);
     }
@@ -179,6 +182,11 @@ app.post("/internal/send-invoice-email", async (request, response) => {
         }
       ]
     });
+
+    console.log(
+      `[INVOICE MAIL RELAY] Sent ${clean(invoice.invoiceNumber) || "[invoice]"} to ${to} ` +
+        `in ${Date.now() - requestStartedAt}ms (pdf=${pdfDurationMs}ms, size=${pdfBuffer.byteLength} bytes).`
+    );
 
     return response.json({ success: true });
   } catch (error) {

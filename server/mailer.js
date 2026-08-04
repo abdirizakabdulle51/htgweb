@@ -16,6 +16,12 @@ if (emailEnabled) {
     host: smtpHost,
     port: smtpPort,
     secure: smtpSecure,
+    pool: true,
+    maxConnections: Number(process.env.SMTP_MAX_CONNECTIONS || 3),
+    maxMessages: Number(process.env.SMTP_MAX_MESSAGES || 100),
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 15000),
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 30000),
     auth: { user: smtpUser, pass: smtpPass }
   });
 } else {
@@ -40,6 +46,7 @@ async function sendMail({ to, subject, html, text, attachments, logLabel }) {
   }
 
   try {
+    const startedAt = Date.now();
     await transporter.sendMail({
       from: `"${fromName}" <${fromEmail}>`,
       to,
@@ -48,6 +55,7 @@ async function sendMail({ to, subject, html, text, attachments, logLabel }) {
       text,
       attachments
     });
+    console.log(`[MAIL] Sent "${logLabel}" to ${to} in ${Date.now() - startedAt}ms.`);
     return { delivered: true };
   } catch (error) {
     console.error(`[MAIL] Failed to send "${logLabel}" to ${to}:`, error);
