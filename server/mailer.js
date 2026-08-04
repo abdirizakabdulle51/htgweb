@@ -22,12 +22,18 @@ if (emailEnabled) {
   console.warn("[MAIL] SMTP_USER / SMTP_PASS not set — emails will be logged to the console instead of sent.");
 }
 
-async function sendMail({ to, subject, html, text, logLabel }) {
+async function sendMail({ to, subject, html, text, attachments, logLabel }) {
   if (!emailEnabled) {
     console.log("=====================================================");
     console.log(`HTGCLOUD EMAIL (TEST MODE) — ${logLabel}`);
     console.log("To:", to);
     console.log("Subject:", subject);
+    if (attachments?.length) {
+      console.log(
+        "Attachments:",
+        attachments.map((attachment) => `${attachment.filename || "attachment"} (${attachment.contentType || "unknown"})`).join(", ")
+      );
+    }
     console.log(text || html);
     console.log("=====================================================");
     return { delivered: false };
@@ -39,7 +45,8 @@ async function sendMail({ to, subject, html, text, logLabel }) {
       to,
       subject,
       html,
-      text
+      text,
+      attachments
     });
     return { delivered: true };
   } catch (error) {
@@ -67,12 +74,13 @@ function htmlToText(html) {
     .trim();
 }
 
-export async function sendRelayEmail({ to, subject, html, text }) {
+export async function sendRelayEmail({ to, subject, html, text, attachments }) {
   const result = await sendMail({
     to,
     subject,
     html,
     text: text || htmlToText(html),
+    attachments,
     logLabel: "MAIL RELAY"
   });
 

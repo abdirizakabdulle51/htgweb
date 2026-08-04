@@ -6,6 +6,7 @@ import crypto from "crypto";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
+import { generateInvoicePdf, invoicePdfFilename } from "./invoicePdf.js";
 import { sendVerificationCodeEmail, sendPasswordResetEmail, sendRelayEmail } from "./mailer.js";
 import * as manageOne from "./manageone.js";
 import { validateManageOnePassword } from "../src/lib/passwordPolicy.js";
@@ -61,6 +62,7 @@ app.use(
     credentials: true
   })
 );
+app.use("/internal/send-invoice-email", express.json({ limit: "1mb" }));
 app.use(express.json({ limit: "200kb" }));
 app.use(cookieParser());
 
@@ -116,6 +118,80 @@ app.post("/internal/send-email", async (request, response) => {
       const to = clean(request.body?.to).toLowerCase();
       const subject = clean(request.body?.subject);
       console.error(`[MAIL RELAY] Failed to send to ${to || "[missing recipient]"} subject="${subject || "[missing subject]"}":`, error);
+    }
+
+    return response.status(status).json({ success: false, error: message });
+  }
+});
+
+app.post("/internal/send-invoice-email", async (request, response) => {
+  const configuredSecret = process.env.MAIL_RELAY_SECRET;
+  const providedSecret = request.get("X-Mail-Relay-Secret");
+
+  if (!configuredSecret || providedSecret !== configuredSecret) {
+    return response.status(401).json({ success: false, error: "Unauthorized." });
+  }
+
+  if (!allowMailRelayRequest()) {
+    return response.status(429).json({ success: false, error: "Email relay rate limit exceeded." });
+  }
+
+  try {
+    const to = clean(request.body?.to).toLowerCase();
+    const subject = clean(request.body?.subject);
+    const html = typeof request.body?.html === "string" ? request.body.html.trim() : "";
+    const text = typeof request.body?.text === "string" ? request.body.text.trim() : "";
+    const invoice = request.body?.invoice;
+
+    if (!isEmail(to)) {
+      throw new HttpError("Enter a valid recipient email address.", 400);
+    }
+
+    if (!subject) {
+      throw new HttpError("Email subject is required.", 400);
+    }
+
+    if (!html) {
+      throw new HttpError("Email HTML body is required.", 400);
+    }
+
+    if (Buffer.byteLength(html, "utf8") > 200 * 1024) {
+      throw new HttpError("Email HTML body must be 200KB or smaller.", 400);
+    }
+
+    validateInvoiceSnapshot(invoice);
+
+    const pdfBuffer = await generateInvoicePdf(invoice);
+    if (pdfBuffer.byteLength > 5 * 1024 * 1024) {
+      throw new HttpError("Generated invoice PDF must be 5MB or smaller.", 400);
+    }
+
+    await sendRelayEmail({
+      to,
+      subject,
+      html,
+      text,
+      attachments: [
+        {
+          filename: invoicePdfFilename(invoice.invoiceNumber),
+          content: pdfBuffer,
+          contentType: "application/pdf"
+        }
+      ]
+    });
+
+    return response.json({ success: true });
+  } catch (error) {
+    const status = error instanceof HttpError ? error.status : 502;
+    const message = error instanceof Error ? error.message : "Invoice email delivery failed.";
+
+    if (status === 502) {
+      const to = clean(request.body?.to).toLowerCase();
+      const subject = clean(request.body?.subject);
+      console.error(
+        `[INVOICE MAIL RELAY] Failed to send to ${to || "[missing recipient]"} subject="${subject || "[missing subject]"}":`,
+        error
+      );
     }
 
     return response.status(status).json({ success: false, error: message });
@@ -852,6 +928,54 @@ function userSummary(user) {
 
 function clean(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function validateInvoiceSnapshot(invoice) {
+  if (!invoice || typeof invoice !== "object" || Array.isArray(invoice)) {
+    throw new HttpError("Invoice snapshot is required.", 400);
+  }
+
+  if (!clean(invoice.invoiceNumber)) {
+    throw new HttpError("Invoice number is required.", 400);
+  }
+
+  if (!clean(invoice.companyName) && !clean(invoice.customerName)) {
+    throw new HttpError("Invoice customer name is required.", 400);
+  }
+
+  if (!Array.isArray(invoice.lineItems) || invoice.lineItems.length === 0) {
+    throw new HttpError("Invoice line items are required.", 400);
+  }
+
+  if (invoice.lineItems.length > 12) {
+    throw new HttpError("Invoice PDF email supports up to 12 line items.", 400);
+  }
+
+  invoice.lineItems.forEach((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new HttpError(`Invoice line item ${index + 1} is invalid.`, 400);
+    }
+
+    if (!clean(item.itemName) && !clean(item.description)) {
+      throw new HttpError(`Invoice line item ${index + 1} description is required.`, 400);
+    }
+
+    const quantity = Number(item.quantity);
+    const unitPrice = Number(item.unitPrice ?? item.rate ?? 0);
+    const amount = Number(item.monthlyTotal ?? item.amount ?? quantity * unitPrice);
+
+    if (!Number.isFinite(quantity) || quantity < 0) {
+      throw new HttpError(`Invoice line item ${index + 1} quantity is invalid.`, 400);
+    }
+
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      throw new HttpError(`Invoice line item ${index + 1} unit price is invalid.`, 400);
+    }
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw new HttpError(`Invoice line item ${index + 1} amount is invalid.`, 400);
+    }
+  });
 }
 
 function isEmail(value) {

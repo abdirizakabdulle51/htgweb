@@ -19,6 +19,7 @@
     "libphonenumber-js": "^1.13.9",
     "lucide-react": "latest",
     "nodemailer": "latest",
+    "pdfkit": "^0.19.1",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
