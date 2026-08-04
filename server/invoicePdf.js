@@ -122,7 +122,7 @@ function drawMeta(doc, invoice, x, y) {
     ["Invoice Date", formatDate(invoice.issueDate || invoice.createdAt)],
     ["Due Date", formatDate(invoice.dueDate)],
     ["Source", invoice.sourceMonth || "-"],
-    ["Reference", invoice.sourceReference || invoice.sourceQuoteId || "-"]
+    ["Reference", invoice.sourceReference || "-"]
   ];
 
   columns.forEach(([label, value], index) => {
