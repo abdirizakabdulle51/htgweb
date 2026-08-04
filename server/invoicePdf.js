@@ -1,4 +1,8 @@
+import fs from "fs";
+import path from "path";
 import PDFDocument from "pdfkit";
+import SVGtoPDF from "svg-to-pdfkit";
+import { fileURLToPath } from "url";
 
 const teal = "#009ba3";
 const ink = "#101828";
@@ -6,6 +10,8 @@ const muted = "#667085";
 const line = "#1f2937";
 const footerText = "+252 61 5558484 | Mohamed.hussein@htgclouds.com | https://htgclouds.com/";
 const bankAccount = "33111777";
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const logoSvg = loadLogoSvg();
 
 export async function generateInvoicePdf(invoice) {
   return new Promise((resolve, reject) => {
@@ -68,22 +74,25 @@ function drawBankDetailsPage(doc) {
 }
 
 function drawHeader(doc) {
-  doc.font("Helvetica-Bold").fontSize(10).fillColor(teal).text("HTGCLOUDS", 56, 62);
+  if (logoSvg) {
+    SVGtoPDF(doc, logoSvg, 56, 58, { width: 76 });
+  } else {
+    doc.font("Helvetica-Bold").fontSize(10).fillColor(teal).text("HTGCLOUDS", 56, 62);
+  }
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(11)
+    .fillColor(ink)
+    .font("Helvetica")
+    .text("Airport road, Next to Ali Jimale Masque", 56, 98)
+    .text("Wadajir District", 56, 116)
+    .text("mogadishu BN 00000", 56, 134)
+    .text("Somalia", 56, 152);
 
   doc
     .font("Helvetica-Bold")
     .fontSize(10)
-    .fillColor(ink)
-    .text("HTG Clouds", 56, 92)
-    .font("Helvetica")
-    .text("Airport road, Next to Ali Jimale Masque", 56, 110)
-    .text("Wadajir District", 56, 128)
-    .text("mogadishu BN 00000", 56, 146)
-    .text("Somalia", 56, 164);
-
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(9)
     .fillColor(teal)
     .text("Built for us, Ready for the World.", 360, 65, { width: 180, align: "right" });
 }
@@ -97,11 +106,11 @@ function drawBillTo(doc, invoice, x, y) {
     invoice.billingAddress
   ].filter(Boolean);
 
-  doc.font("Helvetica-Bold").fontSize(7).fillColor(teal).text("BILL TO", x, y, { width: 185 });
-  doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text(lines[0] || "Customer", x, y + 16, { width: 185 });
+  doc.font("Helvetica-Bold").fontSize(8).fillColor(teal).text("BILL TO", x, y, { width: 185 });
+  doc.font("Helvetica-Bold").fontSize(11).fillColor(ink).text(lines[0] || "Customer", x, y + 17, { width: 185 });
 
   if (lines.length > 1) {
-    doc.font("Helvetica").fontSize(8).fillColor(ink).text(lines.slice(1).join("\n"), x, y + 32, {
+    doc.font("Helvetica").fontSize(9).fillColor(ink).text(lines.slice(1).join("\n"), x, y + 34, {
       width: 185,
       lineGap: 2
     });
@@ -118,8 +127,8 @@ function drawMeta(doc, invoice, x, y) {
 
   columns.forEach(([label, value], index) => {
     const columnX = x + index * 98;
-    doc.font("Helvetica-Bold").fontSize(7).fillColor(teal).text(label, columnX, y, { width: 82 });
-    doc.font("Helvetica").fontSize(8).fillColor(ink).text(String(value || "-"), columnX, y + 14, { width: 92 });
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(teal).text(label, columnX, y, { width: 82 });
+    doc.font("Helvetica").fontSize(9).fillColor(ink).text(String(value || "-"), columnX, y + 15, { width: 92 });
   });
 }
 
@@ -128,7 +137,7 @@ function drawLineItems(doc, items, x, y) {
   const priceX = 420;
   const amountX = 488;
 
-  doc.font("Helvetica-Bold").fontSize(8).fillColor(ink);
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(ink);
   doc.text("Description", x, y);
   doc.text("Quantity", qtyX, y, { width: 50, align: "right" });
   doc.text("Unit Price", priceX, y, { width: 55, align: "right" });
@@ -143,8 +152,8 @@ function drawLineItems(doc, items, x, y) {
     const unitPrice = Number(item.unitPrice || item.rate || 0);
     const amount = Number(item.monthlyTotal ?? item.amount ?? quantity * unitPrice);
 
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(ink).text(name, x, rowY, { width: 290 });
-    doc.font("Helvetica").fontSize(8).fillColor(ink).text(category, x, rowY + 14, { width: 290 });
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text(name, x, rowY, { width: 290 });
+    doc.font("Helvetica").fontSize(9).fillColor(ink).text(category, x, rowY + 15, { width: 290 });
     doc.text(formatNumber(quantity), qtyX, rowY, { width: 50, align: "right" });
     doc.text(formatRate(unitPrice), priceX, rowY, { width: 55, align: "right" });
     doc.text(formatMoney(amount), amountX, rowY, { width: 55, align: "right" });
@@ -155,7 +164,7 @@ function drawLineItems(doc, items, x, y) {
 
 function drawTotal(doc, invoice, x, y) {
   doc.moveTo(x, y).lineTo(544, y).lineWidth(0.8).strokeColor(line).stroke();
-  doc.font("Helvetica-Bold").fontSize(8).fillColor(teal).text("Total", x, y + 16);
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(teal).text("Total", x, y + 16);
   doc.text(formatMoney(Number(invoice.totalAmount ?? invoice.balanceDue ?? 0)), 448, y + 16, { width: 96, align: "right" });
 }
 
@@ -165,7 +174,7 @@ function drawPaymentInstructions(doc, invoice, x, y) {
 
   doc
     .font("Helvetica")
-    .fontSize(8)
+    .fontSize(9)
     .fillColor(ink)
     .text("Payment Communication: ", x, y, { continued: true })
     .font("Helvetica-Bold")
@@ -186,7 +195,7 @@ function drawPaymentInstructions(doc, invoice, x, y) {
 function drawFooter(doc, pageText) {
   const y = 760;
   doc.moveTo(56, y).lineTo(544, y).lineWidth(0.8).strokeColor(line).stroke();
-  doc.font("Helvetica-Bold").fontSize(8).fillColor(ink).text(footerText, 56, y + 14, { width: 390 });
+  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(ink).text(footerText, 56, y + 14, { width: 390 });
   doc.text(pageText, 492, y + 14, { width: 52, align: "right" });
 }
 
@@ -236,4 +245,13 @@ function formatRate(value) {
 
 function formatMoney(value) {
   return `$ ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))}`;
+}
+
+function loadLogoSvg() {
+  try {
+    return fs.readFileSync(path.join(currentDir, "assets", "Logo.svg"), "utf8");
+  } catch (error) {
+    console.warn("[INVOICE PDF] Logo SVG could not be loaded; falling back to text header.", error);
+    return null;
+  }
 }
