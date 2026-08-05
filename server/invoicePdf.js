@@ -68,18 +68,21 @@ function drawInvoicePage(doc, invoice, sellerProfile) {
   const titleTop = 198;
   const invoiceNumber = displayInvoiceNumber(invoice.invoiceNumber);
   const lineItems = invoice.lineItems || [];
-  const hasRegions = hasRegionBreakdown(lineItems);
+  const regionSummary = invoiceRegionSummary(lineItems);
+  const showSingleRegion = regionSummary.kind === "single";
+  const showRegionBreakdown = regionSummary.kind === "mixed";
+  const lineItemsTop = showSingleRegion ? 372 : 348;
 
   doc.font("Helvetica").fontSize(22).fillColor(teal).text(`Invoice ${invoiceNumber}`, left, titleTop, { width: 280 });
 
   drawBillTo(doc, invoice, right, titleTop - 3);
-  drawMeta(doc, invoice, left, 278);
-  drawLineItems(doc, lineItems, left, 348);
+  drawMeta(doc, invoice, left, 278, regionSummary);
+  drawLineItems(doc, lineItems, left, lineItemsTop, showRegionBreakdown);
   drawTotal(doc, invoice, 324, 572);
-  if (hasRegions) {
+  if (showRegionBreakdown) {
     drawRegionTotals(doc, lineItems, left, 610);
   }
-  drawPaymentInstructions(doc, invoice, sellerProfile, left, hasRegions ? 650 : 662);
+  drawPaymentInstructions(doc, invoice, sellerProfile, left, showRegionBreakdown ? 650 : 662);
   drawFooter(doc, sellerProfile, "Page 1 / 2");
 }
 
@@ -137,7 +140,7 @@ function drawBillTo(doc, invoice, x, y) {
   }
 }
 
-function drawMeta(doc, invoice, x, y) {
+function drawMeta(doc, invoice, x, y, regionSummary = { kind: "none" }) {
   const columns = [
     ["Invoice Date", formatDate(invoice.issueDate || invoice.createdAt)],
     ["Due Date", formatDate(invoice.dueDate)],
@@ -150,13 +153,17 @@ function drawMeta(doc, invoice, x, y) {
     doc.font("Helvetica-Bold").fontSize(8).fillColor(teal).text(label, columnX, y, { width: 82 });
     doc.font("Helvetica").fontSize(9).fillColor(ink).text(String(value || "-"), columnX, y + 15, { width: 92 });
   });
+
+  if (regionSummary.kind === "single") {
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(teal).text("Region", x, y + 47, { width: 130 });
+    doc.font("Helvetica").fontSize(9).fillColor(ink).text(regionSummary.label, x, y + 62, { width: 180 });
+  }
 }
 
-function drawLineItems(doc, items, x, y) {
+function drawLineItems(doc, items, x, y, showRegionBreakdown = false) {
   const qtyX = 360;
   const priceX = 420;
   const amountX = 488;
-  const hasRegions = hasRegionBreakdown(items);
 
   doc.font("Helvetica-Bold").fontSize(9).fillColor(ink);
   doc.text("Description", x, y);
@@ -174,7 +181,7 @@ function drawLineItems(doc, items, x, y) {
 
     doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text(name, x, rowY, { width: 290 });
     doc.font("Helvetica").fontSize(9).fillColor(ink).text(category, x, rowY + 15, { width: 290 });
-    if (hasRegions) {
+    if (showRegionBreakdown) {
       doc
         .font("Helvetica")
         .fontSize(8)
@@ -185,7 +192,7 @@ function drawLineItems(doc, items, x, y) {
     doc.text(formatRate(unitPrice), priceX, rowY, { width: 55, align: "right" });
     doc.text(formatMoney(amount), amountX, rowY, { width: 55, align: "right" });
 
-    rowY += hasRegions ? 55 : 43;
+    rowY += showRegionBreakdown ? 55 : 43;
   });
 }
 
@@ -268,6 +275,22 @@ function sellerProfileFromInvoice(invoice = {}) {
 
 function hasRegionBreakdown(items = []) {
   return items.some((item) => Boolean(regionLabel(item)));
+}
+
+function invoiceRegionSummary(items = []) {
+  if (!hasRegionBreakdown(items)) {
+    return { kind: "none" };
+  }
+
+  const labels = items.map((item) => regionLabel(item) || "Unassigned");
+  const uniqueLabels = new Set(labels);
+  const onlyAssignedSingleRegion = uniqueLabels.size === 1 && !uniqueLabels.has("Unassigned");
+
+  if (onlyAssignedSingleRegion) {
+    return { kind: "single", label: labels[0] };
+  }
+
+  return { kind: "mixed" };
 }
 
 function groupedRegionTotals(items = []) {
