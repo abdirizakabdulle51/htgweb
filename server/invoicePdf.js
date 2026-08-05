@@ -170,9 +170,7 @@ function drawLineItems(doc, items, x, y) {
     const name = item.itemName || item.description || "Invoice item";
     const category = item.serviceCategory || item.category || "";
     const region = regionLabel(item);
-    const quantity = Number(item.quantity || 0);
-    const unitPrice = Number(item.unitPrice || item.rate || 0);
-    const amount = Number(item.monthlyTotal ?? item.amount ?? quantity * unitPrice);
+    const { quantity, unitPrice, amount } = lineItemPricing(item);
 
     doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text(name, x, rowY, { width: 290 });
     doc.font("Helvetica").fontSize(9).fillColor(ink).text(category, x, rowY + 15, { width: 290 });
@@ -276,9 +274,7 @@ function groupedRegionTotals(items = []) {
   const totals = new Map();
   items.forEach((item) => {
     const label = regionLabel(item) || "Unassigned";
-    const quantity = Number(item.quantity || 0);
-    const unitPrice = Number(item.unitPrice || item.rate || 0);
-    const amount = Number(item.monthlyTotal ?? item.amount ?? quantity * unitPrice);
+    const { amount } = lineItemPricing(item);
     totals.set(label, (totals.get(label) || 0) + (Number.isFinite(amount) ? amount : 0));
   });
 
@@ -289,6 +285,21 @@ function regionLabel(item = {}) {
   return [item.dataCenterName, item.regionName, item.regionId]
     .map((value) => (typeof value === "string" ? value.trim() : ""))
     .find(Boolean) || "";
+}
+
+function lineItemPricing(item = {}) {
+  const quantity = Number(item.quantity ?? 0);
+  const explicitAmount = Number(item.monthlyTotal ?? item.amount);
+  const explicitUnitPrice = Number(item.monthlyUnitPrice ?? item.unitPrice ?? item.rate);
+  const derivedUnitPrice = quantity > 0 && Number.isFinite(explicitAmount) ? explicitAmount / quantity : 0;
+  const unitPrice = Number.isFinite(explicitUnitPrice) ? explicitUnitPrice : derivedUnitPrice;
+  const amount = Number.isFinite(explicitAmount) ? explicitAmount : quantity * (Number.isFinite(unitPrice) ? unitPrice : 0);
+
+  return {
+    quantity: Number.isFinite(quantity) ? quantity : 0,
+    unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+    amount: Number.isFinite(amount) ? amount : 0
+  };
 }
 
 function valueOrDefault(value, fallback) {
