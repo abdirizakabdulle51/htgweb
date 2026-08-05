@@ -8,8 +8,26 @@ const teal = "#009ba3";
 const ink = "#101828";
 const muted = "#667085";
 const line = "#1f2937";
-const footerText = "+252 61 5558484 | Mohamed.hussein@htgclouds.com | https://htgclouds.com/";
-const bankAccount = "33111777";
+const defaultSellerProfile = {
+  legalName: "HTG Clouds",
+  addressLines: [
+    "Airport road, Next to Ali Jimale Masque",
+    "Wadajir District",
+    "mogadishu BN 00000",
+    "Somalia"
+  ],
+  phone: "+252 61 5558484",
+  email: "Mohamed.hussein@htgclouds.com",
+  website: "https://htgclouds.com/",
+  slogan: "Built for us, Ready for the World.",
+  bankName: "SALAAM SOMALI BANK",
+  bankAccountNumber: "33111777",
+  bankAccountName: "HTG CLOUDS LIMITED",
+  bankLocation: "MOGADISHU - SOMALIA",
+  currencyNote: "All fees are listed in USD",
+  paymentInstructions: "PLEASE PAY BILLS ON DUE DATE BY DEPOSITING IT TO OUR SALAAM SOMALI BANK ACCOUNT.",
+  footerText: "+252 61 5558484 | Mohamed.hussein@htgclouds.com | https://htgclouds.com/"
+};
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const logoSvg = loadLogoSvg();
 
@@ -22,9 +40,11 @@ export async function generateInvoicePdf(invoice) {
     doc.on("error", reject);
     doc.on("end", () => resolve(Buffer.concat(chunks)));
 
-    drawInvoicePage(doc, invoice);
+    const sellerProfile = sellerProfileFromInvoice(invoice);
+
+    drawInvoicePage(doc, invoice, sellerProfile);
     doc.addPage();
-    drawBankDetailsPage(doc);
+    drawBankDetailsPage(doc, sellerProfile);
 
     doc.end();
   });
@@ -40,8 +60,8 @@ export function invoicePdfFilename(invoiceNumber) {
   return `${clean || "invoice"}.pdf`;
 }
 
-function drawInvoicePage(doc, invoice) {
-  drawHeader(doc);
+function drawInvoicePage(doc, invoice, sellerProfile) {
+  drawHeader(doc, sellerProfile);
 
   const left = 56;
   const right = 338;
@@ -54,47 +74,44 @@ function drawInvoicePage(doc, invoice) {
   drawMeta(doc, invoice, left, 278);
   drawLineItems(doc, invoice.lineItems || [], left, 348);
   drawTotal(doc, invoice, 324, 572);
-  drawPaymentInstructions(doc, invoice, left, 662);
-  drawFooter(doc, "Page 1 / 2");
+  drawPaymentInstructions(doc, invoice, sellerProfile, left, 662);
+  drawFooter(doc, sellerProfile, "Page 1 / 2");
 }
 
-function drawBankDetailsPage(doc) {
-  drawHeader(doc);
+function drawBankDetailsPage(doc, sellerProfile) {
+  drawHeader(doc, sellerProfile);
 
   doc
     .font("Helvetica-Bold")
     .fontSize(10)
     .fillColor(muted)
-    .text(`ACCOUNT # = ${bankAccount}`, 56, 292)
-    .text("ACC. NAME = HTG CLOUDS LIMITED", 56, 310)
-    .text("MOGADISHU - SOMALIA", 56, 328)
-    .text("All fees are listed in USD", 56, 346);
+    .text(`BANK = ${sellerProfile.bankName}`, 56, 292)
+    .text(`ACCOUNT # = ${sellerProfile.bankAccountNumber}`, 56, 310)
+    .text(`ACC. NAME = ${sellerProfile.bankAccountName}`, 56, 328)
+    .text(sellerProfile.bankLocation, 56, 346)
+    .text(sellerProfile.currencyNote, 56, 364);
 
-  drawFooter(doc, "Page 2 / 2");
+  drawFooter(doc, sellerProfile, "Page 2 / 2");
 }
 
-function drawHeader(doc) {
+function drawHeader(doc, sellerProfile) {
   if (logoSvg) {
     SVGtoPDF(doc, logoSvg, 56, 58, { width: 76 });
   } else {
     doc.font("Helvetica-Bold").fontSize(10).fillColor(teal).text("HTGCLOUDS", 56, 62);
   }
 
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(11)
-    .fillColor(ink)
-    .font("Helvetica")
-    .text("Airport road, Next to Ali Jimale Masque", 56, 98)
-    .text("Wadajir District", 56, 116)
-    .text("mogadishu BN 00000", 56, 134)
-    .text("Somalia", 56, 152);
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text(sellerProfile.legalName, 56, 98, { width: 220 });
+
+  sellerProfile.addressLines.slice(0, 5).forEach((addressLine, index) => {
+    doc.font("Helvetica").fontSize(10).fillColor(ink).text(addressLine, 56, 116 + index * 16, { width: 220 });
+  });
 
   doc
     .font("Helvetica-Bold")
     .fontSize(10)
     .fillColor(teal)
-    .text("Built for us, Ready for the World.", 360, 65, { width: 180, align: "right" });
+    .text(sellerProfile.slogan, 360, 65, { width: 180, align: "right" });
 }
 
 function drawBillTo(doc, invoice, x, y) {
@@ -168,7 +185,7 @@ function drawTotal(doc, invoice, x, y) {
   doc.text(formatMoney(Number(invoice.totalAmount ?? invoice.balanceDue ?? 0)), 448, y + 16, { width: 96, align: "right" });
 }
 
-function drawPaymentInstructions(doc, invoice, x, y) {
+function drawPaymentInstructions(doc, invoice, sellerProfile, x, y) {
   const invoiceNumber = displayInvoiceNumber(invoice.invoiceNumber);
   const month = amountDueMonth(invoice.sourceMonth || invoice.issueDate || invoice.createdAt);
 
@@ -182,21 +199,52 @@ function drawPaymentInstructions(doc, invoice, x, y) {
     .font("Helvetica")
     .text("on this account: ", x, y + 16, { continued: true })
     .font("Helvetica-Bold")
-    .text(bankAccount)
+    .text(sellerProfile.bankAccountNumber)
     .font("Helvetica")
     .fillColor(muted)
     .text(`Amount Due ${month}`, x, y + 38)
     .font("Helvetica-Bold")
     .fillColor(muted)
-    .text("PLEASE PAY BILLS ON DUE DATE BY DEPOSITING IT TO OUR", x, y + 58)
-    .text("SALAAM SOMALI BANK ACCOUNT.", x, y + 72);
+    .text(sellerProfile.paymentInstructions, x, y + 58, { width: 300, lineGap: 2 });
 }
 
-function drawFooter(doc, pageText) {
+function drawFooter(doc, sellerProfile, pageText) {
   const y = 760;
   doc.moveTo(56, y).lineTo(544, y).lineWidth(0.8).strokeColor(line).stroke();
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(ink).text(footerText, 56, y + 14, { width: 390 });
+  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(ink).text(sellerProfile.footerText, 56, y + 14, { width: 390 });
   doc.text(pageText, 492, y + 14, { width: 52, align: "right" });
+}
+
+function sellerProfileFromInvoice(invoice = {}) {
+  const addressLines = Array.isArray(invoice.sellerAddressLines)
+    ? invoice.sellerAddressLines.map((line) => String(line || "").trim()).filter(Boolean)
+    : [];
+  const footerText = valueOrDefault(invoice.sellerFooterText, "") || [
+    valueOrDefault(invoice.sellerPhone, defaultSellerProfile.phone),
+    valueOrDefault(invoice.sellerEmail, defaultSellerProfile.email),
+    valueOrDefault(invoice.sellerWebsite, defaultSellerProfile.website)
+  ].filter(Boolean).join(" | ");
+
+  return {
+    legalName: valueOrDefault(invoice.sellerLegalName, defaultSellerProfile.legalName),
+    addressLines: addressLines.length > 0 ? addressLines : defaultSellerProfile.addressLines,
+    phone: valueOrDefault(invoice.sellerPhone, defaultSellerProfile.phone),
+    email: valueOrDefault(invoice.sellerEmail, defaultSellerProfile.email),
+    website: valueOrDefault(invoice.sellerWebsite, defaultSellerProfile.website),
+    slogan: valueOrDefault(invoice.sellerSlogan, defaultSellerProfile.slogan),
+    bankName: valueOrDefault(invoice.sellerBankName, defaultSellerProfile.bankName),
+    bankAccountNumber: valueOrDefault(invoice.sellerBankAccountNumber, defaultSellerProfile.bankAccountNumber),
+    bankAccountName: valueOrDefault(invoice.sellerBankAccountName, defaultSellerProfile.bankAccountName),
+    bankLocation: valueOrDefault(invoice.sellerBankLocation, defaultSellerProfile.bankLocation),
+    currencyNote: valueOrDefault(invoice.sellerCurrencyNote, defaultSellerProfile.currencyNote),
+    paymentInstructions: valueOrDefault(invoice.sellerPaymentInstructions, defaultSellerProfile.paymentInstructions),
+    footerText: footerText || defaultSellerProfile.footerText
+  };
+}
+
+function valueOrDefault(value, fallback) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || fallback;
 }
 
 function displayInvoiceNumber(invoiceNumber) {
