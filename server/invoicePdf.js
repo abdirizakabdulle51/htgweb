@@ -67,14 +67,19 @@ function drawInvoicePage(doc, invoice, sellerProfile) {
   const right = 338;
   const titleTop = 198;
   const invoiceNumber = displayInvoiceNumber(invoice.invoiceNumber);
+  const lineItems = invoice.lineItems || [];
+  const hasRegions = hasRegionBreakdown(lineItems);
 
   doc.font("Helvetica").fontSize(22).fillColor(teal).text(`Invoice ${invoiceNumber}`, left, titleTop, { width: 280 });
 
   drawBillTo(doc, invoice, right, titleTop - 3);
   drawMeta(doc, invoice, left, 278);
-  drawLineItems(doc, invoice.lineItems || [], left, 348);
+  drawLineItems(doc, lineItems, left, 348);
   drawTotal(doc, invoice, 324, 572);
-  drawPaymentInstructions(doc, invoice, sellerProfile, left, 662);
+  if (hasRegions) {
+    drawRegionTotals(doc, lineItems, left, 610);
+  }
+  drawPaymentInstructions(doc, invoice, sellerProfile, left, hasRegions ? 682 : 662);
   drawFooter(doc, sellerProfile, "Page 1 / 2");
 }
 
@@ -151,6 +156,7 @@ function drawLineItems(doc, items, x, y) {
   const qtyX = 360;
   const priceX = 420;
   const amountX = 488;
+  const hasRegions = hasRegionBreakdown(items);
 
   doc.font("Helvetica-Bold").fontSize(9).fillColor(ink);
   doc.text("Description", x, y);
@@ -163,17 +169,39 @@ function drawLineItems(doc, items, x, y) {
   items.slice(0, 12).forEach((item) => {
     const name = item.itemName || item.description || "Invoice item";
     const category = item.serviceCategory || item.category || "";
+    const region = regionLabel(item);
     const quantity = Number(item.quantity || 0);
     const unitPrice = Number(item.unitPrice || item.rate || 0);
     const amount = Number(item.monthlyTotal ?? item.amount ?? quantity * unitPrice);
 
     doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text(name, x, rowY, { width: 290 });
     doc.font("Helvetica").fontSize(9).fillColor(ink).text(category, x, rowY + 15, { width: 290 });
+    if (hasRegions) {
+      doc
+        .font("Helvetica")
+        .fontSize(8)
+        .fillColor(muted)
+        .text(`Region: ${region || "Unassigned"}`, x, rowY + 29, { width: 290 });
+    }
     doc.text(formatNumber(quantity), qtyX, rowY, { width: 50, align: "right" });
     doc.text(formatRate(unitPrice), priceX, rowY, { width: 55, align: "right" });
     doc.text(formatMoney(amount), amountX, rowY, { width: 55, align: "right" });
 
-    rowY += 43;
+    rowY += hasRegions ? 55 : 43;
+  });
+}
+
+function drawRegionTotals(doc, items, x, y) {
+  const totals = groupedRegionTotals(items).slice(0, 4);
+  if (totals.length === 0) return;
+
+  doc.moveTo(x, y - 14).lineTo(324, y - 14).lineWidth(0.4).strokeColor("#d0d5dd").stroke();
+  doc.font("Helvetica-Bold").fontSize(8).fillColor(teal).text("Region Totals", x, y, { width: 300 });
+
+  const summary = totals.map(({ label, total }) => `${label}: ${formatMoney(total)}`).join("   ");
+  doc.font("Helvetica-Bold").fontSize(8).fillColor(ink).text(summary, x, y + 15, {
+    width: 300,
+    lineGap: 2
   });
 }
 
@@ -238,6 +266,29 @@ function sellerProfileFromInvoice(invoice = {}) {
     paymentInstructions: valueOrDefault(invoice.sellerPaymentInstructions, defaultSellerProfile.paymentInstructions),
     footerText: footerText || defaultSellerProfile.footerText
   };
+}
+
+function hasRegionBreakdown(items = []) {
+  return items.some((item) => Boolean(regionLabel(item)));
+}
+
+function groupedRegionTotals(items = []) {
+  const totals = new Map();
+  items.forEach((item) => {
+    const label = regionLabel(item) || "Unassigned";
+    const quantity = Number(item.quantity || 0);
+    const unitPrice = Number(item.unitPrice || item.rate || 0);
+    const amount = Number(item.monthlyTotal ?? item.amount ?? quantity * unitPrice);
+    totals.set(label, (totals.get(label) || 0) + (Number.isFinite(amount) ? amount : 0));
+  });
+
+  return Array.from(totals.entries()).map(([label, total]) => ({ label, total }));
+}
+
+function regionLabel(item = {}) {
+  return [item.dataCenterName, item.regionName, item.regionId]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .find(Boolean) || "";
 }
 
 function valueOrDefault(value, fallback) {
