@@ -79,7 +79,7 @@ function drawInvoicePage(doc, invoice, sellerProfile) {
   if (hasRegions) {
     drawRegionTotals(doc, lineItems, left, 610);
   }
-  drawPaymentInstructions(doc, invoice, sellerProfile, left, hasRegions ? 682 : 662);
+  drawPaymentInstructions(doc, invoice, sellerProfile, left, hasRegions ? 650 : 662);
   drawFooter(doc, sellerProfile, "Page 1 / 2");
 }
 
