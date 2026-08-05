@@ -101,10 +101,8 @@ function drawHeader(doc, sellerProfile) {
     doc.font("Helvetica-Bold").fontSize(10).fillColor(teal).text("HTGCLOUDS", 56, 62);
   }
 
-  doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text(sellerProfile.legalName, 56, 98, { width: 220 });
-
   sellerProfile.addressLines.slice(0, 5).forEach((addressLine, index) => {
-    doc.font("Helvetica").fontSize(10).fillColor(ink).text(addressLine, 56, 116 + index * 16, { width: 220 });
+    doc.font("Helvetica").fontSize(10).fillColor(ink).text(addressLine, 56, 98 + index * 16, { width: 220 });
   });
 
   doc
