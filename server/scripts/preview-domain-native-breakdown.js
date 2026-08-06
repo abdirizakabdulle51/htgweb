@@ -814,6 +814,51 @@ async function compareTenant(vdc, session) {
   };
 }
 
+function sumNatNativeRecords(result) {
+  return Object.values(result?.natProbes || {}).reduce(
+    (total, probe) =>
+      total + (numberOrNull(probe?.projectScoped?.recordCount) || 0) + (numberOrNull(probe?.domainScoped?.recordCount) || 0),
+    0
+  );
+}
+
+function sumNatMeteringRecords(result) {
+  return Object.values(result?.natMeteringProbes || {}).reduce(
+    (total, probe) => total + (numberOrNull(probe?.recordCount) || 0),
+    0
+  );
+}
+
+function buildNatSummary(results) {
+  const tenantSummaries = results.map((result) => {
+    const rawNatGateways = numberOrNull(result?.rawCounters?.natGateways) || 0;
+    const nativeNatRecords = sumNatNativeRecords(result);
+    const meteringNatRecords = sumNatMeteringRecords(result);
+    const natResourceTypeMatches = Array.isArray(result?.meteringResourceTypes?.natMatches)
+      ? result.meteringResourceTypes.natMatches.length
+      : 0;
+    const hasNatEvidence = rawNatGateways > 0 || nativeNatRecords > 0 || meteringNatRecords > 0 || natResourceTypeMatches > 0;
+
+    return {
+      tenant: result?.tenant?.name ?? "unknown",
+      regionId: result?.tenant?.regionId ?? null,
+      regionName: result?.tenant?.regionName ?? null,
+      rawNatGateways,
+      nativeNatRecords,
+      meteringNatRecords,
+      natResourceTypeMatches,
+      hasNatEvidence
+    };
+  });
+
+  return {
+    tenantCount: tenantSummaries.length,
+    tenantsWithNatEvidence: tenantSummaries.filter((tenant) => tenant.hasNatEvidence),
+    tenantsWithoutNatEvidence: tenantSummaries.filter((tenant) => !tenant.hasNatEvidence).length,
+    tenants: tenantSummaries
+  };
+}
+
 async function main() {
   console.log("[DOMAIN BREAKDOWN PREVIEW] read-only preview started");
   console.log("[DOMAIN BREAKDOWN PREVIEW] no DB writes, no CRM push, no sync job changes");
@@ -840,7 +885,7 @@ async function main() {
   }
 
   console.log("\n================ DOMAIN BREAKDOWN PREVIEW ================");
-  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), tenants: results }, null, 2));
+  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), natSummary: buildNatSummary(results), tenants: results }, null, 2));
   console.log("================ END DOMAIN BREAKDOWN PREVIEW ================");
 }
 
