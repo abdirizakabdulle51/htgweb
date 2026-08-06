@@ -151,6 +151,17 @@ async function fetchTenantResourceUsage(vdc, session) {
   return readManageOneJson(`resource usage for ${vdc.name || vdc.id}`, url, session);
 }
 
+async function fetchTenantRegion(vdc, session) {
+  const url = `${vdcEndpointBaseUrl()}/v3.0/vdcs/${encodeURIComponent(vdc.id)}`;
+  const detail = await readManageOneJson(`tenant region for ${vdc.name || vdc.id}`, url, session);
+  const region = extractTenantRegion(detail);
+  if (!region) {
+    throw new Error("No region found in VDC detail response");
+  }
+
+  return region;
+}
+
 async function fetchProjectPage(vdc, session, start, limit) {
   const url = `${vdcEndpointBaseUrl()}/v3.1/vdcs/${encodeURIComponent(vdc.id)}/projects?start=${start}&limit=${limit}`;
   return readManageOneJson(`project list for ${vdc.name || vdc.id}`, url, session);
@@ -429,6 +440,42 @@ function resourceUsed(resources, serviceId, resourceName) {
   return numberOrNull(match?.used) || 0;
 }
 
+function parseLocalizedName(value) {
+  if (!value) return null;
+  if (typeof value === "object") {
+    return value.en_us || value.en_US || value["en-us"] || value.zh_cn || value.zh_CN || null;
+  }
+
+  if (typeof value !== "string") return null;
+
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object") {
+      return parsed.en_us || parsed.en_US || parsed["en-us"] || parsed.zh_cn || parsed.zh_CN || value;
+    }
+  } catch {
+    return value;
+  }
+
+  return value;
+}
+
+function extractTenantRegion(detail) {
+  const body = detail?.vdc || detail?.VDC || detail;
+  const regions = Array.isArray(body?.regions) ? body.regions : [];
+  const region = regions[0];
+  if (!region) return null;
+
+  const regionId = region.region_id || region.regionId || region.id;
+  const regionName = parseLocalizedName(region.region_name || region.regionName || region.name);
+  if (!regionId || !regionName) return null;
+
+  return {
+    regionId: String(regionId),
+    regionName: String(regionName)
+  };
+}
+
 function resourceRowsForService(resources, serviceId) {
   const expectedServiceId = String(serviceId).toLowerCase();
   return resources
@@ -571,11 +618,16 @@ async function fetchNatResourceIndexBreakdown(vdc, session) {
 }
 
 async function fetchMeteringResources(vdc, probe, session) {
+  if (!vdc.regionId) {
+    throw new Error("No regionId available for metering resource lookup");
+  }
+
   const body = await postManageOneJson(
     `${probe.key} metering resources`,
     `${meteringEndpointBaseUrl()}/v3.0/metering-unit/resources`,
     {
       resource_type: probe.resourceType,
+      region_code: String(vdc.regionId),
       vdc_id: String(vdc.id || ""),
       domain_id: String(vdc.domain_id || ""),
       start: 0,
@@ -610,7 +662,12 @@ async function fetchNatMeteringBreakdown(vdc, session) {
 
 async function fetchMeteringResourceTypes(vdc, session) {
   try {
+    if (!vdc.regionId) {
+      throw new Error("No regionId available for metering resource-type lookup");
+    }
+
     const params = new URLSearchParams({
+      region_id: String(vdc.regionId),
       start: "0",
       limit: "100"
     });
@@ -674,6 +731,18 @@ async function fetchEipProbeBreakdown(vdc, projects, session) {
 async function compareTenant(vdc, session) {
   console.log(`[DOMAIN BREAKDOWN PREVIEW] comparing ${vdc.name || vdc.id}`);
 
+  let tenantRegion = null;
+  try {
+    await delay(REQUEST_DELAY_MS);
+    tenantRegion = await fetchTenantRegion(vdc, session);
+    vdc.regionId = tenantRegion.regionId;
+    vdc.regionName = tenantRegion.regionName;
+  } catch (error) {
+    tenantRegion = {
+      error: error instanceof Error ? error.message : String(error || "Unknown error")
+    };
+  }
+
   const resourceUsage = await fetchTenantResourceUsage(vdc, session);
   const usageRows = flattenResourceUsage(resourceUsage);
   const projects = await listTenantProjects(vdc, session);
@@ -707,7 +776,10 @@ async function compareTenant(vdc, session) {
     tenant: {
       vdcId: String(vdc.id),
       domainId: vdc.domain_id ?? null,
-      name: String(vdc.name || vdc.id)
+      name: String(vdc.name || vdc.id),
+      regionId: tenantRegion?.regionId ?? null,
+      regionName: tenantRegion?.regionName ?? null,
+      ...(tenantRegion?.error ? { regionError: tenantRegion.error } : {})
     },
     rawCounters: {
       ecsInstances: resourceUsed(usageRows, "ecs", "instances"),
