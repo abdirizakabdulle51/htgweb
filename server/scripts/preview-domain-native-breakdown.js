@@ -26,6 +26,24 @@ const NAT_RESOURCE_INDEX_PROBES = [
   { key: "indexCloudNatGateway", query: { resource_type_name: "CLOUD_NAT_GATEWAY" } },
   { key: "indexCloudNat", query: { resource_type_name: "CLOUD_NAT" } }
 ];
+const VPN_GATEWAY_RESOURCE_PROBES = [
+  { key: "cloudVpnGateway", serviceId: "vpc", resourceTypeName: "CLOUD_VPN_GATEWAY" },
+  { key: "cloudVpnService", serviceId: "vpc", resourceTypeName: "CLOUD_VPN_SERVICE" },
+  { key: "cloudVpnInstance", serviceId: "vpc", resourceTypeName: "CLOUD_VPN_INSTANCE" },
+  { key: "vpnGatewayDisplay", serviceId: "vpc", resourceTypeName: "VPN Gateway" }
+];
+const VPN_GATEWAY_METERING_RESOURCE_TYPES = [
+  { key: "vpnGatewayCode", resourceType: "hws.resource.type.vpngateway" },
+  { key: "vpnGatewaySnakeCode", resourceType: "hws.resource.type.vpn_gateway" },
+  { key: "vpnCode", resourceType: "hws.resource.type.vpn" },
+  { key: "ipsecVpnCode", resourceType: "hws.resource.type.ipsecvpn" }
+];
+const VPN_GATEWAY_RESOURCE_INDEX_PROBES = [
+  { key: "indexVpnGatewayDisplay", query: { resource_type_name: "VPN Gateway" } },
+  { key: "indexVpnGatewayCode", query: { resource_type_code: "hws.resource.type.vpngateway" } },
+  { key: "indexCloudVpnGateway", query: { resource_type_name: "CLOUD_VPN_GATEWAY" } },
+  { key: "indexCloudVpnService", query: { resource_type_name: "CLOUD_VPN_SERVICE" } }
+];
 const EIP_RESOURCE_PROBES = [
   { key: "cloudFloatingIps", serviceId: "vpc", resourceTypeName: "CLOUD_FLOATING_IPS" },
   { key: "cloudEip", serviceId: "vpc", resourceTypeName: "CLOUD_EIP" },
@@ -557,6 +575,25 @@ async function fetchNatProbeBreakdown(vdc, projects, session) {
   return results;
 }
 
+async function fetchVpnGatewayProbeBreakdown(vdc, projects, session) {
+  const results = {};
+
+  for (const probe of VPN_GATEWAY_RESOURCE_PROBES) {
+    try {
+      await delay(REQUEST_DELAY_MS);
+      results[probe.key] = await fetchNatProbeRecords(vdc, projects, session, probe);
+    } catch (error) {
+      results[probe.key] = {
+        serviceId: probe.serviceId,
+        resourceTypeName: probe.resourceTypeName,
+        error: error instanceof Error ? error.message : String(error || "Unknown error")
+      };
+    }
+  }
+
+  return results;
+}
+
 function resourceIndexScopes(vdc) {
   return [
     {
@@ -594,6 +631,33 @@ async function fetchNatResourceIndexBreakdown(vdc, session) {
   const results = {};
 
   for (const probe of NAT_RESOURCE_INDEX_PROBES) {
+    results[probe.key] = {
+      query: probe.query,
+      scopedSamples: {}
+    };
+
+    for (const scope of resourceIndexScopes(vdc)) {
+      try {
+        await delay(REQUEST_DELAY_MS);
+        const body = await fetchResourceIndexSample(vdc, probe, scope, session);
+        results[probe.key].scopedSamples[scope.key] = summarizeResourceRecords(
+          listFromResponse(body, ["resources", "resource_list", "native_resources"])
+        );
+      } catch (error) {
+        results[probe.key].scopedSamples[scope.key] = {
+          error: error instanceof Error ? error.message : String(error || "Unknown error")
+        };
+      }
+    }
+  }
+
+  return results;
+}
+
+async function fetchVpnGatewayResourceIndexBreakdown(vdc, session) {
+  const results = {};
+
+  for (const probe of VPN_GATEWAY_RESOURCE_INDEX_PROBES) {
     results[probe.key] = {
       query: probe.query,
       scopedSamples: {}
@@ -660,6 +724,28 @@ async function fetchNatMeteringBreakdown(vdc, session) {
   return results;
 }
 
+async function fetchVpnGatewayMeteringBreakdown(vdc, session) {
+  const results = {};
+
+  for (const probe of VPN_GATEWAY_METERING_RESOURCE_TYPES) {
+    try {
+      await delay(REQUEST_DELAY_MS);
+      const records = await fetchMeteringResources(vdc, probe, session);
+      results[probe.key] = {
+        resourceType: probe.resourceType,
+        ...summarizeResourceRecords(records)
+      };
+    } catch (error) {
+      results[probe.key] = {
+        resourceType: probe.resourceType,
+        error: error instanceof Error ? error.message : String(error || "Unknown error")
+      };
+    }
+  }
+
+  return results;
+}
+
 async function fetchMeteringResourceTypes(vdc, session) {
   try {
     if (!vdc.regionId) {
@@ -681,6 +767,12 @@ async function fetchMeteringResourceTypes(vdc, session) {
       recordCount: records.length,
       natMatches: records
         .filter((record) => /nat/i.test(`${record?.resource_type_code || ""} ${record?.resource_type_name || ""}`))
+        .slice(0, 20),
+      vpnGatewayMatches: records
+        .filter((record) =>
+          /vpn/i.test(`${record?.resource_type_code || ""} ${record?.resource_type_name || ""}`) &&
+          /gateway|service|ipsec|vpn/i.test(`${record?.resource_type_code || ""} ${record?.resource_type_name || ""}`)
+        )
         .slice(0, 20)
     };
   } catch (error) {
@@ -769,6 +861,9 @@ async function compareTenant(vdc, session) {
   const natProbes = await fetchNatProbeBreakdown(vdc, projects, session);
   const natResourceIndexProbes = await fetchNatResourceIndexBreakdown(vdc, session);
   const natMeteringProbes = await fetchNatMeteringBreakdown(vdc, session);
+  const vpnGatewayProbes = await fetchVpnGatewayProbeBreakdown(vdc, projects, session);
+  const vpnGatewayResourceIndexProbes = await fetchVpnGatewayResourceIndexBreakdown(vdc, session);
+  const vpnGatewayMeteringProbes = await fetchVpnGatewayMeteringBreakdown(vdc, session);
   const meteringResourceTypes = await fetchMeteringResourceTypes(vdc, session);
   const eipProbes = await fetchEipProbeBreakdown(vdc, projects, session);
 
@@ -787,6 +882,11 @@ async function compareTenant(vdc, session) {
       cceClusters: resourceUsed(usageRows, "cce", "hybrid.resource.type.cce.cluster"),
       publicIps: resourceUsed(usageRows, "vpc", "publicIp"),
       bandwidthSize: resourceUsed(usageRows, "vpc", "bandwidth_size"),
+      vpnConnections: resourceUsed(usageRows, "vpc", "vpn"),
+      vpnGateways:
+        resourceUsed(usageRows, "vpc", "vpn_gateway") +
+        resourceUsed(usageRows, "vpc", "vpngateway") +
+        resourceUsed(usageRows, "vpc", "vpnGateway"),
       natGateways:
         resourceUsed(usageRows, "vpc", "nat_gateway") +
         resourceUsed(usageRows, "vpc", "natgateway") +
@@ -809,6 +909,9 @@ async function compareTenant(vdc, session) {
     natProbes,
     natResourceIndexProbes,
     natMeteringProbes,
+    vpnGatewayProbes,
+    vpnGatewayResourceIndexProbes,
+    vpnGatewayMeteringProbes,
     meteringResourceTypes,
     eipProbes
   };
@@ -824,6 +927,21 @@ function sumNatNativeRecords(result) {
 
 function sumNatMeteringRecords(result) {
   return Object.values(result?.natMeteringProbes || {}).reduce(
+    (total, probe) => total + (numberOrNull(probe?.recordCount) || 0),
+    0
+  );
+}
+
+function sumVpnGatewayNativeRecords(result) {
+  return Object.values(result?.vpnGatewayProbes || {}).reduce(
+    (total, probe) =>
+      total + (numberOrNull(probe?.projectScoped?.recordCount) || 0) + (numberOrNull(probe?.domainScoped?.recordCount) || 0),
+    0
+  );
+}
+
+function sumVpnGatewayMeteringRecords(result) {
+  return Object.values(result?.vpnGatewayMeteringProbes || {}).reduce(
     (total, probe) => total + (numberOrNull(probe?.recordCount) || 0),
     0
   );
@@ -859,6 +977,39 @@ function buildNatSummary(results) {
   };
 }
 
+function buildVpnGatewaySummary(results) {
+  const tenantSummaries = results.map((result) => {
+    const rawVpnConnections = numberOrNull(result?.rawCounters?.vpnConnections) || 0;
+    const rawVpnGateways = numberOrNull(result?.rawCounters?.vpnGateways) || 0;
+    const nativeVpnGatewayRecords = sumVpnGatewayNativeRecords(result);
+    const meteringVpnGatewayRecords = sumVpnGatewayMeteringRecords(result);
+    const vpnGatewayResourceTypeMatches = Array.isArray(result?.meteringResourceTypes?.vpnGatewayMatches)
+      ? result.meteringResourceTypes.vpnGatewayMatches.length
+      : 0;
+    const hasVpnGatewayEvidence =
+      rawVpnGateways > 0 || nativeVpnGatewayRecords > 0 || meteringVpnGatewayRecords > 0 || vpnGatewayResourceTypeMatches > 0;
+
+    return {
+      tenant: result?.tenant?.name ?? "unknown",
+      regionId: result?.tenant?.regionId ?? null,
+      regionName: result?.tenant?.regionName ?? null,
+      rawVpnConnections,
+      rawVpnGateways,
+      nativeVpnGatewayRecords,
+      meteringVpnGatewayRecords,
+      vpnGatewayResourceTypeMatches,
+      hasVpnGatewayEvidence
+    };
+  });
+
+  return {
+    tenantCount: tenantSummaries.length,
+    tenantsWithVpnGatewayEvidence: tenantSummaries.filter((tenant) => tenant.hasVpnGatewayEvidence),
+    tenantsWithoutVpnGatewayEvidence: tenantSummaries.filter((tenant) => !tenant.hasVpnGatewayEvidence).length,
+    tenants: tenantSummaries
+  };
+}
+
 async function main() {
   console.log("[DOMAIN BREAKDOWN PREVIEW] read-only preview started");
   console.log("[DOMAIN BREAKDOWN PREVIEW] no DB writes, no CRM push, no sync job changes");
@@ -885,7 +1036,18 @@ async function main() {
   }
 
   console.log("\n================ DOMAIN BREAKDOWN PREVIEW ================");
-  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), natSummary: buildNatSummary(results), tenants: results }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        natSummary: buildNatSummary(results),
+        vpnGatewaySummary: buildVpnGatewaySummary(results),
+        tenants: results
+      },
+      null,
+      2
+    )
+  );
   console.log("================ END DOMAIN BREAKDOWN PREVIEW ================");
 }
 
