@@ -30,6 +30,10 @@ const defaultSellerProfile = {
 };
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const logoSvg = loadLogoSvg();
+const pageLeft = 56;
+const pageRight = 544;
+const footerTop = 760;
+const contentBottom = 728;
 
 export async function generateInvoicePdf(invoice) {
   return new Promise((resolve, reject) => {
@@ -45,6 +49,7 @@ export async function generateInvoicePdf(invoice) {
     drawInvoicePage(doc, invoice, sellerProfile);
     doc.addPage();
     drawBankDetailsPage(doc, sellerProfile);
+    drawBufferedFooters(doc, sellerProfile);
 
     doc.end();
   });
@@ -63,7 +68,7 @@ export function invoicePdfFilename(invoiceNumber) {
 function drawInvoicePage(doc, invoice, sellerProfile) {
   drawHeader(doc, sellerProfile);
 
-  const left = 56;
+  const left = pageLeft;
   const right = 338;
   const titleTop = 198;
   const invoiceNumber = displayInvoiceNumber(invoice.invoiceNumber);
@@ -77,13 +82,41 @@ function drawInvoicePage(doc, invoice, sellerProfile) {
 
   drawBillTo(doc, invoice, right, titleTop - 3);
   drawMeta(doc, invoice, left, 278, regionSummary);
-  drawLineItems(doc, lineItems, left, lineItemsTop, showRegionBreakdown);
-  drawTotal(doc, invoice, 324, 572);
-  if (showRegionBreakdown) {
-    drawRegionTotals(doc, lineItems, left, 610);
+  let nextY = drawLineItems(doc, lineItems, left, lineItemsTop, showRegionBreakdown, () => {
+    doc.addPage();
+    drawHeader(doc, sellerProfile);
+    doc
+      .font("Helvetica")
+      .fontSize(16)
+      .fillColor(teal)
+      .text(`Invoice ${invoiceNumber} (continued)`, left, 182, { width: 320 });
+    return 226;
+  });
+
+  if (nextY + (showRegionBreakdown ? 145 : 105) > contentBottom) {
+    doc.addPage();
+    drawHeader(doc, sellerProfile);
+    doc
+      .font("Helvetica")
+      .fontSize(16)
+      .fillColor(teal)
+      .text(`Invoice ${invoiceNumber} (continued)`, left, 182, { width: 320 });
+    nextY = 226;
   }
-  drawPaymentInstructions(doc, invoice, sellerProfile, left, showRegionBreakdown ? 650 : 662);
-  drawFooter(doc, sellerProfile, "Page 1 / 2");
+
+  drawTotal(doc, invoice, 324, nextY + 8);
+  nextY += 58;
+  if (showRegionBreakdown) {
+    nextY = drawRegionTotals(doc, lineItems, left, nextY + 6);
+  }
+
+  if (nextY + 92 > contentBottom) {
+    doc.addPage();
+    drawHeader(doc, sellerProfile);
+    nextY = 226;
+  }
+
+  drawPaymentInstructions(doc, invoice, sellerProfile, left, nextY + 10);
 }
 
 function drawBankDetailsPage(doc, sellerProfile) {
@@ -99,7 +132,6 @@ function drawBankDetailsPage(doc, sellerProfile) {
     .text(sellerProfile.bankLocation, 56, 346)
     .text(sellerProfile.currencyNote, 56, 364);
 
-  drawFooter(doc, sellerProfile, "Page 2 / 2");
 }
 
 function drawHeader(doc, sellerProfile) {
@@ -160,20 +192,22 @@ function drawMeta(doc, invoice, x, y, regionSummary = { kind: "none" }) {
   }
 }
 
-function drawLineItems(doc, items, x, y, showRegionBreakdown = false) {
+function drawLineItems(doc, items, x, y, showRegionBreakdown = false, addContinuationPage = null) {
   const qtyX = 360;
   const priceX = 420;
   const amountX = 488;
 
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(ink);
-  doc.text("Description", x, y);
-  doc.text("Quantity", qtyX, y, { width: 50, align: "right" });
-  doc.text("Unit Price", priceX, y, { width: 55, align: "right" });
-  doc.text("Amount", amountX, y, { width: 55, align: "right" });
-  doc.moveTo(x, y + 18).lineTo(544, y + 18).lineWidth(0.8).strokeColor(line).stroke();
+  drawLineItemsHeader(doc, x, y, qtyX, priceX, amountX);
 
   let rowY = y + 31;
-  items.slice(0, 12).forEach((item) => {
+  items.forEach((item) => {
+    const rowHeight = showRegionBreakdown ? 55 : 43;
+    if (rowY + rowHeight > contentBottom && typeof addContinuationPage === "function") {
+      const nextHeaderY = addContinuationPage();
+      drawLineItemsHeader(doc, x, nextHeaderY, qtyX, priceX, amountX);
+      rowY = nextHeaderY + 31;
+    }
+
     const name = item.itemName || item.description || "Invoice item";
     const category = item.serviceCategory || item.category || "";
     const region = regionLabel(item);
@@ -192,13 +226,24 @@ function drawLineItems(doc, items, x, y, showRegionBreakdown = false) {
     doc.text(formatRate(unitPrice), priceX, rowY, { width: 55, align: "right" });
     doc.text(formatMoney(amount), amountX, rowY, { width: 55, align: "right" });
 
-    rowY += showRegionBreakdown ? 55 : 43;
+    rowY += rowHeight;
   });
+
+  return rowY;
+}
+
+function drawLineItemsHeader(doc, x, y, qtyX, priceX, amountX) {
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(ink);
+  doc.text("Description", x, y);
+  doc.text("Quantity", qtyX, y, { width: 50, align: "right" });
+  doc.text("Unit Price", priceX, y, { width: 55, align: "right" });
+  doc.text("Amount", amountX, y, { width: 55, align: "right" });
+  doc.moveTo(x, y + 18).lineTo(pageRight, y + 18).lineWidth(0.8).strokeColor(line).stroke();
 }
 
 function drawRegionTotals(doc, items, x, y) {
   const totals = groupedRegionTotals(items).slice(0, 4);
-  if (totals.length === 0) return;
+  if (totals.length === 0) return y;
 
   doc.moveTo(x, y - 14).lineTo(324, y - 14).lineWidth(0.4).strokeColor("#d0d5dd").stroke();
   doc.font("Helvetica-Bold").fontSize(8).fillColor(teal).text("Region Totals", x, y, { width: 300 });
@@ -208,6 +253,8 @@ function drawRegionTotals(doc, items, x, y) {
     width: 300,
     lineGap: 2
   });
+
+  return y + 48;
 }
 
 function drawTotal(doc, invoice, x, y) {
@@ -240,10 +287,17 @@ function drawPaymentInstructions(doc, invoice, sellerProfile, x, y) {
 }
 
 function drawFooter(doc, sellerProfile, pageText) {
-  const y = 760;
-  doc.moveTo(56, y).lineTo(544, y).lineWidth(0.8).strokeColor(line).stroke();
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(ink).text(sellerProfile.footerText, 56, y + 14, { width: 390 });
-  doc.text(pageText, 492, y + 14, { width: 52, align: "right" });
+  doc.moveTo(pageLeft, footerTop).lineTo(pageRight, footerTop).lineWidth(0.8).strokeColor(line).stroke();
+  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(ink).text(sellerProfile.footerText, pageLeft, footerTop + 14, { width: 390 });
+  doc.text(pageText, 492, footerTop + 14, { width: 52, align: "right" });
+}
+
+function drawBufferedFooters(doc, sellerProfile) {
+  const range = doc.bufferedPageRange();
+  for (let index = 0; index < range.count; index += 1) {
+    doc.switchToPage(range.start + index);
+    drawFooter(doc, sellerProfile, `Page ${index + 1} / ${range.count}`);
+  }
 }
 
 function sellerProfileFromInvoice(invoice = {}) {

@@ -955,8 +955,8 @@ function validateInvoiceSnapshot(invoice) {
     throw new HttpError("Invoice line items are required.", 400);
   }
 
-  if (invoice.lineItems.length > 12) {
-    throw new HttpError("Invoice PDF email supports up to 12 line items.", 400);
+  if (invoice.lineItems.length > 200) {
+    throw new HttpError("Invoice PDF email supports up to 200 line items.", 400);
   }
 
   invoice.lineItems.forEach((item, index) => {
