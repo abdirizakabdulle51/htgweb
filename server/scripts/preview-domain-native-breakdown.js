@@ -1,0 +1,437 @@
+import "dotenv/config";
+import { authenticate, listAllVdcs } from "../manageone.js";
+
+const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
+const REQUEST_TIMEOUT_MS = Number(process.env.MANAGEONE_TIMEOUT_MS || 30000);
+const REQUEST_DELAY_MS = Number(process.env.MANAGEONE_DIAGNOSTIC_DELAY_MS || 500);
+const PROJECT_PAGE_LIMIT = Number(process.env.MANAGEONE_DIAGNOSTIC_PROJECT_PAGE_LIMIT || 100);
+const PROJECT_MAX_PAGES = Number(process.env.MANAGEONE_DIAGNOSTIC_PROJECT_MAX_PAGES || 20);
+const NATIVE_RESOURCE_PAGE_LIMIT = Number(process.env.MANAGEONE_DIAGNOSTIC_NATIVE_PAGE_LIMIT || 1000);
+const NATIVE_RESOURCE_MAX_PAGES = Number(process.env.MANAGEONE_DIAGNOSTIC_NATIVE_MAX_PAGES || 20);
+const TENANT_FILTER = String(process.env.MANAGEONE_DIAGNOSTIC_TENANT_FILTER || "").trim().toLowerCase();
+const MAX_TENANTS = Number(process.env.MANAGEONE_DIAGNOSTIC_MAX_TENANTS || 0);
+
+function stripTrailingSlash(value) {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function manageOneRootUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL).replace(/\/rest\/vdc$/, "");
+}
+
+function vdcEndpointBaseUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
+}
+
+function resourceEndpointBaseUrl() {
+  return `${manageOneRootUrl()}/rest/resource`;
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function firstDefined(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== "");
+}
+
+function numberOrNull(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function listFromResponse(body, keys) {
+  if (Array.isArray(body)) return body;
+
+  for (const key of keys) {
+    const value = body?.[key] || body?.data?.[key];
+    if (Array.isArray(value)) return value;
+  }
+
+  return [];
+}
+
+function responseTotal(body) {
+  const total = Number(body?.total ?? body?.totalNum);
+  return Number.isFinite(total) ? total : null;
+}
+
+function shouldFetchNextNativePage({ reportedTotal, start, pageSize, pageResourceCount }) {
+  if (pageResourceCount === 0) return false;
+  if (reportedTotal !== null && reportedTotal > start + pageResourceCount) return true;
+
+  return pageResourceCount >= pageSize;
+}
+
+async function fetchTextWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    const text = await response.text();
+    return { response, text };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function readManageOneJson(label, url, session) {
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new Error(`${label} failed: HTTP ${response.status}${text ? ` ${text.slice(0, 500)}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchTenantResourceUsage(vdc, session) {
+  const url = `${vdcEndpointBaseUrl()}/v3.0/capacity/${encodeURIComponent(vdc.id)}/statics?inherit=true`;
+  return readManageOneJson(`resource usage for ${vdc.name || vdc.id}`, url, session);
+}
+
+async function fetchProjectPage(vdc, session, start, limit) {
+  const url = `${vdcEndpointBaseUrl()}/v3.1/vdcs/${encodeURIComponent(vdc.id)}/projects?start=${start}&limit=${limit}`;
+  return readManageOneJson(`project list for ${vdc.name || vdc.id}`, url, session);
+}
+
+async function listTenantProjects(vdc, session) {
+  const projects = [];
+  let start = 0;
+  let total = Infinity;
+  let page = 0;
+
+  while (start < total) {
+    page += 1;
+    if (page > PROJECT_MAX_PAGES) {
+      throw new Error(`Project pagination exceeded ${PROJECT_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`);
+    }
+
+    const body = await fetchProjectPage(vdc, session, start, PROJECT_PAGE_LIMIT);
+    const pageProjects = listFromResponse(body, ["projects", "project_list"]);
+    projects.push(...pageProjects);
+    total = Number.isFinite(Number(body?.total)) ? Number(body.total) : projects.length;
+    start += PROJECT_PAGE_LIMIT;
+
+    if (start < total) {
+      await delay(REQUEST_DELAY_MS);
+    }
+  }
+
+  return projects;
+}
+
+async function fetchNativeResourcePage({ vdc, projectId, serviceId, resourceTypeName, session, start, limit }) {
+  const params = new URLSearchParams({
+    service_id: serviceId,
+    resource_type_name: resourceTypeName,
+    start: String(start),
+    limit: String(limit)
+  });
+
+  if (projectId) {
+    params.set("project_id", projectId);
+  } else {
+    params.set("domain_id", String(vdc.domain_id || ""));
+  }
+
+  const label = `${projectId ? "project" : "domain"} ${serviceId} native resources for ${vdc.name || vdc.id}`;
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  return readManageOneJson(label, url, session);
+}
+
+async function fetchNativeResources({ vdc, projectId, serviceId, resourceTypeName, session }) {
+  const responses = [];
+  let start = 0;
+  let page = 0;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `${projectId ? "Project" : "Domain"} ${serviceId} pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`
+      );
+    }
+
+    const body = await fetchNativeResourcePage({
+      vdc,
+      projectId,
+      serviceId,
+      resourceTypeName,
+      session,
+      start,
+      limit: NATIVE_RESOURCE_PAGE_LIMIT
+    });
+    responses.push(body);
+
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    hasNextPage = shouldFetchNextNativePage({
+      reportedTotal: responseTotal(body),
+      start,
+      pageSize: NATIVE_RESOURCE_PAGE_LIMIT,
+      pageResourceCount: pageResources.length
+    });
+    start += NATIVE_RESOURCE_PAGE_LIMIT;
+
+    if (hasNextPage) {
+      await delay(REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+function recordsFromResponses(responses) {
+  return responses.flatMap((response) => listFromResponse(response, ["resources", "resource_list", "native_resources"]));
+}
+
+function parseEcsFlavor(rawFlavor) {
+  if (typeof rawFlavor !== "string") return null;
+
+  const [vcpusValue, ramMbValue, ...nameParts] = rawFlavor.split("|");
+  const flavorName = nameParts.join("|").trim();
+  if (!flavorName || flavorName.toLowerCase().startsWith("waf.")) return null;
+
+  return {
+    flavorName,
+    vcpus: numberOrNull(vcpusValue),
+    ramMb: numberOrNull(ramMbValue)
+  };
+}
+
+function aggregateEcsFlavorBreakdown(records) {
+  const flavorsByName = new Map();
+
+  for (const resource of records) {
+    const parsed = parseEcsFlavor(resource?.properties?.flavor);
+    if (!parsed) continue;
+
+    const existing = flavorsByName.get(parsed.flavorName);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      flavorsByName.set(parsed.flavorName, { ...parsed, count: 1 });
+    }
+  }
+
+  return [...flavorsByName.values()].sort((a, b) => a.flavorName.localeCompare(b.flavorName));
+}
+
+function parseEvsVolume(volume) {
+  const properties = volume?.properties || {};
+  const volumeType = typeof properties.volume_type === "string" ? properties.volume_type.trim() : "";
+  const diskSize = numberOrNull(properties.disk_size);
+  if (!volumeType || diskSize === null) return null;
+
+  return {
+    volumeType,
+    volumeTypeKey: volumeType.toLowerCase(),
+    diskSize
+  };
+}
+
+function aggregateEvsVolumeTypeBreakdown(records) {
+  const volumesByType = new Map();
+
+  for (const resource of records) {
+    const parsed = parseEvsVolume(resource);
+    if (!parsed) continue;
+
+    const existing = volumesByType.get(parsed.volumeTypeKey);
+    if (existing) {
+      existing.count += 1;
+      existing.totalGb += parsed.diskSize;
+    } else {
+      volumesByType.set(parsed.volumeTypeKey, {
+        volumeType: parsed.volumeType,
+        totalGb: parsed.diskSize,
+        count: 1
+      });
+    }
+  }
+
+  return [...volumesByType.values()].sort((a, b) => a.volumeType.localeCompare(b.volumeType));
+}
+
+function flattenResourceUsage(resourceUsage) {
+  const resources = [];
+
+  function walk(value, serviceId = null) {
+    if (!value || typeof value !== "object") return;
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        walk(item, serviceId);
+      }
+      return;
+    }
+
+    const currentServiceId = firstDefined(value.service_id, value.serviceId, serviceId);
+    const resource = firstDefined(value.resource, value.resource_name, value.resourceName, value.name);
+    const used = firstDefined(value.used, value.used_value, value.usedValue);
+
+    if (currentServiceId && resource && used !== undefined && used !== null && used !== "") {
+      resources.push({
+        serviceId: String(currentServiceId),
+        resource: String(resource),
+        used: numberOrNull(used)
+      });
+    }
+
+    for (const child of Object.values(value)) {
+      walk(child, currentServiceId);
+    }
+  }
+
+  walk(resourceUsage);
+  return resources;
+}
+
+function resourceUsed(resources, serviceId, resourceName) {
+  const expectedServiceId = String(serviceId).toLowerCase();
+  const expectedResourceName = String(resourceName).toLowerCase();
+  const match = resources.find(
+    (resource) =>
+      String(resource.serviceId || "").toLowerCase() === expectedServiceId &&
+      String(resource.resource || "").toLowerCase() === expectedResourceName
+  );
+
+  return numberOrNull(match?.used) || 0;
+}
+
+function filterTenants(vdcs) {
+  const filtered = TENANT_FILTER
+    ? vdcs.filter((vdc) =>
+        `${vdc.name || ""} ${vdc.id || ""} ${vdc.domain_id || ""}`.toLowerCase().includes(TENANT_FILTER)
+      )
+    : vdcs;
+
+  return MAX_TENANTS > 0 ? filtered.slice(0, MAX_TENANTS) : filtered;
+}
+
+async function fetchProjectScopedRecords(vdc, projects, session, serviceId, resourceTypeName) {
+  const responses = [];
+
+  for (const project of projects) {
+    const projectId = firstDefined(project.id, project.project_id, project.projectId);
+    if (!projectId) continue;
+
+    await delay(REQUEST_DELAY_MS);
+    responses.push(
+      ...(await fetchNativeResources({
+        vdc,
+        projectId: String(projectId),
+        serviceId,
+        resourceTypeName,
+        session
+      }))
+    );
+  }
+
+  return recordsFromResponses(responses);
+}
+
+async function compareTenant(vdc, session) {
+  console.log(`[DOMAIN BREAKDOWN PREVIEW] comparing ${vdc.name || vdc.id}`);
+
+  const resourceUsage = await fetchTenantResourceUsage(vdc, session);
+  const usageRows = flattenResourceUsage(resourceUsage);
+  const projects = await listTenantProjects(vdc, session);
+
+  const projectEcsRecords = await fetchProjectScopedRecords(vdc, projects, session, "ecs", "CLOUD_ECS_INSTANCE");
+  const domainEcsRecords = recordsFromResponses(
+    await fetchNativeResources({
+      vdc,
+      serviceId: "ecs",
+      resourceTypeName: "CLOUD_ECS_INSTANCE",
+      session
+    })
+  );
+
+  const projectEvsRecords = await fetchProjectScopedRecords(vdc, projects, session, "evs", "CLOUD_EVS_INSTANCE");
+  const domainEvsRecords = recordsFromResponses(
+    await fetchNativeResources({
+      vdc,
+      serviceId: "evs",
+      resourceTypeName: "CLOUD_EVS_INSTANCE",
+      session
+    })
+  );
+
+  return {
+    tenant: {
+      vdcId: String(vdc.id),
+      domainId: vdc.domain_id ?? null,
+      name: String(vdc.name || vdc.id)
+    },
+    rawCounters: {
+      ecsInstances: resourceUsed(usageRows, "ecs", "instances"),
+      evsGb: resourceUsed(usageRows, "evs", "gigabytes"),
+      cceClusters: resourceUsed(usageRows, "cce", "hybrid.resource.type.cce.cluster"),
+      publicIps: resourceUsed(usageRows, "vpc", "publicIp")
+    },
+    projects: projects.length,
+    currentProjectScoped: {
+      ecsRecordCount: projectEcsRecords.length,
+      ecsFlavors: aggregateEcsFlavorBreakdown(projectEcsRecords),
+      evsRecordCount: projectEvsRecords.length,
+      evsVolumeTypes: aggregateEvsVolumeTypeBreakdown(projectEvsRecords)
+    },
+    proposedDomainScoped: {
+      ecsRecordCount: domainEcsRecords.length,
+      ecsFlavors: aggregateEcsFlavorBreakdown(domainEcsRecords),
+      evsRecordCount: domainEvsRecords.length,
+      evsVolumeTypes: aggregateEvsVolumeTypeBreakdown(domainEvsRecords)
+    }
+  };
+}
+
+async function main() {
+  console.log("[DOMAIN BREAKDOWN PREVIEW] read-only preview started");
+  console.log("[DOMAIN BREAKDOWN PREVIEW] no DB writes, no CRM push, no sync job changes");
+
+  const session = await authenticate();
+  const vdcs = filterTenants(await listAllVdcs({ upper_vdc_id: "0", used: "true" }));
+  const results = [];
+
+  console.log(`[DOMAIN BREAKDOWN PREVIEW] tenants selected: ${vdcs.length}`);
+
+  for (const vdc of vdcs) {
+    try {
+      results.push(await compareTenant(vdc, session));
+    } catch (error) {
+      results.push({
+        tenant: {
+          vdcId: String(vdc.id),
+          domainId: vdc.domain_id ?? null,
+          name: String(vdc.name || vdc.id)
+        },
+        error: error instanceof Error ? error.message : String(error || "Unknown error")
+      });
+    }
+  }
+
+  console.log("\n================ DOMAIN BREAKDOWN PREVIEW ================");
+  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), tenants: results }, null, 2));
+  console.log("================ END DOMAIN BREAKDOWN PREVIEW ================");
+}
+
+main().catch((error) => {
+  console.error(
+    `[DOMAIN BREAKDOWN PREVIEW] failed: ${error instanceof Error ? error.stack || error.message : String(error || "Unknown error")}`
+  );
+  process.exitCode = 1;
+});
