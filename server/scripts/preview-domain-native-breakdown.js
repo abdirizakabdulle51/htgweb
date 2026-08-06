@@ -373,6 +373,17 @@ function resourceUsed(resources, serviceId, resourceName) {
   return numberOrNull(match?.used) || 0;
 }
 
+function resourceRowsForService(resources, serviceId) {
+  const expectedServiceId = String(serviceId).toLowerCase();
+  return resources
+    .filter((resource) => String(resource.serviceId || "").toLowerCase() === expectedServiceId)
+    .map((resource) => ({
+      serviceId: resource.serviceId,
+      resource: resource.resource,
+      used: resource.used
+    }));
+}
+
 function filterTenants(vdcs) {
   const filtered = TENANT_FILTER
     ? vdcs.filter((vdc) =>
@@ -527,6 +538,7 @@ async function compareTenant(vdc, session) {
         resourceUsed(usageRows, "vpc", "natgateway") +
         resourceUsed(usageRows, "vpc", "nat")
     },
+    rawVpcUsageRows: resourceRowsForService(usageRows, "vpc"),
     projects: projects.length,
     currentProjectScoped: {
       ecsRecordCount: projectEcsRecords.length,
