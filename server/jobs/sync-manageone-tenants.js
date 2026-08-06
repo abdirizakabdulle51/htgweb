@@ -253,6 +253,25 @@ function aggregateEcsFlavorBreakdown(nativeResourceResponses) {
   return [...flavorsByName.values()].sort((a, b) => a.flavorName.localeCompare(b.flavorName));
 }
 
+function mergeEcsFlavorBreakdowns(items) {
+  const flavorsByKey = new Map();
+
+  for (const item of items) {
+    const key = [item.flavorName, item.regionId || "", item.regionName || ""].join("|");
+    const existing = flavorsByKey.get(key);
+    if (existing) {
+      existing.count += numberOrNull(item.count) || 0;
+    } else {
+      flavorsByKey.set(key, { ...item });
+    }
+  }
+
+  return [...flavorsByKey.values()].sort((a, b) => {
+    const regionCompare = String(a.regionName || "").localeCompare(String(b.regionName || ""));
+    return regionCompare || String(a.flavorName || "").localeCompare(String(b.flavorName || ""));
+  });
+}
+
 function countNativeRecords(nativeResourceResponses) {
   return nativeResourceResponses.reduce(
     (total, response) => total + listFromResponse(response, ["resources", "resource_list", "native_resources"]).length,
@@ -301,6 +320,26 @@ function aggregateEvsVolumeTypeBreakdown(nativeResourceResponses) {
   }
 
   return [...volumesByType.values()].sort((a, b) => a.volumeType.localeCompare(b.volumeType));
+}
+
+function mergeEvsVolumeTypeBreakdowns(items) {
+  const volumesByKey = new Map();
+
+  for (const item of items) {
+    const key = [item.volumeTypeKey || String(item.volumeType || "").toLowerCase(), item.regionId || "", item.regionName || ""].join("|");
+    const existing = volumesByKey.get(key);
+    if (existing) {
+      existing.count += numberOrNull(item.count) || 0;
+      existing.totalGb += numberOrNull(item.totalGb) || 0;
+    } else {
+      volumesByKey.set(key, { ...item });
+    }
+  }
+
+  return [...volumesByKey.values()].sort((a, b) => {
+    const regionCompare = String(a.regionName || "").localeCompare(String(b.regionName || ""));
+    return regionCompare || String(a.volumeType || "").localeCompare(String(b.volumeType || ""));
+  });
 }
 
 function bandwidthTierName(sizeMbps) {
@@ -537,6 +576,39 @@ function extractTenantRegion(detail) {
   };
 }
 
+function extractProjectRegions(project) {
+  const regions = Array.isArray(project?.regions) ? project.regions : [];
+
+  return regions
+    .map((region) => ({
+      regionId: firstDefined(region.region_id, region.regionId, region.id),
+      regionName: parseLocalizedName(firstDefined(region.region_name, region.regionName, region.name))
+    }))
+    .filter((region) => region.regionId || region.regionName)
+    .map((region) => ({
+      regionId: region.regionId ? String(region.regionId) : null,
+      regionName: region.regionName ? String(region.regionName) : null
+    }));
+}
+
+function projectRegionFields(project) {
+  const region = extractProjectRegions(project)[0];
+  return {
+    ...(region?.regionId ? { regionId: region.regionId } : {}),
+    ...(region?.regionName ? { regionName: region.regionName } : {})
+  };
+}
+
+function projectRegionKey(project) {
+  const fields = projectRegionFields(project);
+  return `${fields.regionId || ""}|${fields.regionName || ""}`;
+}
+
+function hasMixedProjectRegions(projects) {
+  const regionKeys = new Set(projects.map(projectRegionKey).filter((key) => key !== "|"));
+  return regionKeys.size > 1;
+}
+
 function mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }) {
   const resources = flattenResourceUsage(resourceUsage);
   const extra = parseExtra(vdc.extra);
@@ -576,6 +648,40 @@ function evsDiskManagedFeeFromBreakdown(evsVolumeTypes) {
   if (!Array.isArray(evsVolumeTypes) || evsVolumeTypes.length === 0) {
     return { count: 0, resourceTypeName: "CLOUD_EVS_INSTANCE" };
   }
+
+  const feesByRegion = new Map();
+  for (const volumeType of evsVolumeTypes) {
+    const count = numberOrNull(volumeType?.count) || 0;
+    if (count <= 0) continue;
+
+    const regionId = volumeType?.regionId || null;
+    const regionName = volumeType?.regionName || null;
+    const key = `${regionId || ""}|${regionName || ""}`;
+    const existing = feesByRegion.get(key);
+    if (existing) {
+      existing.count += count;
+    } else {
+      feesByRegion.set(key, {
+        count,
+        resourceTypeName: "CLOUD_EVS_INSTANCE",
+        ...(regionId ? { regionId } : {}),
+        ...(regionName ? { regionName } : {})
+      });
+    }
+  }
+
+  if (feesByRegion.size > 1) {
+    return {
+      count: [...feesByRegion.values()].reduce((total, item) => total + item.count, 0),
+      resourceTypeName: "CLOUD_EVS_INSTANCE",
+      items: [...feesByRegion.values()].sort((a, b) =>
+        String(a.regionName || "").localeCompare(String(b.regionName || ""))
+      )
+    };
+  }
+
+  const [singleRegionFee] = feesByRegion.values();
+  if (singleRegionFee) return singleRegionFee;
 
   return {
     count: evsVolumeTypes.reduce((total, volumeType) => total + (numberOrNull(volumeType?.count) || 0), 0),
@@ -1263,14 +1369,23 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
     return [];
   }
 
+  const projects = await listTenantProjects(vdc, session);
+  const useProjectRegions = hasMixedProjectRegions(projects);
+
   if (shouldUseDomainNativeBreakdown(vdc)) {
-    console.log(`[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
-    const domainResponses = await fetchDomainNativeEcsResources(vdc, session);
-    const breakdown = aggregateEcsFlavorBreakdown(domainResponses);
+    if (!useProjectRegions) {
+      console.log(`[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
+      const domainResponses = await fetchDomainNativeEcsResources(vdc, session);
+      const breakdown = aggregateEcsFlavorBreakdown(domainResponses);
+      console.log(
+        `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${countNativeRecords(domainResponses)} domain record(s)`
+      );
+      return breakdown;
+    }
+
     console.log(
-      `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${countNativeRecords(domainResponses)} domain record(s)`
+      `[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: project-scoped native resources with resource-space regions`
     );
-    return breakdown;
   }
 
   if (USE_DOMAIN_NATIVE_BREAKDOWN && isSystemVdc(vdc)) {
@@ -1279,8 +1394,8 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
     );
   }
 
-  const projects = await listTenantProjects(vdc, session);
   const nativeResourceResponses = [];
+  const regionAwareBreakdown = [];
   console.log(`[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: ${projects.length} project(s)`);
 
   for (const project of projects) {
@@ -1288,10 +1403,17 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
     if (!projectId) continue;
 
     await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
-    nativeResourceResponses.push(...(await fetchProjectNativeEcsResources(vdc, String(projectId), session)));
+    const projectResponses = await fetchProjectNativeEcsResources(vdc, String(projectId), session);
+    nativeResourceResponses.push(...projectResponses);
+    regionAwareBreakdown.push(
+      ...aggregateEcsFlavorBreakdown(projectResponses).map((item) => ({
+        ...item,
+        ...projectRegionFields(project)
+      }))
+    );
   }
 
-  const breakdown = aggregateEcsFlavorBreakdown(nativeResourceResponses);
+  const breakdown = useProjectRegions ? mergeEcsFlavorBreakdowns(regionAwareBreakdown) : aggregateEcsFlavorBreakdown(nativeResourceResponses);
   console.log(
     `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${countNativeRecords(nativeResourceResponses)} project record(s)`
   );
@@ -1303,14 +1425,23 @@ async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
     return [];
   }
 
+  const projects = await listTenantProjects(vdc, session);
+  const useProjectRegions = hasMixedProjectRegions(projects);
+
   if (shouldUseDomainNativeBreakdown(vdc)) {
-    console.log(`[MANAGEONE SYNC] EVS volume-type lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
-    const domainResponses = await fetchDomainNativeEvsResources(vdc, session);
-    const breakdown = aggregateEvsVolumeTypeBreakdown(domainResponses);
+    if (!useProjectRegions) {
+      console.log(`[MANAGEONE SYNC] EVS volume-type lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
+      const domainResponses = await fetchDomainNativeEvsResources(vdc, session);
+      const breakdown = aggregateEvsVolumeTypeBreakdown(domainResponses);
+      console.log(
+        `[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s), ${countNativeRecords(domainResponses)} domain record(s)`
+      );
+      return breakdown;
+    }
+
     console.log(
-      `[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s), ${countNativeRecords(domainResponses)} domain record(s)`
+      `[MANAGEONE SYNC] EVS volume-type lookup for ${vdc.name || vdc.id}: project-scoped native resources with resource-space regions`
     );
-    return breakdown;
   }
 
   if (USE_DOMAIN_NATIVE_BREAKDOWN && isSystemVdc(vdc)) {
@@ -1319,8 +1450,8 @@ async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
     );
   }
 
-  const projects = await listTenantProjects(vdc, session);
   const nativeResourceResponses = [];
+  const regionAwareBreakdown = [];
   console.log(`[MANAGEONE SYNC] EVS volume-type lookup for ${vdc.name || vdc.id}: ${projects.length} project(s)`);
 
   for (const project of projects) {
@@ -1328,10 +1459,19 @@ async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
     if (!projectId) continue;
 
     await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
-    nativeResourceResponses.push(...(await fetchProjectNativeEvsResources(vdc, String(projectId), session)));
+    const projectResponses = await fetchProjectNativeEvsResources(vdc, String(projectId), session);
+    nativeResourceResponses.push(...projectResponses);
+    regionAwareBreakdown.push(
+      ...aggregateEvsVolumeTypeBreakdown(projectResponses).map((item) => ({
+        ...item,
+        ...projectRegionFields(project)
+      }))
+    );
   }
 
-  const breakdown = aggregateEvsVolumeTypeBreakdown(nativeResourceResponses);
+  const breakdown = useProjectRegions
+    ? mergeEvsVolumeTypeBreakdowns(regionAwareBreakdown)
+    : aggregateEvsVolumeTypeBreakdown(nativeResourceResponses);
   console.log(
     `[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s), ${countNativeRecords(nativeResourceResponses)} project record(s)`
   );
