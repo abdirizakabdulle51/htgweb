@@ -180,6 +180,14 @@ function resourceUsageIndicatesEvs(resourceUsage) {
   });
 }
 
+function resourceUsageIndicatesEipBandwidth(resourceUsage) {
+  return flattenResourceUsage(resourceUsage).some((resource) => {
+    const serviceId = String(resource.serviceId || "").toLowerCase();
+    const resourceName = String(resource.resource || "").toLowerCase();
+    return serviceId.includes("vpc") && resourceName.includes("bandwidth") && Number(resource.used) > 0;
+  });
+}
+
 function shouldFetchEcsFlavorBreakdown(vdc, resourceUsage) {
   const ecsUsed = numberOrNull(vdc.ecs_used);
   return (ecsUsed !== null && ecsUsed > 0) || resourceUsageIndicatesEcs(resourceUsage);
@@ -188,6 +196,10 @@ function shouldFetchEcsFlavorBreakdown(vdc, resourceUsage) {
 function shouldFetchEvsVolumeTypeBreakdown(vdc, resourceUsage) {
   const evsUsed = numberOrNull(vdc.evs_used);
   return (evsUsed !== null && evsUsed > 0) || resourceUsageIndicatesEvs(resourceUsage);
+}
+
+function shouldFetchEipBandwidthBreakdown(resourceUsage) {
+  return resourceUsageIndicatesEipBandwidth(resourceUsage);
 }
 
 function parseEcsFlavor(rawFlavor) {
@@ -277,6 +289,59 @@ function aggregateEvsVolumeTypeBreakdown(nativeResourceResponses) {
   }
 
   return [...volumesByType.values()].sort((a, b) => a.volumeType.localeCompare(b.volumeType));
+}
+
+function bandwidthTierName(sizeMbps) {
+  if (sizeMbps >= 1 && sizeMbps <= 5) return "1 - 5 Mbps";
+  if (sizeMbps >= 6 && sizeMbps <= 50) return "6 - 50 Mbps";
+  if (sizeMbps >= 51 && sizeMbps <= 200) return "51 - 200 Mbps";
+  return null;
+}
+
+function parseBandwidthSize(record) {
+  const properties = record?.properties || {};
+  return numberOrNull(
+    firstDefined(
+      properties.bandwidth_size,
+      properties.bandwidthSize,
+      properties.bandwidth,
+      properties.size,
+      record?.bandwidth_size,
+      record?.bandwidthSize,
+      record?.bandwidth,
+      record?.size
+    )
+  );
+}
+
+function aggregateEipBandwidthBreakdown(nativeResourceResponses) {
+  const tiersByName = new Map();
+
+  for (const response of nativeResourceResponses) {
+    const resources = listFromResponse(response, ["resources", "resource_list", "native_resources"]);
+
+    for (const resource of resources) {
+      const sizeMbps = parseBandwidthSize(resource);
+      if (sizeMbps === null || sizeMbps <= 0) continue;
+
+      const tierName = bandwidthTierName(sizeMbps);
+      if (!tierName) continue;
+
+      const existing = tiersByName.get(tierName);
+      if (existing) {
+        existing.count += 1;
+        existing.totalMbps += sizeMbps;
+      } else {
+        tiersByName.set(tierName, {
+          tierName,
+          count: 1,
+          totalMbps: sizeMbps
+        });
+      }
+    }
+  }
+
+  return [...tiersByName.values()].sort((a, b) => a.tierName.localeCompare(b.tierName));
 }
 
 function flattenResourceUsage(resourceUsage) {
@@ -412,6 +477,7 @@ function mapTenantForCrm(tenant) {
   const rawPayload = parseJsonObject(tenant.raw_payload);
   const ecsFlavors = tenant.ecs_flavor_breakdown || [];
   const evsVolumeTypes = tenant.evs_volume_type_breakdown || [];
+  const eipBandwidths = tenant.eip_bandwidth_breakdown || [];
   const derivedEcsUsed = ecsUsedFromBreakdown(ecsFlavors);
   const derivedEvsUsed = evsUsedFromBreakdown(evsVolumeTypes);
 
@@ -432,7 +498,8 @@ function mapTenantForCrm(tenant) {
     projectCount: tenant.project_count,
     resources: flattenResourceUsage(tenant.resource_usage),
     ecsFlavors,
-    evsVolumeTypes
+    evsVolumeTypes,
+    eipBandwidths
   };
 }
 
@@ -441,7 +508,8 @@ async function loadSyncedTenantsForCrm() {
     SELECT
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
-      ecs_used, evs_used, project_count, raw_payload, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown
+      ecs_used, evs_used, project_count, raw_payload, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown,
+      eip_bandwidth_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
   `;
@@ -810,6 +878,132 @@ async function fetchDomainNativeEvsResources(vdc, session) {
   return responses;
 }
 
+async function fetchNativeBandwidthResourcePage(vdc, projectId, session, start, limit) {
+  const params = new URLSearchParams({
+    service_id: "vpc",
+    resource_type_name: "CLOUD_BANDWIDTHS",
+    project_id: projectId,
+    start: String(start),
+    limit: String(limit)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchProjectNativeBandwidthResources(vdc, projectId, session) {
+  const limit = NATIVE_RESOURCE_PAGE_LIMIT;
+  let start = 0;
+  const responses = [];
+  let page = 0;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `Native bandwidth resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id} project ${projectId}`
+      );
+    }
+
+    const body = await retryRateLimited(
+      `native bandwidth resource lookup for ${vdc.name || vdc.id} project ${projectId}`,
+      () => fetchNativeBandwidthResourcePage(vdc, projectId, session, start, limit)
+    );
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextNativePage({
+      reportedTotal,
+      start,
+      pageSize: limit,
+      pageResourceCount: pageResources.length
+    });
+    start += limit;
+
+    if (hasNextPage) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+async function fetchDomainNativeBandwidthResourcePage(vdc, session, start, limit) {
+  const params = new URLSearchParams({
+    service_id: "vpc",
+    resource_type_name: "CLOUD_BANDWIDTHS",
+    domain_id: String(vdc.domain_id || ""),
+    start: String(start),
+    limit: String(limit)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchDomainNativeBandwidthResources(vdc, session) {
+  const limit = NATIVE_RESOURCE_PAGE_LIMIT;
+  let start = 0;
+  const responses = [];
+  let page = 0;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `Domain native bandwidth resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`
+      );
+    }
+
+    const body = await retryRateLimited(
+      `domain native bandwidth resource lookup for ${vdc.name || vdc.id}`,
+      () => fetchDomainNativeBandwidthResourcePage(vdc, session, start, limit)
+    );
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextNativePage({
+      reportedTotal,
+      start,
+      pageSize: limit,
+      pageResourceCount: pageResources.length
+    });
+    start += limit;
+
+    if (hasNextPage) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
 async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
   if (!shouldFetchEcsFlavorBreakdown(vdc, resourceUsage)) {
     return [];
@@ -886,6 +1080,46 @@ async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
   const breakdown = aggregateEvsVolumeTypeBreakdown(nativeResourceResponses);
   console.log(
     `[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s), ${countNativeRecords(nativeResourceResponses)} project record(s)`
+  );
+  return breakdown;
+}
+
+async function fetchTenantEipBandwidthBreakdown(vdc, session, resourceUsage) {
+  if (!shouldFetchEipBandwidthBreakdown(resourceUsage)) {
+    return [];
+  }
+
+  if (shouldUseDomainNativeBreakdown(vdc)) {
+    console.log(`[MANAGEONE SYNC] EIP bandwidth lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
+    const domainResponses = await fetchDomainNativeBandwidthResources(vdc, session);
+    const breakdown = aggregateEipBandwidthBreakdown(domainResponses);
+    console.log(
+      `[MANAGEONE SYNC] EIP bandwidth breakdown for ${vdc.name || vdc.id}: ${breakdown.length} tier(s), ${countNativeRecords(domainResponses)} domain record(s)`
+    );
+    return breakdown;
+  }
+
+  if (USE_DOMAIN_NATIVE_BREAKDOWN && isSystemVdc(vdc)) {
+    console.log(
+      `[MANAGEONE SYNC] EIP bandwidth lookup for ${vdc.name || vdc.id}: system VDC guard active; using project-scoped resources`
+    );
+  }
+
+  const projects = await listTenantProjects(vdc, session);
+  const nativeResourceResponses = [];
+  console.log(`[MANAGEONE SYNC] EIP bandwidth lookup for ${vdc.name || vdc.id}: ${projects.length} project(s)`);
+
+  for (const project of projects) {
+    const projectId = project.id || project.project_id;
+    if (!projectId) continue;
+
+    await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    nativeResourceResponses.push(...(await fetchProjectNativeBandwidthResources(vdc, String(projectId), session)));
+  }
+
+  const breakdown = aggregateEipBandwidthBreakdown(nativeResourceResponses);
+  console.log(
+    `[MANAGEONE SYNC] EIP bandwidth breakdown for ${vdc.name || vdc.id}: ${breakdown.length} tier(s), ${countNativeRecords(nativeResourceResponses)} project record(s)`
   );
   return breakdown;
 }
@@ -974,6 +1208,7 @@ async function syncManageOneTenants() {
       let resourceUsage = null;
       let ecsFlavorBreakdownPayload = null;
       let evsVolumeTypeBreakdownPayload = null;
+      let eipBandwidthBreakdownPayload = null;
 
       try {
         const region = await fetchTenantRegion(vdc, session);
@@ -1014,13 +1249,20 @@ async function syncManageOneTenants() {
         console.error(`[MANAGEONE SYNC] EVS volume-type breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
       }
 
+      try {
+        eipBandwidthBreakdownPayload = JSON.stringify(await fetchTenantEipBandwidthBreakdown(vdc, session, resourceUsage));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[MANAGEONE SYNC] EIP bandwidth breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
+
       await prisma.$executeRaw`
         INSERT INTO manageone_tenants
           (vdc_id, domain_id, name, level, upper_vdc_id, enabled,
            manager_name, manager_phone, manager_email,
            ecs_used, evs_used, project_count, create_user_name,
            manageone_create_at, last_synced_at, raw_payload, resource_usage,
-           ecs_flavor_breakdown, evs_volume_type_breakdown)
+           ecs_flavor_breakdown, evs_volume_type_breakdown, eip_bandwidth_breakdown)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
@@ -1028,7 +1270,8 @@ async function syncManageOneTenants() {
            ${numberOrNull(vdc.ecs_used)}, ${numberOrNull(vdc.evs_used)}, ${integerOrNull(vdc.project_count)},
            ${vdc.create_user_name ?? null}, ${dateFromMilliseconds(vdc.create_at)}, now(),
            CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb),
-           CAST(${ecsFlavorBreakdownPayload} AS jsonb), CAST(${evsVolumeTypeBreakdownPayload} AS jsonb))
+           CAST(${ecsFlavorBreakdownPayload} AS jsonb), CAST(${evsVolumeTypeBreakdownPayload} AS jsonb),
+           CAST(${eipBandwidthBreakdownPayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
           domain_id = EXCLUDED.domain_id,
           name = EXCLUDED.name,
@@ -1047,7 +1290,8 @@ async function syncManageOneTenants() {
           raw_payload = EXCLUDED.raw_payload,
           resource_usage = COALESCE(EXCLUDED.resource_usage, manageone_tenants.resource_usage),
           ecs_flavor_breakdown = COALESCE(EXCLUDED.ecs_flavor_breakdown, manageone_tenants.ecs_flavor_breakdown),
-          evs_volume_type_breakdown = COALESCE(EXCLUDED.evs_volume_type_breakdown, manageone_tenants.evs_volume_type_breakdown)
+          evs_volume_type_breakdown = COALESCE(EXCLUDED.evs_volume_type_breakdown, manageone_tenants.evs_volume_type_breakdown),
+          eip_bandwidth_breakdown = COALESCE(EXCLUDED.eip_bandwidth_breakdown, manageone_tenants.eip_bandwidth_breakdown)
       `;
     }
 
