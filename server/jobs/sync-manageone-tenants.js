@@ -13,6 +13,7 @@ const PROJECT_PAGE_LIMIT = 100;
 const PROJECT_MAX_PAGES = 20;
 const NATIVE_RESOURCE_PAGE_LIMIT = 1000;
 const NATIVE_RESOURCE_MAX_PAGES = 20;
+const USE_DOMAIN_NATIVE_BREAKDOWN = process.env.MANAGEONE_SYNC_DOMAIN_NATIVE_BREAKDOWN === "true";
 
 class HttpStatusError extends Error {
   constructor(status, message) {
@@ -135,6 +136,18 @@ function listFromResponse(body, keys) {
   return [];
 }
 
+function responseTotal(body) {
+  const total = Number(body?.total ?? body?.totalNum);
+  return Number.isFinite(total) ? total : null;
+}
+
+function shouldFetchNextNativePage({ reportedTotal, start, pageSize, pageResourceCount }) {
+  if (pageResourceCount === 0) return false;
+  if (reportedTotal !== null && reportedTotal > start + pageResourceCount) return true;
+
+  return pageResourceCount >= pageSize;
+}
+
 function resourceUsageIndicatesEcs(resourceUsage) {
   return flattenResourceUsage(resourceUsage).some((resource) => {
     const serviceId = String(resource.serviceId || "").toLowerCase();
@@ -198,6 +211,13 @@ function aggregateEcsFlavorBreakdown(nativeResourceResponses) {
   }
 
   return [...flavorsByName.values()].sort((a, b) => a.flavorName.localeCompare(b.flavorName));
+}
+
+function countNativeRecords(nativeResourceResponses) {
+  return nativeResourceResponses.reduce(
+    (total, response) => total + listFromResponse(response, ["resources", "resource_list", "native_resources"]).length,
+    0
+  );
 }
 
 function parseEvsVolume(volume) {
@@ -533,11 +553,11 @@ async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit)
 async function fetchProjectNativeEcsResources(vdc, projectId, session) {
   const limit = NATIVE_RESOURCE_PAGE_LIMIT;
   let start = 0;
-  let total = Infinity;
   const responses = [];
   let page = 0;
+  let hasNextPage = true;
 
-  while (start < total) {
+  while (hasNextPage) {
     page += 1;
     if (page > NATIVE_RESOURCE_MAX_PAGES) {
       throw new Error(
@@ -551,10 +571,79 @@ async function fetchProjectNativeEcsResources(vdc, projectId, session) {
     );
     responses.push(body);
     const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
-    total = Number.isFinite(Number(body?.total)) ? Number(body.total) : start + pageResources.length;
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextNativePage({
+      reportedTotal,
+      start,
+      pageSize: limit,
+      pageResourceCount: pageResources.length
+    });
     start += limit;
 
-    if (start < total) {
+    if (hasNextPage) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+async function fetchDomainNativeEcsResourcePage(vdc, session, start, limit) {
+  const params = new URLSearchParams({
+    service_id: "ecs",
+    resource_type_name: "CLOUD_ECS_INSTANCE",
+    domain_id: String(vdc.domain_id || ""),
+    start: String(start),
+    limit: String(limit)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchDomainNativeEcsResources(vdc, session) {
+  const limit = NATIVE_RESOURCE_PAGE_LIMIT;
+  let start = 0;
+  const responses = [];
+  let page = 0;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `Domain native ECS resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`
+      );
+    }
+
+    const body = await retryRateLimited(
+      `domain native ECS resource lookup for ${vdc.name || vdc.id}`,
+      () => fetchDomainNativeEcsResourcePage(vdc, session, start, limit)
+    );
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextNativePage({
+      reportedTotal,
+      start,
+      pageSize: limit,
+      pageResourceCount: pageResources.length
+    });
+    start += limit;
+
+    if (hasNextPage) {
       await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
     }
   }
@@ -590,11 +679,11 @@ async function fetchNativeEvsResourcePage(vdc, projectId, session, start, limit)
 async function fetchProjectNativeEvsResources(vdc, projectId, session) {
   const limit = NATIVE_RESOURCE_PAGE_LIMIT;
   let start = 0;
-  let total = Infinity;
   const responses = [];
   let page = 0;
+  let hasNextPage = true;
 
-  while (start < total) {
+  while (hasNextPage) {
     page += 1;
     if (page > NATIVE_RESOURCE_MAX_PAGES) {
       throw new Error(
@@ -608,10 +697,79 @@ async function fetchProjectNativeEvsResources(vdc, projectId, session) {
     );
     responses.push(body);
     const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
-    total = Number.isFinite(Number(body?.total)) ? Number(body.total) : start + pageResources.length;
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextNativePage({
+      reportedTotal,
+      start,
+      pageSize: limit,
+      pageResourceCount: pageResources.length
+    });
     start += limit;
 
-    if (start < total) {
+    if (hasNextPage) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+async function fetchDomainNativeEvsResourcePage(vdc, session, start, limit) {
+  const params = new URLSearchParams({
+    service_id: "evs",
+    resource_type_name: "CLOUD_EVS_INSTANCE",
+    domain_id: String(vdc.domain_id || ""),
+    start: String(start),
+    limit: String(limit)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchDomainNativeEvsResources(vdc, session) {
+  const limit = NATIVE_RESOURCE_PAGE_LIMIT;
+  let start = 0;
+  const responses = [];
+  let page = 0;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `Domain native EVS resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`
+      );
+    }
+
+    const body = await retryRateLimited(
+      `domain native EVS resource lookup for ${vdc.name || vdc.id}`,
+      () => fetchDomainNativeEvsResourcePage(vdc, session, start, limit)
+    );
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextNativePage({
+      reportedTotal,
+      start,
+      pageSize: limit,
+      pageResourceCount: pageResources.length
+    });
+    start += limit;
+
+    if (hasNextPage) {
       await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
     }
   }
@@ -622,6 +780,16 @@ async function fetchProjectNativeEvsResources(vdc, projectId, session) {
 async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
   if (!shouldFetchEcsFlavorBreakdown(vdc, resourceUsage)) {
     return [];
+  }
+
+  if (USE_DOMAIN_NATIVE_BREAKDOWN && vdc.domain_id) {
+    console.log(`[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
+    const domainResponses = await fetchDomainNativeEcsResources(vdc, session);
+    const breakdown = aggregateEcsFlavorBreakdown(domainResponses);
+    console.log(
+      `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${countNativeRecords(domainResponses)} domain record(s)`
+    );
+    return breakdown;
   }
 
   const projects = await listTenantProjects(vdc, session);
@@ -637,13 +805,25 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
   }
 
   const breakdown = aggregateEcsFlavorBreakdown(nativeResourceResponses);
-  console.log(`[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s)`);
+  console.log(
+    `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${countNativeRecords(nativeResourceResponses)} project record(s)`
+  );
   return breakdown;
 }
 
 async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
   if (!shouldFetchEvsVolumeTypeBreakdown(vdc, resourceUsage)) {
     return [];
+  }
+
+  if (USE_DOMAIN_NATIVE_BREAKDOWN && vdc.domain_id) {
+    console.log(`[MANAGEONE SYNC] EVS volume-type lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
+    const domainResponses = await fetchDomainNativeEvsResources(vdc, session);
+    const breakdown = aggregateEvsVolumeTypeBreakdown(domainResponses);
+    console.log(
+      `[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s), ${countNativeRecords(domainResponses)} domain record(s)`
+    );
+    return breakdown;
   }
 
   const projects = await listTenantProjects(vdc, session);
@@ -659,7 +839,9 @@ async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
   }
 
   const breakdown = aggregateEvsVolumeTypeBreakdown(nativeResourceResponses);
-  console.log(`[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s)`);
+  console.log(
+    `[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s), ${countNativeRecords(nativeResourceResponses)} project record(s)`
+  );
   return breakdown;
 }
 
