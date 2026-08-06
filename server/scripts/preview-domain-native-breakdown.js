@@ -15,6 +15,12 @@ const NAT_RESOURCE_PROBES = [
   { key: "cloudNat", serviceId: "vpc", resourceTypeName: "CLOUD_NAT" },
   { key: "natGatewayDisplay", serviceId: "vpc", resourceTypeName: "NAT Gateway" }
 ];
+const EIP_RESOURCE_PROBES = [
+  { key: "cloudFloatingIps", serviceId: "vpc", resourceTypeName: "CLOUD_FLOATING_IPS" },
+  { key: "cloudEip", serviceId: "vpc", resourceTypeName: "CLOUD_EIP" },
+  { key: "cloudPublicIp", serviceId: "vpc", resourceTypeName: "CLOUD_PUBLIC_IP" },
+  { key: "cloudPublicIps", serviceId: "vpc", resourceTypeName: "CLOUD_PUBLICIPS" }
+];
 
 function stripTrailingSlash(value) {
   return String(value || "").replace(/\/+$/, "");
@@ -284,6 +290,43 @@ function summarizeNatRecords(records) {
   };
 }
 
+function collectBandwidthFields(value, path = "", results = []) {
+  if (!value || typeof value !== "object") return results;
+
+  if (Array.isArray(value)) {
+    value.slice(0, 5).forEach((item, index) => collectBandwidthFields(item, `${path}[${index}]`, results));
+    return results;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    const nextPath = path ? `${path}.${key}` : key;
+    if (/bandwidth|qos|rate|limit|speed|mbps|mbit/i.test(key)) {
+      results.push({ path: nextPath, value: child });
+    }
+    if (child && typeof child === "object" && results.length < 30) {
+      collectBandwidthFields(child, nextPath, results);
+    }
+  }
+
+  return results.slice(0, 30);
+}
+
+function summarizeEipRecords(records) {
+  return {
+    recordCount: records.length,
+    samples: records.slice(0, 5).map((record) => ({
+      id: firstDefined(record?.id, record?.resource_id, record?.nativeId, record?.resId) ?? null,
+      name: firstDefined(record?.name, record?.resource_name, record?.resourceName, record?.deviceName) ?? null,
+      resourceTypeName:
+        firstDefined(record?.resource_type_name, record?.resourceTypeName, record?.cloud_resource_type, record?.className) ?? null,
+      ipAddress:
+        firstDefined(record?.floatingIpAddress, record?.floating_ip_address, record?.publicIpAddress, record?.ip_address) ?? null,
+      bandwidthFields: collectBandwidthFields(record),
+      properties: record?.properties ?? null
+    }))
+  };
+}
+
 function flattenResourceUsage(resourceUsage) {
   const resources = [];
 
@@ -400,6 +443,44 @@ async function fetchNatProbeBreakdown(vdc, projects, session) {
   return results;
 }
 
+async function fetchEipProbeRecords(vdc, projects, session, probe) {
+  const projectScopedRecords = await fetchProjectScopedRecords(vdc, projects, session, probe.serviceId, probe.resourceTypeName);
+  const domainScopedRecords = recordsFromResponses(
+    await fetchNativeResources({
+      vdc,
+      serviceId: probe.serviceId,
+      resourceTypeName: probe.resourceTypeName,
+      session
+    })
+  );
+
+  return {
+    serviceId: probe.serviceId,
+    resourceTypeName: probe.resourceTypeName,
+    projectScoped: summarizeEipRecords(projectScopedRecords),
+    domainScoped: summarizeEipRecords(domainScopedRecords)
+  };
+}
+
+async function fetchEipProbeBreakdown(vdc, projects, session) {
+  const results = {};
+
+  for (const probe of EIP_RESOURCE_PROBES) {
+    try {
+      await delay(REQUEST_DELAY_MS);
+      results[probe.key] = await fetchEipProbeRecords(vdc, projects, session, probe);
+    } catch (error) {
+      results[probe.key] = {
+        serviceId: probe.serviceId,
+        resourceTypeName: probe.resourceTypeName,
+        error: error instanceof Error ? error.message : String(error || "Unknown error")
+      };
+    }
+  }
+
+  return results;
+}
+
 async function compareTenant(vdc, session) {
   console.log(`[DOMAIN BREAKDOWN PREVIEW] comparing ${vdc.name || vdc.id}`);
 
@@ -427,6 +508,7 @@ async function compareTenant(vdc, session) {
     })
   );
   const natProbes = await fetchNatProbeBreakdown(vdc, projects, session);
+  const eipProbes = await fetchEipProbeBreakdown(vdc, projects, session);
 
   return {
     tenant: {
@@ -439,6 +521,7 @@ async function compareTenant(vdc, session) {
       evsGb: resourceUsed(usageRows, "evs", "gigabytes"),
       cceClusters: resourceUsed(usageRows, "cce", "hybrid.resource.type.cce.cluster"),
       publicIps: resourceUsed(usageRows, "vpc", "publicIp"),
+      bandwidthSize: resourceUsed(usageRows, "vpc", "bandwidth_size"),
       natGateways:
         resourceUsed(usageRows, "vpc", "nat_gateway") +
         resourceUsed(usageRows, "vpc", "natgateway") +
@@ -457,7 +540,8 @@ async function compareTenant(vdc, session) {
       evsRecordCount: domainEvsRecords.length,
       evsVolumeTypes: aggregateEvsVolumeTypeBreakdown(domainEvsRecords)
     },
-    natProbes
+    natProbes,
+    eipProbes
   };
 }
 
