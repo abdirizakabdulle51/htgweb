@@ -13,7 +13,7 @@ const PROJECT_PAGE_LIMIT = 100;
 const PROJECT_MAX_PAGES = 20;
 const NATIVE_RESOURCE_PAGE_LIMIT = 1000;
 const NATIVE_RESOURCE_MAX_PAGES = 20;
-const USE_DOMAIN_NATIVE_BREAKDOWN = process.env.MANAGEONE_SYNC_DOMAIN_NATIVE_BREAKDOWN === "true";
+const USE_DOMAIN_NATIVE_BREAKDOWN = process.env.MANAGEONE_SYNC_DOMAIN_NATIVE_BREAKDOWN !== "false";
 
 class HttpStatusError extends Error {
   constructor(status, message) {
