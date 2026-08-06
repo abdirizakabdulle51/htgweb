@@ -409,6 +409,40 @@ function aggregateVpnGatewayBreakdown(resourceIndexResponses) {
   };
 }
 
+function aggregateCloudBastionHostBreakdown(resourceIndexResponses) {
+  const hostsByKey = new Map();
+
+  for (const response of resourceIndexResponses) {
+    const resources = listFromResponse(response, ["resources", "resource_list", "native_resources"]);
+
+    for (const resource of resources) {
+      if (
+        !recordMatchesResourceTypeName(resource, "CLOUD_CBH") &&
+        !recordMatchesResourceTypeName(resource, "CLOUD_CBH_INSTANCE")
+      ) {
+        continue;
+      }
+
+      const key = uniqueResourceKey(resource);
+      if (!key) continue;
+
+      hostsByKey.set(String(key), {
+        id: String(key),
+        name: String(firstDefined(resource?.name, resource?.resource_name, resource?.resourceName, key)),
+        resourceTypeName: String(
+          firstDefined(resource?.resource_type_name, resource?.resourceTypeName, resource?.cloud_resource_type, "CLOUD_CBH")
+        )
+      });
+    }
+  }
+
+  return {
+    count: hostsByKey.size,
+    resourceTypeName: "CLOUD_CBH",
+    items: [...hostsByKey.values()].sort((a, b) => a.name.localeCompare(b.name))
+  };
+}
+
 function flattenResourceUsage(resourceUsage) {
   const resources = [];
 
@@ -538,12 +572,25 @@ function evsUsedFromBreakdown(evsVolumeTypes) {
   return evsVolumeTypes.reduce((total, volumeType) => total + (numberOrNull(volumeType?.totalGb) || 0), 0);
 }
 
+function evsDiskManagedFeeFromBreakdown(evsVolumeTypes) {
+  if (!Array.isArray(evsVolumeTypes) || evsVolumeTypes.length === 0) {
+    return { count: 0, resourceTypeName: "CLOUD_EVS_INSTANCE" };
+  }
+
+  return {
+    count: evsVolumeTypes.reduce((total, volumeType) => total + (numberOrNull(volumeType?.count) || 0), 0),
+    resourceTypeName: "CLOUD_EVS_INSTANCE"
+  };
+}
+
 function mapTenantForCrm(tenant) {
   const rawPayload = parseJsonObject(tenant.raw_payload);
   const ecsFlavors = tenant.ecs_flavor_breakdown || [];
   const evsVolumeTypes = tenant.evs_volume_type_breakdown || [];
+  const evsDiskManagedFees = tenant.evs_disk_managed_fee_breakdown || evsDiskManagedFeeFromBreakdown(evsVolumeTypes);
   const eipBandwidths = tenant.eip_bandwidth_breakdown || [];
   const vpnGateways = tenant.vpn_gateway_breakdown || null;
+  const cloudBastionHosts = tenant.cloud_bastion_host_breakdown || null;
   const derivedEcsUsed = ecsUsedFromBreakdown(ecsFlavors);
   const derivedEvsUsed = evsUsedFromBreakdown(evsVolumeTypes);
 
@@ -565,8 +612,10 @@ function mapTenantForCrm(tenant) {
     resources: flattenResourceUsage(tenant.resource_usage),
     ecsFlavors,
     evsVolumeTypes,
+    evsDiskManagedFees,
     eipBandwidths,
-    ...(vpnGateways ? { vpnGateways } : {})
+    ...(vpnGateways ? { vpnGateways } : {}),
+    ...(cloudBastionHosts ? { cloudBastionHosts } : {})
   };
 }
 
@@ -576,7 +625,7 @@ async function loadSyncedTenantsForCrm() {
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
       ecs_used, evs_used, project_count, raw_payload, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown,
-      eip_bandwidth_breakdown, vpn_gateway_breakdown
+      evs_disk_managed_fee_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
   `;
@@ -1182,6 +1231,33 @@ async function fetchTenantVpnGatewayBreakdown(vdc, session, resourceUsage) {
   return breakdown;
 }
 
+async function fetchTenantCloudBastionHostBreakdown(vdc, session) {
+  if (!vdc?.domain_id) {
+    return { count: 0, resourceTypeName: "CLOUD_CBH", items: [] };
+  }
+
+  const resourceIndexResponses = [];
+  console.log(`[MANAGEONE SYNC] Cloud Bastion Host lookup for ${vdc.name || vdc.id}: resource index CLOUD_CBH`);
+
+  for (const scope of resourceIndexScopes(vdc)) {
+    await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    resourceIndexResponses.push(
+      ...(await fetchResourceIndexResources(
+        vdc,
+        scope,
+        { resource_type_name: "CLOUD_CBH" },
+        session
+      ))
+    );
+  }
+
+  const breakdown = aggregateCloudBastionHostBreakdown(resourceIndexResponses);
+  console.log(
+    `[MANAGEONE SYNC] Cloud Bastion Host breakdown for ${vdc.name || vdc.id}: ${breakdown.count} unique host(s), ${countNativeRecords(resourceIndexResponses)} resource index record(s)`
+  );
+  return breakdown;
+}
+
 async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
   if (!shouldFetchEcsFlavorBreakdown(vdc, resourceUsage)) {
     return [];
@@ -1386,8 +1462,10 @@ async function syncManageOneTenants() {
       let resourceUsage = null;
       let ecsFlavorBreakdownPayload = null;
       let evsVolumeTypeBreakdownPayload = null;
+      let evsDiskManagedFeeBreakdownPayload = null;
       let eipBandwidthBreakdownPayload = null;
       let vpnGatewayBreakdownPayload = null;
+      let cloudBastionHostBreakdownPayload = null;
 
       try {
         const region = await fetchTenantRegion(vdc, session);
@@ -1422,7 +1500,9 @@ async function syncManageOneTenants() {
       }
 
       try {
-        evsVolumeTypeBreakdownPayload = JSON.stringify(await fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage));
+        const evsVolumeTypeBreakdown = await fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage);
+        evsVolumeTypeBreakdownPayload = JSON.stringify(evsVolumeTypeBreakdown);
+        evsDiskManagedFeeBreakdownPayload = JSON.stringify(evsDiskManagedFeeFromBreakdown(evsVolumeTypeBreakdown));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
         console.error(`[MANAGEONE SYNC] EVS volume-type breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
@@ -1442,13 +1522,21 @@ async function syncManageOneTenants() {
         console.error(`[MANAGEONE SYNC] VPN Gateway breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
       }
 
+      try {
+        cloudBastionHostBreakdownPayload = JSON.stringify(await fetchTenantCloudBastionHostBreakdown(vdc, session));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[MANAGEONE SYNC] Cloud Bastion Host breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
+
       await prisma.$executeRaw`
         INSERT INTO manageone_tenants
           (vdc_id, domain_id, name, level, upper_vdc_id, enabled,
            manager_name, manager_phone, manager_email,
            ecs_used, evs_used, project_count, create_user_name,
            manageone_create_at, last_synced_at, raw_payload, resource_usage,
-           ecs_flavor_breakdown, evs_volume_type_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown)
+           ecs_flavor_breakdown, evs_volume_type_breakdown, evs_disk_managed_fee_breakdown,
+           eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
@@ -1457,7 +1545,8 @@ async function syncManageOneTenants() {
            ${vdc.create_user_name ?? null}, ${dateFromMilliseconds(vdc.create_at)}, now(),
            CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb),
            CAST(${ecsFlavorBreakdownPayload} AS jsonb), CAST(${evsVolumeTypeBreakdownPayload} AS jsonb),
-           CAST(${eipBandwidthBreakdownPayload} AS jsonb), CAST(${vpnGatewayBreakdownPayload} AS jsonb))
+           CAST(${evsDiskManagedFeeBreakdownPayload} AS jsonb), CAST(${eipBandwidthBreakdownPayload} AS jsonb),
+           CAST(${vpnGatewayBreakdownPayload} AS jsonb), CAST(${cloudBastionHostBreakdownPayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
           domain_id = EXCLUDED.domain_id,
           name = EXCLUDED.name,
@@ -1477,8 +1566,10 @@ async function syncManageOneTenants() {
           resource_usage = COALESCE(EXCLUDED.resource_usage, manageone_tenants.resource_usage),
           ecs_flavor_breakdown = COALESCE(EXCLUDED.ecs_flavor_breakdown, manageone_tenants.ecs_flavor_breakdown),
           evs_volume_type_breakdown = COALESCE(EXCLUDED.evs_volume_type_breakdown, manageone_tenants.evs_volume_type_breakdown),
+          evs_disk_managed_fee_breakdown = COALESCE(EXCLUDED.evs_disk_managed_fee_breakdown, manageone_tenants.evs_disk_managed_fee_breakdown),
           eip_bandwidth_breakdown = COALESCE(EXCLUDED.eip_bandwidth_breakdown, manageone_tenants.eip_bandwidth_breakdown),
-          vpn_gateway_breakdown = COALESCE(EXCLUDED.vpn_gateway_breakdown, manageone_tenants.vpn_gateway_breakdown)
+          vpn_gateway_breakdown = COALESCE(EXCLUDED.vpn_gateway_breakdown, manageone_tenants.vpn_gateway_breakdown),
+          cloud_bastion_host_breakdown = COALESCE(EXCLUDED.cloud_bastion_host_breakdown, manageone_tenants.cloud_bastion_host_breakdown)
       `;
     }
 
