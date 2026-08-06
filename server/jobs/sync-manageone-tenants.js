@@ -188,6 +188,14 @@ function resourceUsageIndicatesEipBandwidth(resourceUsage) {
   });
 }
 
+function resourceUsageIndicatesVpn(resourceUsage) {
+  return flattenResourceUsage(resourceUsage).some((resource) => {
+    const serviceId = String(resource.serviceId || "").toLowerCase();
+    const resourceName = String(resource.resource || "").toLowerCase();
+    return serviceId.includes("vpc") && resourceName.includes("vpn") && Number(resource.used) > 0;
+  });
+}
+
 function shouldFetchEcsFlavorBreakdown(vdc, resourceUsage) {
   const ecsUsed = numberOrNull(vdc.ecs_used);
   return (ecsUsed !== null && ecsUsed > 0) || resourceUsageIndicatesEcs(resourceUsage);
@@ -200,6 +208,10 @@ function shouldFetchEvsVolumeTypeBreakdown(vdc, resourceUsage) {
 
 function shouldFetchEipBandwidthBreakdown(resourceUsage) {
   return resourceUsageIndicatesEipBandwidth(resourceUsage);
+}
+
+function shouldFetchVpnGatewayBreakdown(resourceUsage) {
+  return resourceUsageIndicatesVpn(resourceUsage);
 }
 
 function parseEcsFlavor(rawFlavor) {
@@ -344,6 +356,59 @@ function aggregateEipBandwidthBreakdown(nativeResourceResponses) {
   return [...tiersByName.values()].sort((a, b) => a.tierName.localeCompare(b.tierName));
 }
 
+function recordMatchesResourceTypeName(record, resourceTypeName) {
+  const actualTypeName = firstDefined(
+    record?.resource_type_name,
+    record?.resourceTypeName,
+    record?.cloud_resource_type,
+    record?.className
+  );
+  return String(actualTypeName || "").toLowerCase() === String(resourceTypeName || "").toLowerCase();
+}
+
+function uniqueResourceKey(record) {
+  return (
+    firstDefined(
+      record?.id,
+      record?.resource_id,
+      record?.resourceId,
+      record?.nativeId,
+      record?.resId,
+      record?.native_resource_id,
+      record?.name,
+      record?.resource_name,
+      record?.resourceName
+    ) ?? null
+  );
+}
+
+function aggregateVpnGatewayBreakdown(resourceIndexResponses) {
+  const gatewaysByKey = new Map();
+
+  for (const response of resourceIndexResponses) {
+    const resources = listFromResponse(response, ["resources", "resource_list", "native_resources"]);
+
+    for (const resource of resources) {
+      if (!recordMatchesResourceTypeName(resource, "CLOUD_VPN_SERVICE")) continue;
+
+      const key = uniqueResourceKey(resource);
+      if (!key) continue;
+
+      gatewaysByKey.set(String(key), {
+        id: String(key),
+        name: String(firstDefined(resource?.name, resource?.resource_name, resource?.resourceName, key)),
+        resourceTypeName: "CLOUD_VPN_SERVICE"
+      });
+    }
+  }
+
+  return {
+    count: gatewaysByKey.size,
+    resourceTypeName: "CLOUD_VPN_SERVICE",
+    items: [...gatewaysByKey.values()].sort((a, b) => a.name.localeCompare(b.name))
+  };
+}
+
 function flattenResourceUsage(resourceUsage) {
   const resources = [];
 
@@ -478,6 +543,7 @@ function mapTenantForCrm(tenant) {
   const ecsFlavors = tenant.ecs_flavor_breakdown || [];
   const evsVolumeTypes = tenant.evs_volume_type_breakdown || [];
   const eipBandwidths = tenant.eip_bandwidth_breakdown || [];
+  const vpnGateways = tenant.vpn_gateway_breakdown || null;
   const derivedEcsUsed = ecsUsedFromBreakdown(ecsFlavors);
   const derivedEvsUsed = evsUsedFromBreakdown(evsVolumeTypes);
 
@@ -499,7 +565,8 @@ function mapTenantForCrm(tenant) {
     resources: flattenResourceUsage(tenant.resource_usage),
     ecsFlavors,
     evsVolumeTypes,
-    eipBandwidths
+    eipBandwidths,
+    ...(vpnGateways ? { vpnGateways } : {})
   };
 }
 
@@ -509,7 +576,7 @@ async function loadSyncedTenantsForCrm() {
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
       ecs_used, evs_used, project_count, raw_payload, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown,
-      eip_bandwidth_breakdown
+      eip_bandwidth_breakdown, vpn_gateway_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
   `;
@@ -1004,6 +1071,117 @@ async function fetchDomainNativeBandwidthResources(vdc, session) {
   return responses;
 }
 
+function resourceIndexScopes(vdc) {
+  return [
+    {
+      key: "domainId",
+      extendParam: { domain_id: String(vdc.domain_id || "") }
+    },
+    {
+      key: "vdcId",
+      extendParam: { vdc_id: String(vdc.id || "") }
+    },
+    {
+      key: "domainAndVdc",
+      extendParam: {
+        domain_id: String(vdc.domain_id || ""),
+        vdc_id: String(vdc.id || "")
+      }
+    }
+  ];
+}
+
+async function fetchResourceIndexPage(vdc, scope, query, session, start, limit) {
+  const params = new URLSearchParams({
+    start: String(start),
+    limit: String(limit),
+    extendParam: JSON.stringify({
+      ...query,
+      ...scope.extendParam
+    })
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/resources?${params}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchResourceIndexResources(vdc, scope, query, session) {
+  const limit = Math.min(NATIVE_RESOURCE_PAGE_LIMIT, 100);
+  let start = 0;
+  const responses = [];
+  let page = 0;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `Resource index pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id} scope ${scope.key}`
+      );
+    }
+
+    const body = await retryRateLimited(
+      `resource index lookup for ${vdc.name || vdc.id} scope ${scope.key}`,
+      () => fetchResourceIndexPage(vdc, scope, query, session, start, limit)
+    );
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextNativePage({
+      reportedTotal,
+      start,
+      pageSize: limit,
+      pageResourceCount: pageResources.length
+    });
+    start += limit;
+
+    if (hasNextPage) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+async function fetchTenantVpnGatewayBreakdown(vdc, session, resourceUsage) {
+  if (!vdc?.domain_id || !shouldFetchVpnGatewayBreakdown(resourceUsage)) {
+    return { count: 0, resourceTypeName: "CLOUD_VPN_SERVICE", items: [] };
+  }
+
+  const resourceIndexResponses = [];
+  console.log(`[MANAGEONE SYNC] VPN Gateway lookup for ${vdc.name || vdc.id}: resource index CLOUD_VPN_SERVICE`);
+
+  for (const scope of resourceIndexScopes(vdc)) {
+    await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    resourceIndexResponses.push(
+      ...(await fetchResourceIndexResources(
+        vdc,
+        scope,
+        { resource_type_name: "CLOUD_VPN_SERVICE" },
+        session
+      ))
+    );
+  }
+
+  const breakdown = aggregateVpnGatewayBreakdown(resourceIndexResponses);
+  console.log(
+    `[MANAGEONE SYNC] VPN Gateway breakdown for ${vdc.name || vdc.id}: ${breakdown.count} unique gateway(s), ${countNativeRecords(resourceIndexResponses)} resource index record(s)`
+  );
+  return breakdown;
+}
+
 async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
   if (!shouldFetchEcsFlavorBreakdown(vdc, resourceUsage)) {
     return [];
@@ -1209,6 +1387,7 @@ async function syncManageOneTenants() {
       let ecsFlavorBreakdownPayload = null;
       let evsVolumeTypeBreakdownPayload = null;
       let eipBandwidthBreakdownPayload = null;
+      let vpnGatewayBreakdownPayload = null;
 
       try {
         const region = await fetchTenantRegion(vdc, session);
@@ -1256,13 +1435,20 @@ async function syncManageOneTenants() {
         console.error(`[MANAGEONE SYNC] EIP bandwidth breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
       }
 
+      try {
+        vpnGatewayBreakdownPayload = JSON.stringify(await fetchTenantVpnGatewayBreakdown(vdc, session, resourceUsage));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[MANAGEONE SYNC] VPN Gateway breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
+
       await prisma.$executeRaw`
         INSERT INTO manageone_tenants
           (vdc_id, domain_id, name, level, upper_vdc_id, enabled,
            manager_name, manager_phone, manager_email,
            ecs_used, evs_used, project_count, create_user_name,
            manageone_create_at, last_synced_at, raw_payload, resource_usage,
-           ecs_flavor_breakdown, evs_volume_type_breakdown, eip_bandwidth_breakdown)
+           ecs_flavor_breakdown, evs_volume_type_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
@@ -1271,7 +1457,7 @@ async function syncManageOneTenants() {
            ${vdc.create_user_name ?? null}, ${dateFromMilliseconds(vdc.create_at)}, now(),
            CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb),
            CAST(${ecsFlavorBreakdownPayload} AS jsonb), CAST(${evsVolumeTypeBreakdownPayload} AS jsonb),
-           CAST(${eipBandwidthBreakdownPayload} AS jsonb))
+           CAST(${eipBandwidthBreakdownPayload} AS jsonb), CAST(${vpnGatewayBreakdownPayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
           domain_id = EXCLUDED.domain_id,
           name = EXCLUDED.name,
@@ -1291,7 +1477,8 @@ async function syncManageOneTenants() {
           resource_usage = COALESCE(EXCLUDED.resource_usage, manageone_tenants.resource_usage),
           ecs_flavor_breakdown = COALESCE(EXCLUDED.ecs_flavor_breakdown, manageone_tenants.ecs_flavor_breakdown),
           evs_volume_type_breakdown = COALESCE(EXCLUDED.evs_volume_type_breakdown, manageone_tenants.evs_volume_type_breakdown),
-          eip_bandwidth_breakdown = COALESCE(EXCLUDED.eip_bandwidth_breakdown, manageone_tenants.eip_bandwidth_breakdown)
+          eip_bandwidth_breakdown = COALESCE(EXCLUDED.eip_bandwidth_breakdown, manageone_tenants.eip_bandwidth_breakdown),
+          vpn_gateway_breakdown = COALESCE(EXCLUDED.vpn_gateway_breakdown, manageone_tenants.vpn_gateway_breakdown)
       `;
     }
 
