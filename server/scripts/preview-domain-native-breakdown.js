@@ -10,6 +10,11 @@ const NATIVE_RESOURCE_PAGE_LIMIT = Number(process.env.MANAGEONE_DIAGNOSTIC_NATIV
 const NATIVE_RESOURCE_MAX_PAGES = Number(process.env.MANAGEONE_DIAGNOSTIC_NATIVE_MAX_PAGES || 20);
 const TENANT_FILTER = String(process.env.MANAGEONE_DIAGNOSTIC_TENANT_FILTER || "").trim().toLowerCase();
 const MAX_TENANTS = Number(process.env.MANAGEONE_DIAGNOSTIC_MAX_TENANTS || 0);
+const NAT_RESOURCE_PROBES = [
+  { key: "cloudNatGateway", serviceId: "vpc", resourceTypeName: "CLOUD_NAT_GATEWAY" },
+  { key: "cloudNat", serviceId: "vpc", resourceTypeName: "CLOUD_NAT" },
+  { key: "natGatewayDisplay", serviceId: "vpc", resourceTypeName: "NAT Gateway" }
+];
 
 function stripTrailingSlash(value) {
   return String(value || "").replace(/\/+$/, "");
@@ -266,6 +271,19 @@ function aggregateEvsVolumeTypeBreakdown(records) {
   return [...volumesByType.values()].sort((a, b) => a.volumeType.localeCompare(b.volumeType));
 }
 
+function summarizeNatRecords(records) {
+  return {
+    recordCount: records.length,
+    samples: records.slice(0, 5).map((record) => ({
+      id: firstDefined(record?.id, record?.resource_id, record?.nativeId, record?.resId) ?? null,
+      name: firstDefined(record?.name, record?.resource_name, record?.resourceName, record?.deviceName) ?? null,
+      resourceTypeName:
+        firstDefined(record?.resource_type_name, record?.resourceTypeName, record?.cloud_resource_type, record?.className) ?? null,
+      properties: record?.properties ?? null
+    }))
+  };
+}
+
 function flattenResourceUsage(resourceUsage) {
   const resources = [];
 
@@ -344,6 +362,44 @@ async function fetchProjectScopedRecords(vdc, projects, session, serviceId, reso
   return recordsFromResponses(responses);
 }
 
+async function fetchNatProbeRecords(vdc, projects, session, probe) {
+  const projectScopedRecords = await fetchProjectScopedRecords(vdc, projects, session, probe.serviceId, probe.resourceTypeName);
+  const domainScopedRecords = recordsFromResponses(
+    await fetchNativeResources({
+      vdc,
+      serviceId: probe.serviceId,
+      resourceTypeName: probe.resourceTypeName,
+      session
+    })
+  );
+
+  return {
+    serviceId: probe.serviceId,
+    resourceTypeName: probe.resourceTypeName,
+    projectScoped: summarizeNatRecords(projectScopedRecords),
+    domainScoped: summarizeNatRecords(domainScopedRecords)
+  };
+}
+
+async function fetchNatProbeBreakdown(vdc, projects, session) {
+  const results = {};
+
+  for (const probe of NAT_RESOURCE_PROBES) {
+    try {
+      await delay(REQUEST_DELAY_MS);
+      results[probe.key] = await fetchNatProbeRecords(vdc, projects, session, probe);
+    } catch (error) {
+      results[probe.key] = {
+        serviceId: probe.serviceId,
+        resourceTypeName: probe.resourceTypeName,
+        error: error instanceof Error ? error.message : String(error || "Unknown error")
+      };
+    }
+  }
+
+  return results;
+}
+
 async function compareTenant(vdc, session) {
   console.log(`[DOMAIN BREAKDOWN PREVIEW] comparing ${vdc.name || vdc.id}`);
 
@@ -370,6 +426,7 @@ async function compareTenant(vdc, session) {
       session
     })
   );
+  const natProbes = await fetchNatProbeBreakdown(vdc, projects, session);
 
   return {
     tenant: {
@@ -381,7 +438,11 @@ async function compareTenant(vdc, session) {
       ecsInstances: resourceUsed(usageRows, "ecs", "instances"),
       evsGb: resourceUsed(usageRows, "evs", "gigabytes"),
       cceClusters: resourceUsed(usageRows, "cce", "hybrid.resource.type.cce.cluster"),
-      publicIps: resourceUsed(usageRows, "vpc", "publicIp")
+      publicIps: resourceUsed(usageRows, "vpc", "publicIp"),
+      natGateways:
+        resourceUsed(usageRows, "vpc", "nat_gateway") +
+        resourceUsed(usageRows, "vpc", "natgateway") +
+        resourceUsed(usageRows, "vpc", "nat")
     },
     projects: projects.length,
     currentProjectScoped: {
@@ -395,7 +456,8 @@ async function compareTenant(vdc, session) {
       ecsFlavors: aggregateEcsFlavorBreakdown(domainEcsRecords),
       evsRecordCount: domainEvsRecords.length,
       evsVolumeTypes: aggregateEvsVolumeTypeBreakdown(domainEvsRecords)
-    }
+    },
+    natProbes
   };
 }
 

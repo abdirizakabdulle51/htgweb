@@ -15,6 +15,7 @@ const ENABLE_PROTOTYPE_COLLECTORS = process.env.MANAGEONE_DIAGNOSTIC_PROTOTYPE_C
 
 const BILLING_COVERAGE_WATCHLIST = [
   { serviceId: "cce", label: "CCE cluster counter", resourceNames: ["hybrid.resource.type.cce.cluster"] },
+  { serviceId: "vpc", label: "NAT gateway counter", resourceNames: ["nat_gateway", "natgateway", "nat"] },
   { serviceId: "obsv3", label: "OBS/Object Storage capacity", resourceNames: ["capacity"] },
   { serviceId: "sfs", label: "SFS capacity", resourceNames: ["gigabytes"] },
   { serviceId: "vpc", label: "public IP counter", resourceNames: ["publicIp"] },
@@ -29,6 +30,9 @@ const NATIVE_RESOURCE_PROBES = [
   { key: "cceNodes", serviceId: "cce", resourceTypeName: "CLOUD_CCE_NODE" },
   { key: "obsBuckets", serviceId: "obsv3", resourceTypeName: "CLOUD_OBS_BUCKET" },
   { key: "vpcVpnGateways", serviceId: "vpc", resourceTypeName: "CLOUD_VPN_GATEWAY" },
+  { key: "vpcNatGateways", serviceId: "vpc", resourceTypeName: "CLOUD_NAT_GATEWAY" },
+  { key: "vpcNat", serviceId: "vpc", resourceTypeName: "CLOUD_NAT" },
+  { key: "vpcNatGatewayDisplay", serviceId: "vpc", resourceTypeName: "NAT Gateway" },
   { key: "vpcEips", serviceId: "vpc", resourceTypeName: "CLOUD_EIP" },
   { key: "elbLoadBalancers", serviceId: "elb", resourceTypeName: "CLOUD_ELB_LOADBALANCER" },
   { key: "bastionHosts", serviceId: "cbh", resourceTypeName: "CLOUD_CBH_INSTANCE" }
@@ -42,6 +46,9 @@ const DOMAIN_NATIVE_RESOURCE_PROBES = [
   { key: "domainFloatingIps", serviceId: "vpc", resourceTypeName: "CLOUD_FLOATING_IPS" },
   { key: "domainElb", serviceId: "elb", resourceTypeName: "CLOUD_ELB" },
   { key: "domainBandwidths", serviceId: "vpc", resourceTypeName: "CLOUD_BANDWIDTHS" },
+  { key: "domainNatGateways", serviceId: "vpc", resourceTypeName: "CLOUD_NAT_GATEWAY" },
+  { key: "domainNat", serviceId: "vpc", resourceTypeName: "CLOUD_NAT" },
+  { key: "domainNatGatewayDisplay", serviceId: "vpc", resourceTypeName: "NAT Gateway" },
   { key: "domainObs", serviceId: "obsv3", resourceTypeName: "CLOUD_OBS" },
   { key: "domainCceNodes", serviceId: "cce", resourceTypeName: "CLOUD_NODE" },
   { key: "domainCbh", serviceId: "cbh", resourceTypeName: "CLOUD_CBH" }
@@ -53,6 +60,8 @@ const TENANT_RESOURCE_CLASS_PROBES = [
   { key: "tenantFloatingIps", className: "CLOUD_FLOATING_IPS" },
   { key: "tenantElb", className: "CLOUD_ELB" },
   { key: "tenantBandwidths", className: "CLOUD_BANDWIDTHS" },
+  { key: "tenantNatGateways", className: "CLOUD_NAT_GATEWAY" },
+  { key: "tenantNat", className: "CLOUD_NAT" },
   { key: "tenantObs", className: "CLOUD_OBS" },
   { key: "tenantNode", className: "CLOUD_NODE" },
   { key: "tenantCbh", className: "CLOUD_CBH" },
@@ -67,6 +76,9 @@ const RESOURCE_INDEX_PROBES = [
   { key: "indexFloatingIps", resourceTypeName: "CLOUD_FLOATING_IPS" },
   { key: "indexElb", resourceTypeName: "CLOUD_ELB" },
   { key: "indexBandwidths", resourceTypeName: "CLOUD_BANDWIDTHS" },
+  { key: "indexNatGateways", resourceTypeName: "CLOUD_NAT_GATEWAY" },
+  { key: "indexNat", resourceTypeName: "CLOUD_NAT" },
+  { key: "indexNatGatewayDisplay", resourceTypeName: "NAT Gateway" },
   { key: "indexObs", resourceTypeName: "CLOUD_OBS" },
   { key: "indexCceNodes", resourceTypeName: "CLOUD_NODE" },
   { key: "indexCbh", resourceTypeName: "CLOUD_CBH" },
@@ -786,6 +798,13 @@ function likelyBillingGaps({ crmPayload, nativeProbeResults }) {
   }
   if (nativeProbeResults.vpcVpnGateways?.recordCount > 0) {
     gaps.push("VPN Gateway native resources exist, but current CRM tenant payload only exposes generic resources/public IP counters.");
+  }
+  if (
+    nativeProbeResults.vpcNatGateways?.recordCount > 0 ||
+    nativeProbeResults.vpcNat?.recordCount > 0 ||
+    nativeProbeResults.vpcNatGatewayDisplay?.recordCount > 0
+  ) {
+    gaps.push("NAT Gateway native resources exist, but current CRM tenant payload has no NAT billing field.");
   }
   if (nativeProbeResults.bastionHosts?.recordCount > 0) {
     gaps.push("Cloud Bastion Host native resources exist, but current CRM tenant payload has no bastion billing field.");
