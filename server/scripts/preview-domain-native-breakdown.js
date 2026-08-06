@@ -375,6 +375,28 @@ function summarizeResourceRecords(records) {
   };
 }
 
+function matchesResourceIndexProbe(record, probe) {
+  const expectedTypeName = probe?.query?.resource_type_name;
+  const expectedTypeCode = probe?.query?.resource_type_code;
+  const recordTypeName = firstDefined(record?.resource_type_name, record?.resourceTypeName, record?.cloud_resource_type, record?.className);
+  const recordTypeCode = firstDefined(record?.resource_type, record?.resource_type_code, record?.resourceType, record?.resourceTypeCode);
+
+  return (
+    (!expectedTypeName || String(recordTypeName || "").toLowerCase() === String(expectedTypeName).toLowerCase()) &&
+    (!expectedTypeCode || String(recordTypeCode || "").toLowerCase() === String(expectedTypeCode).toLowerCase())
+  );
+}
+
+function summarizeResourceIndexRecords(records, probe) {
+  const exactMatches = records.filter((record) => matchesResourceIndexProbe(record, probe));
+
+  return {
+    ...summarizeResourceRecords(records),
+    exactMatchCount: exactMatches.length,
+    exactSamples: summarizeResourceRecords(exactMatches).samples
+  };
+}
+
 function collectBandwidthFields(value, path = "", results = []) {
   if (!value || typeof value !== "object") return results;
 
@@ -640,8 +662,9 @@ async function fetchNatResourceIndexBreakdown(vdc, session) {
       try {
         await delay(REQUEST_DELAY_MS);
         const body = await fetchResourceIndexSample(vdc, probe, scope, session);
-        results[probe.key].scopedSamples[scope.key] = summarizeResourceRecords(
-          listFromResponse(body, ["resources", "resource_list", "native_resources"])
+        results[probe.key].scopedSamples[scope.key] = summarizeResourceIndexRecords(
+          listFromResponse(body, ["resources", "resource_list", "native_resources"]),
+          probe
         );
       } catch (error) {
         results[probe.key].scopedSamples[scope.key] = {
@@ -667,8 +690,9 @@ async function fetchVpnGatewayResourceIndexBreakdown(vdc, session) {
       try {
         await delay(REQUEST_DELAY_MS);
         const body = await fetchResourceIndexSample(vdc, probe, scope, session);
-        results[probe.key].scopedSamples[scope.key] = summarizeResourceRecords(
-          listFromResponse(body, ["resources", "resource_list", "native_resources"])
+        results[probe.key].scopedSamples[scope.key] = summarizeResourceIndexRecords(
+          listFromResponse(body, ["resources", "resource_list", "native_resources"]),
+          probe
         );
       } catch (error) {
         results[probe.key].scopedSamples[scope.key] = {
@@ -947,6 +971,18 @@ function sumVpnGatewayMeteringRecords(result) {
   );
 }
 
+function sumExactResourceIndexMatches(resourceIndexProbes) {
+  return Object.values(resourceIndexProbes || {}).reduce(
+    (probeTotal, probe) =>
+      probeTotal +
+      Object.values(probe?.scopedSamples || {}).reduce(
+        (scopeTotal, scope) => scopeTotal + (numberOrNull(scope?.exactMatchCount) || 0),
+        0
+      ),
+    0
+  );
+}
+
 function buildNatSummary(results) {
   const tenantSummaries = results.map((result) => {
     const rawNatGateways = numberOrNull(result?.rawCounters?.natGateways) || 0;
@@ -982,12 +1018,13 @@ function buildVpnGatewaySummary(results) {
     const rawVpnConnections = numberOrNull(result?.rawCounters?.vpnConnections) || 0;
     const rawVpnGateways = numberOrNull(result?.rawCounters?.vpnGateways) || 0;
     const nativeVpnGatewayRecords = sumVpnGatewayNativeRecords(result);
+    const resourceIndexVpnGatewayMatches = sumExactResourceIndexMatches(result?.vpnGatewayResourceIndexProbes);
     const meteringVpnGatewayRecords = sumVpnGatewayMeteringRecords(result);
     const vpnGatewayResourceTypeMatches = Array.isArray(result?.meteringResourceTypes?.vpnGatewayMatches)
       ? result.meteringResourceTypes.vpnGatewayMatches.length
       : 0;
     const hasVpnGatewayEvidence =
-      rawVpnGateways > 0 || nativeVpnGatewayRecords > 0 || meteringVpnGatewayRecords > 0 || vpnGatewayResourceTypeMatches > 0;
+      rawVpnGateways > 0 || nativeVpnGatewayRecords > 0 || resourceIndexVpnGatewayMatches > 0 || meteringVpnGatewayRecords > 0;
 
     return {
       tenant: result?.tenant?.name ?? "unknown",
@@ -996,6 +1033,7 @@ function buildVpnGatewaySummary(results) {
       rawVpnConnections,
       rawVpnGateways,
       nativeVpnGatewayRecords,
+      resourceIndexVpnGatewayMatches,
       meteringVpnGatewayRecords,
       vpnGatewayResourceTypeMatches,
       hasVpnGatewayEvidence
