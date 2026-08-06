@@ -15,6 +15,17 @@ const NAT_RESOURCE_PROBES = [
   { key: "cloudNat", serviceId: "vpc", resourceTypeName: "CLOUD_NAT" },
   { key: "natGatewayDisplay", serviceId: "vpc", resourceTypeName: "NAT Gateway" }
 ];
+const NAT_METERING_RESOURCE_TYPES = [
+  { key: "natGatewayCode", resourceType: "hws.resource.type.natgateway" },
+  { key: "natGatewaySnakeCode", resourceType: "hws.resource.type.nat_gateway" },
+  { key: "natCode", resourceType: "hws.resource.type.nat" }
+];
+const NAT_RESOURCE_INDEX_PROBES = [
+  { key: "indexNatGatewayDisplay", query: { resource_type_name: "NAT Gateway" } },
+  { key: "indexNatGatewayCode", query: { resource_type_code: "hws.resource.type.natgateway" } },
+  { key: "indexCloudNatGateway", query: { resource_type_name: "CLOUD_NAT_GATEWAY" } },
+  { key: "indexCloudNat", query: { resource_type_name: "CLOUD_NAT" } }
+];
 const EIP_RESOURCE_PROBES = [
   { key: "cloudFloatingIps", serviceId: "vpc", resourceTypeName: "CLOUD_FLOATING_IPS" },
   { key: "cloudEip", serviceId: "vpc", resourceTypeName: "CLOUD_EIP" },
@@ -36,6 +47,10 @@ function vdcEndpointBaseUrl() {
 
 function resourceEndpointBaseUrl() {
   return `${manageOneRootUrl()}/rest/resource`;
+}
+
+function meteringEndpointBaseUrl() {
+  return `${manageOneRootUrl()}/rest/metering`;
 }
 
 function delay(milliseconds) {
@@ -106,6 +121,29 @@ async function readManageOneJson(label, url, session) {
   }
 
   return text ? JSON.parse(text) : {};
+}
+
+async function postManageOneJson(label, url, body, session) {
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "X-Auth-Token": session.token
+    },
+    body: JSON.stringify(body),
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new Error(`${label} failed: HTTP ${response.status}${text ? ` ${text.slice(0, 500)}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+function makeExtendParam(value) {
+  return JSON.stringify(value);
 }
 
 async function fetchTenantResourceUsage(vdc, session) {
@@ -290,6 +328,24 @@ function summarizeNatRecords(records) {
   };
 }
 
+function summarizeResourceRecords(records) {
+  return {
+    recordCount: records.length,
+    samples: records.slice(0, 5).map((record) => ({
+      id: firstDefined(record?.id, record?.resource_id, record?.nativeId, record?.resId) ?? null,
+      name: firstDefined(record?.name, record?.resource_name, record?.resourceName, record?.deviceName) ?? null,
+      resourceType:
+        firstDefined(record?.resource_type, record?.resource_type_code, record?.resourceType, record?.resourceTypeCode) ?? null,
+      resourceTypeName:
+        firstDefined(record?.resource_type_name, record?.resourceTypeName, record?.cloud_resource_type, record?.className) ?? null,
+      regionId: firstDefined(record?.region_id, record?.regionId, record?.region_code) ?? null,
+      vdcId: firstDefined(record?.vdc_id, record?.vdcId) ?? null,
+      domainId: firstDefined(record?.domain_id, record?.domainId) ?? null,
+      properties: record?.properties ?? null
+    }))
+  };
+}
+
 function collectBandwidthFields(value, path = "", results = []) {
   if (!value || typeof value !== "object") return results;
 
@@ -454,6 +510,129 @@ async function fetchNatProbeBreakdown(vdc, projects, session) {
   return results;
 }
 
+function resourceIndexScopes(vdc) {
+  return [
+    {
+      key: "domainId",
+      extendParam: { domain_id: String(vdc.domain_id || "") }
+    },
+    {
+      key: "vdcId",
+      extendParam: { vdc_id: String(vdc.id || "") }
+    },
+    {
+      key: "domainAndVdc",
+      extendParam: {
+        domain_id: String(vdc.domain_id || ""),
+        vdc_id: String(vdc.id || "")
+      }
+    }
+  ];
+}
+
+async function fetchResourceIndexSample(vdc, probe, scope, session) {
+  const params = new URLSearchParams({
+    start: "0",
+    limit: String(Math.min(NATIVE_RESOURCE_PAGE_LIMIT, 100)),
+    extendParam: makeExtendParam({
+      ...probe.query,
+      ...scope.extendParam
+    })
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/resources?${params}`;
+  return readManageOneJson(`${probe.key} resource index ${scope.key}`, url, session);
+}
+
+async function fetchNatResourceIndexBreakdown(vdc, session) {
+  const results = {};
+
+  for (const probe of NAT_RESOURCE_INDEX_PROBES) {
+    results[probe.key] = {
+      query: probe.query,
+      scopedSamples: {}
+    };
+
+    for (const scope of resourceIndexScopes(vdc)) {
+      try {
+        await delay(REQUEST_DELAY_MS);
+        const body = await fetchResourceIndexSample(vdc, probe, scope, session);
+        results[probe.key].scopedSamples[scope.key] = summarizeResourceRecords(
+          listFromResponse(body, ["resources", "resource_list", "native_resources"])
+        );
+      } catch (error) {
+        results[probe.key].scopedSamples[scope.key] = {
+          error: error instanceof Error ? error.message : String(error || "Unknown error")
+        };
+      }
+    }
+  }
+
+  return results;
+}
+
+async function fetchMeteringResources(vdc, probe, session) {
+  const body = await postManageOneJson(
+    `${probe.key} metering resources`,
+    `${meteringEndpointBaseUrl()}/v3.0/metering-unit/resources`,
+    {
+      resource_type: probe.resourceType,
+      vdc_id: String(vdc.id || ""),
+      domain_id: String(vdc.domain_id || ""),
+      start: 0,
+      limit: Math.min(NATIVE_RESOURCE_PAGE_LIMIT, 100)
+    },
+    session
+  );
+  return listFromResponse(body, ["resources", "resource_list"]);
+}
+
+async function fetchNatMeteringBreakdown(vdc, session) {
+  const results = {};
+
+  for (const probe of NAT_METERING_RESOURCE_TYPES) {
+    try {
+      await delay(REQUEST_DELAY_MS);
+      const records = await fetchMeteringResources(vdc, probe, session);
+      results[probe.key] = {
+        resourceType: probe.resourceType,
+        ...summarizeResourceRecords(records)
+      };
+    } catch (error) {
+      results[probe.key] = {
+        resourceType: probe.resourceType,
+        error: error instanceof Error ? error.message : String(error || "Unknown error")
+      };
+    }
+  }
+
+  return results;
+}
+
+async function fetchMeteringResourceTypes(vdc, session) {
+  try {
+    const params = new URLSearchParams({
+      start: "0",
+      limit: "100"
+    });
+    const body = await readManageOneJson(
+      `metering resource types for ${vdc.name || vdc.id}`,
+      `${meteringEndpointBaseUrl()}/v3.0/resource-types?${params}`,
+      session
+    );
+    const records = listFromResponse(body, ["resource_types", "resourceTypes"]);
+    return {
+      recordCount: records.length,
+      natMatches: records
+        .filter((record) => /nat/i.test(`${record?.resource_type_code || ""} ${record?.resource_type_name || ""}`))
+        .slice(0, 20)
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error || "Unknown error")
+    };
+  }
+}
+
 async function fetchEipProbeRecords(vdc, projects, session, probe) {
   const projectScopedRecords = await fetchProjectScopedRecords(vdc, projects, session, probe.serviceId, probe.resourceTypeName);
   const domainScopedRecords = recordsFromResponses(
@@ -519,6 +698,9 @@ async function compareTenant(vdc, session) {
     })
   );
   const natProbes = await fetchNatProbeBreakdown(vdc, projects, session);
+  const natResourceIndexProbes = await fetchNatResourceIndexBreakdown(vdc, session);
+  const natMeteringProbes = await fetchNatMeteringBreakdown(vdc, session);
+  const meteringResourceTypes = await fetchMeteringResourceTypes(vdc, session);
   const eipProbes = await fetchEipProbeBreakdown(vdc, projects, session);
 
   return {
@@ -553,6 +735,9 @@ async function compareTenant(vdc, session) {
       evsVolumeTypes: aggregateEvsVolumeTypeBreakdown(domainEvsRecords)
     },
     natProbes,
+    natResourceIndexProbes,
+    natMeteringProbes,
+    meteringResourceTypes,
     eipProbes
   };
 }
