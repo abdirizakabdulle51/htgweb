@@ -59,6 +59,20 @@ const TENANT_RESOURCE_CLASS_PROBES = [
   { key: "tenantSfsShare", className: "CLOUD_SFS_SHARE" }
 ];
 
+const RESOURCE_INDEX_PROBES = [
+  { key: "indexCloudVm", resourceTypeName: "CLOUD_VM" },
+  { key: "indexEcsInstances", resourceTypeName: "CLOUD_ECS_INSTANCE" },
+  { key: "indexCloudVolumes", resourceTypeName: "CLOUD_VOLUME" },
+  { key: "indexEvsInstances", resourceTypeName: "CLOUD_EVS_INSTANCE" },
+  { key: "indexFloatingIps", resourceTypeName: "CLOUD_FLOATING_IPS" },
+  { key: "indexElb", resourceTypeName: "CLOUD_ELB" },
+  { key: "indexBandwidths", resourceTypeName: "CLOUD_BANDWIDTHS" },
+  { key: "indexObs", resourceTypeName: "CLOUD_OBS" },
+  { key: "indexCceNodes", resourceTypeName: "CLOUD_NODE" },
+  { key: "indexCbh", resourceTypeName: "CLOUD_CBH" },
+  { key: "indexSfsShare", resourceTypeName: "CLOUD_SFS_SHARE" }
+];
+
 const prisma = new PrismaClient();
 
 function stripTrailingSlash(value) {
@@ -110,6 +124,15 @@ function listFromResponse(body, keys) {
   }
 
   return [];
+}
+
+function responseTotal(body, fallbackTotal) {
+  const total = Number(body?.total ?? body?.totalNum);
+  return Number.isFinite(total) ? total : fallbackTotal;
+}
+
+function makeExtendParam(value) {
+  return JSON.stringify(value);
 }
 
 function flattenResourceUsage(resourceUsage) {
@@ -420,8 +443,6 @@ async function fetchDomainNativeResourcePage({ vdc, probe, session, start, limit
     service_id: probe.serviceId,
     resource_type_name: probe.resourceTypeName,
     domain_id: String(vdc.domain_id || ""),
-    vdc_id: String(vdc.id || ""),
-    qFlag: "1",
     start: String(start),
     limit: String(limit)
   });
@@ -467,7 +488,11 @@ async function fetchTenantResourceClassPage({ vdc, probe, session, start, limit 
     limit: String(limit),
     domain_id: String(vdc.domain_id || ""),
     vdc_id: String(vdc.id || ""),
-    tenant_id: String(vdc.id || "")
+    tenant_id: String(vdc.id || ""),
+    extendParam: makeExtendParam({
+      domain_id: String(vdc.domain_id || ""),
+      vdc_id: String(vdc.id || "")
+    })
   });
   const url = `${manageOneRootUrl()}/rest/tenant-resource/v1/tenant/resources/${encodeURIComponent(probe.className)}?${params}`;
   return readManageOneJson(`${probe.key} tenant resource class`, url, session);
@@ -505,6 +530,32 @@ async function fetchTenantResourceClass(vdc, probe, session) {
   }
 
   return responses;
+}
+
+async function fetchResourceIndexPage({ vdc, probe, session, start, limit, scope }) {
+  const query = {
+    resource_type_name: probe.resourceTypeName,
+    ...scope.extendParam
+  };
+  const params = new URLSearchParams({
+    start: String(start),
+    limit: String(limit),
+    extendParam: makeExtendParam(query)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/resources?${params}`;
+  return readManageOneJson(`${probe.key} resource index ${scope.key}`, url, session);
+}
+
+async function fetchResourceIndexSample(vdc, probe, scope, session) {
+  const body = await fetchResourceIndexPage({
+    vdc,
+    probe,
+    scope,
+    session,
+    start: 0,
+    limit: Math.min(NATIVE_RESOURCE_PAGE_LIMIT, 100)
+  });
+  return [body];
 }
 
 async function probeNativeResources(projects, session) {
@@ -549,10 +600,52 @@ async function probeNativeResources(projects, session) {
   return { probeResults, responsesByProbe };
 }
 
-function summarizeRecords(responses, keys) {
+function tenantScopeSummary(records, vdc, projects = []) {
+  const domainId = String(vdc.domain_id || "");
+  const vdcId = String(vdc.id || "");
+  const projectIds = new Set(
+    projects
+      .map((project) => firstDefined(project.id, project.project_id, project.projectId))
+      .filter(Boolean)
+      .map(String)
+  );
+
+  const matchingDomainCount = records.filter((record) => String(record?.domain_id || record?.domainId || "") === domainId)
+    .length;
+  const matchingVdcCount = records.filter((record) => String(record?.vdc_id || record?.vdcId || "") === vdcId).length;
+  const matchingProjectCount = records.filter((record) => {
+    const projectId = firstDefined(record?.project_id, record?.projectId, record?.project?.id);
+    return projectId ? projectIds.has(String(projectId)) : false;
+  }).length;
+
+  return {
+    sampleSize: records.length,
+    matchingDomainCount,
+    matchingVdcCount,
+    matchingProjectCount,
+    tenantScoped:
+      records.length > 0 &&
+      (matchingDomainCount > 0 || matchingVdcCount > 0 || matchingProjectCount > 0) &&
+      records.every((record) => {
+        const recordDomainId = firstDefined(record?.domain_id, record?.domainId);
+        const recordVdcId = firstDefined(record?.vdc_id, record?.vdcId);
+        const recordProjectId = firstDefined(record?.project_id, record?.projectId, record?.project?.id);
+
+        return (
+          (recordDomainId && String(recordDomainId) === domainId) ||
+          (recordVdcId && String(recordVdcId) === vdcId) ||
+          (recordProjectId && projectIds.has(String(recordProjectId)))
+        );
+      })
+  };
+}
+
+function summarizeRecords(responses, keys, vdc, projects = []) {
   const records = responses.flatMap((response) => listFromResponse(response, keys));
   return {
     recordCount: records.length,
+    responseTotal: responses.reduce((total, response) => Math.max(total, responseTotal(response, 0)), 0),
+    tenantScope: tenantScopeSummary(records, vdc, projects),
     sampleNames: records
       .slice(0, 8)
       .map((record) => record?.resource_name || record?.name || record?.deviceName || record?.id || record?.resId || record?.nativeId)
@@ -576,7 +669,27 @@ function summarizeRecords(responses, keys) {
   };
 }
 
-async function probePrototypeCollectors(vdc, session) {
+function resourceIndexScopes(vdc) {
+  return [
+    {
+      key: "domainId",
+      extendParam: { domain_id: String(vdc.domain_id || "") }
+    },
+    {
+      key: "vdcId",
+      extendParam: { vdc_id: String(vdc.id || "") }
+    },
+    {
+      key: "domainAndVdc",
+      extendParam: {
+        domain_id: String(vdc.domain_id || ""),
+        vdc_id: String(vdc.id || "")
+      }
+    }
+  ];
+}
+
+async function probePrototypeCollectors(vdc, projects, session) {
   if (!ENABLE_PROTOTYPE_COLLECTORS) {
     return {
       enabled: false,
@@ -586,6 +699,7 @@ async function probePrototypeCollectors(vdc, session) {
 
   const domainNative = {};
   const tenantResource = {};
+  const resourceIndex = {};
 
   for (const probe of DOMAIN_NATIVE_RESOURCE_PROBES) {
     try {
@@ -594,7 +708,7 @@ async function probePrototypeCollectors(vdc, session) {
       domainNative[probe.key] = {
         serviceId: probe.serviceId,
         resourceTypeName: probe.resourceTypeName,
-        ...summarizeRecords(responses, ["resources", "resource_list", "native_resources"])
+        ...summarizeRecords(responses, ["resources", "resource_list", "native_resources"], vdc, projects)
       };
     } catch (error) {
       domainNative[probe.key] = {
@@ -611,7 +725,7 @@ async function probePrototypeCollectors(vdc, session) {
       const responses = await fetchTenantResourceClass(vdc, probe, session);
       tenantResource[probe.key] = {
         className: probe.className,
-        ...summarizeRecords(responses, ["objList", "resources", "resource_list", "instances"])
+        ...summarizeRecords(responses, ["objList", "resources", "resource_list", "instances"], vdc, projects)
       };
     } catch (error) {
       tenantResource[probe.key] = {
@@ -621,10 +735,34 @@ async function probePrototypeCollectors(vdc, session) {
     }
   }
 
+  for (const probe of RESOURCE_INDEX_PROBES) {
+    resourceIndex[probe.key] = {
+      resourceTypeName: probe.resourceTypeName,
+      scopedSamples: {}
+    };
+
+    for (const scope of resourceIndexScopes(vdc)) {
+      try {
+        await delay(REQUEST_DELAY_MS);
+        const responses = await fetchResourceIndexSample(vdc, probe, scope, session);
+        resourceIndex[probe.key].scopedSamples[scope.key] = {
+          extendParam: scope.extendParam,
+          ...summarizeRecords(responses, ["resources"], vdc, projects)
+        };
+      } catch (error) {
+        resourceIndex[probe.key].scopedSamples[scope.key] = {
+          extendParam: scope.extendParam,
+          error: error instanceof Error ? error.message : String(error || "Unknown error")
+        };
+      }
+    }
+  }
+
   return {
     enabled: true,
     domainNative,
-    tenantResource
+    tenantResource,
+    resourceIndex
   };
 }
 
@@ -696,7 +834,7 @@ async function diagnoseTenant(vdc, session) {
   const ecsFlavors = aggregateEcsFlavorBreakdown(responsesByProbe.get("ecsInstances") || []);
   const evsVolumeTypes = aggregateEvsVolumeTypeBreakdown(responsesByProbe.get("evsVolumes") || []);
   const crmPayload = currentCrmPayloadShape({ vdc, resourceUsage, ecsFlavors, evsVolumeTypes });
-  const prototypeCollectorResults = await probePrototypeCollectors(vdc, session);
+  const prototypeCollectorResults = await probePrototypeCollectors(vdc, projects, session);
   const syncedTenantRow = await loadSyncedTenantRow(vdc.id);
 
   return {
