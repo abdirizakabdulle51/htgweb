@@ -396,8 +396,25 @@ function mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }) {
   };
 }
 
+function ecsUsedFromBreakdown(ecsFlavors) {
+  if (!Array.isArray(ecsFlavors) || ecsFlavors.length === 0) return null;
+
+  return ecsFlavors.reduce((total, flavor) => total + (numberOrNull(flavor?.count) || 0), 0);
+}
+
+function evsUsedFromBreakdown(evsVolumeTypes) {
+  if (!Array.isArray(evsVolumeTypes) || evsVolumeTypes.length === 0) return null;
+
+  return evsVolumeTypes.reduce((total, volumeType) => total + (numberOrNull(volumeType?.totalGb) || 0), 0);
+}
+
 function mapTenantForCrm(tenant) {
   const rawPayload = parseJsonObject(tenant.raw_payload);
+  const ecsFlavors = tenant.ecs_flavor_breakdown || [];
+  const evsVolumeTypes = tenant.evs_volume_type_breakdown || [];
+  const derivedEcsUsed = ecsUsedFromBreakdown(ecsFlavors);
+  const derivedEvsUsed = evsUsedFromBreakdown(evsVolumeTypes);
+
   return {
     vdcId: tenant.vdc_id,
     domainId: tenant.domain_id,
@@ -410,12 +427,12 @@ function mapTenantForCrm(tenant) {
     managerEmail: tenant.manager_email,
     ...(rawPayload.regionId ? { regionId: rawPayload.regionId } : {}),
     ...(rawPayload.regionName ? { regionName: rawPayload.regionName } : {}),
-    ecsUsed: numberOrNull(tenant.ecs_used),
-    evsUsed: numberOrNull(tenant.evs_used),
+    ecsUsed: derivedEcsUsed ?? numberOrNull(tenant.ecs_used),
+    evsUsed: derivedEvsUsed ?? numberOrNull(tenant.evs_used),
     projectCount: tenant.project_count,
     resources: flattenResourceUsage(tenant.resource_usage),
-    ecsFlavors: tenant.ecs_flavor_breakdown || [],
-    evsVolumeTypes: tenant.evs_volume_type_breakdown || []
+    ecsFlavors,
+    evsVolumeTypes
   };
 }
 
