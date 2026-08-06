@@ -148,6 +148,22 @@ function shouldFetchNextNativePage({ reportedTotal, start, pageSize, pageResourc
   return pageResourceCount >= pageSize;
 }
 
+function isSystemVdc(vdc) {
+  const name = String(vdc?.name || "").trim().toLowerCase();
+  return (
+    name.endsWith("_system_vdc") ||
+    name.includes("system_vdc") ||
+    name.startsWith("workspace_") ||
+    name.startsWith("advanceservice_") ||
+    name.startsWith("cfw_") ||
+    name.startsWith("cfwforhcs_")
+  );
+}
+
+function shouldUseDomainNativeBreakdown(vdc) {
+  return USE_DOMAIN_NATIVE_BREAKDOWN && Boolean(vdc?.domain_id) && !isSystemVdc(vdc);
+}
+
 function resourceUsageIndicatesEcs(resourceUsage) {
   return flattenResourceUsage(resourceUsage).some((resource) => {
     const serviceId = String(resource.serviceId || "").toLowerCase();
@@ -782,7 +798,7 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
     return [];
   }
 
-  if (USE_DOMAIN_NATIVE_BREAKDOWN && vdc.domain_id) {
+  if (shouldUseDomainNativeBreakdown(vdc)) {
     console.log(`[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
     const domainResponses = await fetchDomainNativeEcsResources(vdc, session);
     const breakdown = aggregateEcsFlavorBreakdown(domainResponses);
@@ -790,6 +806,12 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
       `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${countNativeRecords(domainResponses)} domain record(s)`
     );
     return breakdown;
+  }
+
+  if (USE_DOMAIN_NATIVE_BREAKDOWN && isSystemVdc(vdc)) {
+    console.log(
+      `[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: system VDC guard active; using project-scoped resources`
+    );
   }
 
   const projects = await listTenantProjects(vdc, session);
@@ -816,7 +838,7 @@ async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
     return [];
   }
 
-  if (USE_DOMAIN_NATIVE_BREAKDOWN && vdc.domain_id) {
+  if (shouldUseDomainNativeBreakdown(vdc)) {
     console.log(`[MANAGEONE SYNC] EVS volume-type lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
     const domainResponses = await fetchDomainNativeEvsResources(vdc, session);
     const breakdown = aggregateEvsVolumeTypeBreakdown(domainResponses);
@@ -824,6 +846,12 @@ async function fetchTenantEvsVolumeTypeBreakdown(vdc, session, resourceUsage) {
       `[MANAGEONE SYNC] EVS volume-type breakdown for ${vdc.name || vdc.id}: ${breakdown.length} type(s), ${countNativeRecords(domainResponses)} domain record(s)`
     );
     return breakdown;
+  }
+
+  if (USE_DOMAIN_NATIVE_BREAKDOWN && isSystemVdc(vdc)) {
+    console.log(
+      `[MANAGEONE SYNC] EVS volume-type lookup for ${vdc.name || vdc.id}: system VDC guard active; using project-scoped resources`
+    );
   }
 
   const projects = await listTenantProjects(vdc, session);
