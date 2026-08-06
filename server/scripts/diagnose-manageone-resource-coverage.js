@@ -11,6 +11,7 @@ const NATIVE_RESOURCE_PAGE_LIMIT = Number(process.env.MANAGEONE_DIAGNOSTIC_NATIV
 const NATIVE_RESOURCE_MAX_PAGES = Number(process.env.MANAGEONE_DIAGNOSTIC_NATIVE_MAX_PAGES || 10);
 const TENANT_FILTER = String(process.env.MANAGEONE_DIAGNOSTIC_TENANT_FILTER || "").trim().toLowerCase();
 const MAX_TENANTS = Number(process.env.MANAGEONE_DIAGNOSTIC_MAX_TENANTS || 0);
+const ENABLE_PROTOTYPE_COLLECTORS = process.env.MANAGEONE_DIAGNOSTIC_PROTOTYPE_COLLECTORS === "true";
 
 const BILLING_COVERAGE_WATCHLIST = [
   { serviceId: "cce", label: "CCE cluster counter", resourceNames: ["hybrid.resource.type.cce.cluster"] },
@@ -31,6 +32,31 @@ const NATIVE_RESOURCE_PROBES = [
   { key: "vpcEips", serviceId: "vpc", resourceTypeName: "CLOUD_EIP" },
   { key: "elbLoadBalancers", serviceId: "elb", resourceTypeName: "CLOUD_ELB_LOADBALANCER" },
   { key: "bastionHosts", serviceId: "cbh", resourceTypeName: "CLOUD_CBH_INSTANCE" }
+];
+
+const DOMAIN_NATIVE_RESOURCE_PROBES = [
+  { key: "domainCloudVm", serviceId: "ecs", resourceTypeName: "CLOUD_VM" },
+  { key: "domainEcsInstances", serviceId: "ecs", resourceTypeName: "CLOUD_ECS_INSTANCE" },
+  { key: "domainCloudVolumes", serviceId: "evs", resourceTypeName: "CLOUD_VOLUME" },
+  { key: "domainEvsInstances", serviceId: "evs", resourceTypeName: "CLOUD_EVS_INSTANCE" },
+  { key: "domainFloatingIps", serviceId: "vpc", resourceTypeName: "CLOUD_FLOATING_IPS" },
+  { key: "domainElb", serviceId: "elb", resourceTypeName: "CLOUD_ELB" },
+  { key: "domainBandwidths", serviceId: "vpc", resourceTypeName: "CLOUD_BANDWIDTHS" },
+  { key: "domainObs", serviceId: "obsv3", resourceTypeName: "CLOUD_OBS" },
+  { key: "domainCceNodes", serviceId: "cce", resourceTypeName: "CLOUD_NODE" },
+  { key: "domainCbh", serviceId: "cbh", resourceTypeName: "CLOUD_CBH" }
+];
+
+const TENANT_RESOURCE_CLASS_PROBES = [
+  { key: "tenantCloudVm", className: "CLOUD_VM" },
+  { key: "tenantCloudVolume", className: "CLOUD_VOLUME" },
+  { key: "tenantFloatingIps", className: "CLOUD_FLOATING_IPS" },
+  { key: "tenantElb", className: "CLOUD_ELB" },
+  { key: "tenantBandwidths", className: "CLOUD_BANDWIDTHS" },
+  { key: "tenantObs", className: "CLOUD_OBS" },
+  { key: "tenantNode", className: "CLOUD_NODE" },
+  { key: "tenantCbh", className: "CLOUD_CBH" },
+  { key: "tenantSfsShare", className: "CLOUD_SFS_SHARE" }
 ];
 
 const prisma = new PrismaClient();
@@ -389,6 +415,98 @@ async function fetchProjectNativeResources(projectId, probe, session) {
   return responses;
 }
 
+async function fetchDomainNativeResourcePage({ vdc, probe, session, start, limit }) {
+  const params = new URLSearchParams({
+    service_id: probe.serviceId,
+    resource_type_name: probe.resourceTypeName,
+    domain_id: String(vdc.domain_id || ""),
+    vdc_id: String(vdc.id || ""),
+    qFlag: "1",
+    start: String(start),
+    limit: String(limit)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  return readManageOneJson(`${probe.key} domain native resources`, url, session);
+}
+
+async function fetchDomainNativeResources(vdc, probe, session) {
+  const responses = [];
+  let start = 0;
+  let total = Infinity;
+  let page = 0;
+
+  while (start < total) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(`${probe.key} domain pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`);
+    }
+
+    const body = await fetchDomainNativeResourcePage({
+      vdc,
+      probe,
+      session,
+      start,
+      limit: NATIVE_RESOURCE_PAGE_LIMIT
+    });
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    total = Number.isFinite(Number(body?.total)) ? Number(body.total) : start + pageResources.length;
+    start += NATIVE_RESOURCE_PAGE_LIMIT;
+
+    if (start < total) {
+      await delay(REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+async function fetchTenantResourceClassPage({ vdc, probe, session, start, limit }) {
+  const params = new URLSearchParams({
+    start: String(start),
+    limit: String(limit),
+    domain_id: String(vdc.domain_id || ""),
+    vdc_id: String(vdc.id || ""),
+    tenant_id: String(vdc.id || "")
+  });
+  const url = `${manageOneRootUrl()}/rest/tenant-resource/v1/tenant/resources/${encodeURIComponent(probe.className)}?${params}`;
+  return readManageOneJson(`${probe.key} tenant resource class`, url, session);
+}
+
+async function fetchTenantResourceClass(vdc, probe, session) {
+  const responses = [];
+  let start = 0;
+  let total = Infinity;
+  let page = 0;
+
+  while (start < total) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(`${probe.key} tenant-resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`);
+    }
+
+    const body = await fetchTenantResourceClassPage({
+      vdc,
+      probe,
+      session,
+      start,
+      limit: NATIVE_RESOURCE_PAGE_LIMIT
+    });
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["objList", "resources", "resource_list", "instances"]);
+    total = Number.isFinite(Number(body?.totalNum ?? body?.total))
+      ? Number(body.totalNum ?? body.total)
+      : start + pageResources.length;
+    start += NATIVE_RESOURCE_PAGE_LIMIT;
+
+    if (start < total) {
+      await delay(REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
 async function probeNativeResources(projects, session) {
   const probeResults = {};
   const responsesByProbe = new Map();
@@ -429,6 +547,85 @@ async function probeNativeResources(projects, session) {
   }
 
   return { probeResults, responsesByProbe };
+}
+
+function summarizeRecords(responses, keys) {
+  const records = responses.flatMap((response) => listFromResponse(response, keys));
+  return {
+    recordCount: records.length,
+    sampleNames: records
+      .slice(0, 8)
+      .map((record) => record?.resource_name || record?.name || record?.deviceName || record?.id || record?.resId || record?.nativeId)
+      .filter(Boolean),
+    sampleResourceTypes: [
+      ...new Set(
+        records
+          .slice(0, 20)
+          .map((record) => record?.resource_type_name || record?.resourceTypeName || record?.cloud_resource_type || record?.className)
+          .filter(Boolean)
+      )
+    ],
+    sampleServices: [
+      ...new Set(
+        records
+          .slice(0, 20)
+          .map((record) => record?.service_id || record?.serviceId || record?.service_name || record?.serviceName)
+          .filter(Boolean)
+      )
+    ]
+  };
+}
+
+async function probePrototypeCollectors(vdc, session) {
+  if (!ENABLE_PROTOTYPE_COLLECTORS) {
+    return {
+      enabled: false,
+      note: "Set MANAGEONE_DIAGNOSTIC_PROTOTYPE_COLLECTORS=true to run extra read-only collector probes."
+    };
+  }
+
+  const domainNative = {};
+  const tenantResource = {};
+
+  for (const probe of DOMAIN_NATIVE_RESOURCE_PROBES) {
+    try {
+      await delay(REQUEST_DELAY_MS);
+      const responses = await fetchDomainNativeResources(vdc, probe, session);
+      domainNative[probe.key] = {
+        serviceId: probe.serviceId,
+        resourceTypeName: probe.resourceTypeName,
+        ...summarizeRecords(responses, ["resources", "resource_list", "native_resources"])
+      };
+    } catch (error) {
+      domainNative[probe.key] = {
+        serviceId: probe.serviceId,
+        resourceTypeName: probe.resourceTypeName,
+        error: error instanceof Error ? error.message : String(error || "Unknown error")
+      };
+    }
+  }
+
+  for (const probe of TENANT_RESOURCE_CLASS_PROBES) {
+    try {
+      await delay(REQUEST_DELAY_MS);
+      const responses = await fetchTenantResourceClass(vdc, probe, session);
+      tenantResource[probe.key] = {
+        className: probe.className,
+        ...summarizeRecords(responses, ["objList", "resources", "resource_list", "instances"])
+      };
+    } catch (error) {
+      tenantResource[probe.key] = {
+        className: probe.className,
+        error: error instanceof Error ? error.message : String(error || "Unknown error")
+      };
+    }
+  }
+
+  return {
+    enabled: true,
+    domainNative,
+    tenantResource
+  };
 }
 
 function watchedCoverage(resources) {
@@ -499,6 +696,7 @@ async function diagnoseTenant(vdc, session) {
   const ecsFlavors = aggregateEcsFlavorBreakdown(responsesByProbe.get("ecsInstances") || []);
   const evsVolumeTypes = aggregateEvsVolumeTypeBreakdown(responsesByProbe.get("evsVolumes") || []);
   const crmPayload = currentCrmPayloadShape({ vdc, resourceUsage, ecsFlavors, evsVolumeTypes });
+  const prototypeCollectorResults = await probePrototypeCollectors(vdc, session);
   const syncedTenantRow = await loadSyncedTenantRow(vdc.id);
 
   return {
@@ -536,6 +734,7 @@ async function diagnoseTenant(vdc, session) {
           ...(syncedTenantRow.diagnosticReadError ? { diagnosticReadError: syncedTenantRow.diagnosticReadError } : {})
         }
       : null,
+    prototypeCollectors: prototypeCollectorResults,
     likelyBillingGaps: likelyBillingGaps({ crmPayload, nativeProbeResults: probeResults })
   };
 }
