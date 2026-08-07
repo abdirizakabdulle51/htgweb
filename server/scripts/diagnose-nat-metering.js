@@ -391,15 +391,21 @@ async function fetchMeteringUnitResources(vdc, regionId, session) {
 async function fetchResourceInstances(vdc, regionId, session, scope = {}) {
   const { startTime, endTime } = defaultMeteringWindow();
   const requestBody = {
-    region_code: String(regionId),
     start_time: startTime,
     end_time: endTime,
     time_zone: DEFAULT_TIME_ZONE,
     domain_id: String(vdc.domain_id || ""),
     vdc_id: String(vdc.id || ""),
-    resource_type_code: [NAT_RESOURCE_TYPE],
     limit: 1000
   };
+  if (scope.includeRegion !== false) {
+    requestBody.region_code = String(regionId);
+  }
+  if (scope.resourceTypeMode === "string") {
+    requestBody.resource_type_code = NAT_RESOURCE_TYPE;
+  } else if (scope.resourceTypeMode !== "none") {
+    requestBody.resource_type_code = [NAT_RESOURCE_TYPE];
+  }
   if (scope.projectId) {
     requestBody.project_id = [String(scope.projectId)];
   }
@@ -413,7 +419,7 @@ async function fetchResourceInstances(vdc, regionId, session, scope = {}) {
   return {
     window: { startTime, endTime, timeZone: DEFAULT_TIME_ZONE },
     request: {
-      regionCode: regionId,
+      regionCode: requestBody.region_code || null,
       vdcId: requestBody.vdc_id,
       projectIds: requestBody.project_id || null,
       resourceTypeCode: requestBody.resource_type_code
@@ -521,7 +527,25 @@ async function probeRegion(vdc, regionCandidate, session) {
   await delay(REQUEST_DELAY_MS);
   probes.meteringUnitResources = await safeProbe(() => fetchMeteringUnitResources(vdc, regionCode, session));
   await delay(REQUEST_DELAY_MS);
-  probes.listResourceInstances = await safeProbe(() => fetchResourceInstances(vdc, regionCode, session, { label: "vdc-scope" }));
+  probes.listResourceInstances = await safeProbe(() =>
+    fetchResourceInstances(vdc, regionCode, session, { label: "vdc-scope list-type" })
+  );
+  await delay(REQUEST_DELAY_MS);
+  probes.listResourceInstancesStringType = await safeProbe(() =>
+    fetchResourceInstances(vdc, regionCode, session, { label: "vdc-scope string-type", resourceTypeMode: "string" })
+  );
+  await delay(REQUEST_DELAY_MS);
+  probes.listResourceInstancesNoRegion = await safeProbe(() =>
+    fetchResourceInstances(vdc, regionCode, session, { label: "vdc-scope no-region", includeRegion: false })
+  );
+  await delay(REQUEST_DELAY_MS);
+  probes.listResourceInstancesNoRegionStringType = await safeProbe(() =>
+    fetchResourceInstances(vdc, regionCode, session, {
+      label: "vdc-scope no-region string-type",
+      includeRegion: false,
+      resourceTypeMode: "string"
+    })
+  );
   await delay(REQUEST_DELAY_MS);
   probes.queryMetricsData = await safeProbe(() => fetchMetricsData(vdc, regionCode, session, { label: "vdc-scope" }));
 
@@ -547,11 +571,36 @@ async function probeProjectRegion(vdc, project, session) {
       source: candidate.source,
       listResourceInstances: await safeProbe(() =>
         fetchResourceInstances(vdc, candidate.value, session, {
-          label: `project-scope ${projectName || projectId}`,
+          label: `project-scope ${projectName || projectId} list-type`,
           projectId
         })
       )
     };
+    await delay(REQUEST_DELAY_MS);
+    probesByRegion[candidate.value].listResourceInstancesStringType = await safeProbe(() =>
+      fetchResourceInstances(vdc, candidate.value, session, {
+        label: `project-scope ${projectName || projectId} string-type`,
+        projectId,
+        resourceTypeMode: "string"
+      })
+    );
+    await delay(REQUEST_DELAY_MS);
+    probesByRegion[candidate.value].listResourceInstancesNoRegion = await safeProbe(() =>
+      fetchResourceInstances(vdc, candidate.value, session, {
+        label: `project-scope ${projectName || projectId} no-region`,
+        projectId,
+        includeRegion: false
+      })
+    );
+    await delay(REQUEST_DELAY_MS);
+    probesByRegion[candidate.value].listResourceInstancesNoRegionStringType = await safeProbe(() =>
+      fetchResourceInstances(vdc, candidate.value, session, {
+        label: `project-scope ${projectName || projectId} no-region string-type`,
+        projectId,
+        includeRegion: false,
+        resourceTypeMode: "string"
+      })
+    );
     await delay(REQUEST_DELAY_MS);
     probesByRegion[candidate.value].queryMetricsData = await safeProbe(() =>
       fetchMetricsData(vdc, candidate.value, session, {
