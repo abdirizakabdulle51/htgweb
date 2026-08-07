@@ -143,12 +143,12 @@ async function readJson(label, url, session) {
   }
 }
 
-function optionalVpcPortalHeaders() {
+function optionalVpcPortalHeaders(context = {}) {
   const headers = {};
   const cookie = String(process.env.MANAGEONE_VPC_COOKIE || "").trim();
   const agencyId = String(process.env.MANAGEONE_VPC_AGENCY_ID || "").trim();
-  const region = String(process.env.MANAGEONE_VPC_REGION || "").trim();
-  const projectName = String(process.env.MANAGEONE_VPC_PROJECT_NAME || "").trim();
+  const region = String(firstDefined(context.regionHeader, process.env.MANAGEONE_VPC_REGION) || "").trim();
+  const projectName = String(firstDefined(context.projectNameHeader, process.env.MANAGEONE_VPC_PROJECT_NAME) || "").trim();
   const language = String(process.env.MANAGEONE_VPC_X_LANGUAGE || "en-us").trim();
   const targetServices = String(process.env.MANAGEONE_VPC_X_TARGET_SERVICES || "").trim();
 
@@ -163,14 +163,24 @@ function optionalVpcPortalHeaders() {
   return headers;
 }
 
+function sanitizedVpcPortalHeaders(context = {}) {
+  const headers = optionalVpcPortalHeaders(context);
+  return Object.fromEntries(
+    Object.entries(headers).map(([key, value]) => [
+      key,
+      key.toLowerCase() === "cookie" ? (value ? "[configured]" : "[missing]") : value
+    ])
+  );
+}
+
 function configuredVpcPortalHeaderNames() {
   return VPC_PORTAL_HEADER_ENV_KEYS.filter((key) => String(process.env[key] || "").trim()).map((key) =>
     key.replace(/^MANAGEONE_VPC_/, "")
   );
 }
 
-async function readVpcPortalJson(label, url) {
-  const portalHeaders = optionalVpcPortalHeaders();
+async function readVpcPortalJson(label, url, context = {}) {
+  const portalHeaders = optionalVpcPortalHeaders(context);
   if (!portalHeaders.Cookie) {
     throw new Error("VPC portal headers are not configured: MANAGEONE_VPC_COOKIE is required for portal-auth attempt");
   }
@@ -313,6 +323,42 @@ function projectName(project) {
   );
 }
 
+function vpcPortalProjectHeaderName(project) {
+  return String(
+    firstDefined(
+      project?.iam_project_name,
+      project?.iamProjectName,
+      project?.project_name,
+      project?.projectName,
+      project?.name,
+      project?.resource_space_name,
+      project?.resourceSpaceName,
+      project?.display_name,
+      project?.displayName,
+      project?.id,
+      "unknown"
+    )
+  );
+}
+
+function projectFieldSnapshot(project) {
+  return {
+    id: project?.id ?? null,
+    project_id: project?.project_id ?? null,
+    projectId: project?.projectId ?? null,
+    name: project?.name ?? null,
+    resource_space_name: project?.resource_space_name ?? null,
+    resourceSpaceName: project?.resourceSpaceName ?? null,
+    display_name: project?.display_name ?? null,
+    displayName: project?.displayName ?? null,
+    iam_project_name: project?.iam_project_name ?? null,
+    iamProjectName: project?.iamProjectName ?? null,
+    project_name: project?.project_name ?? null,
+    projectName: project?.projectName ?? null,
+    regions: Array.isArray(project?.regions) ? project.regions : []
+  };
+}
+
 function extractProjectRegions(project) {
   const regions = Array.isArray(project?.regions) ? project.regions : [];
 
@@ -333,7 +379,7 @@ function primaryProjectRegion(project) {
   return regions[0] || { regionId: null, regionName: null };
 }
 
-async function fetchNatGateways(projectIdValue, adminSession) {
+async function fetchNatGateways(projectIdValue, adminSession, context = {}) {
   const params = new URLSearchParams({
     sort_key: "created_at",
     sort_dir: "desc",
@@ -343,7 +389,11 @@ async function fetchNatGateways(projectIdValue, adminSession) {
   const attempts = [];
 
   try {
-    const body = await readVpcPortalJson(`VPC NAT gateway list for project ${projectIdValue} with VPC portal headers`, url);
+    const body = await readVpcPortalJson(
+      `VPC NAT gateway list for project ${projectIdValue} with VPC portal headers`,
+      url,
+      context
+    );
     return {
       url,
       authMode: "vpc-portal-headers",
@@ -442,11 +492,18 @@ async function inspectTenant(vdc, session) {
   for (const rawProject of rawProjects) {
     const id = projectId(rawProject);
     const region = primaryProjectRegion(rawProject);
+    const syncPortalContext = {
+      regionHeader: firstDefined(region.regionId, region.regionName, process.env.MANAGEONE_VPC_REGION),
+      projectNameHeader: vpcPortalProjectHeaderName(rawProject)
+    };
     const row = {
       projectId: id,
       resourceSpaceName: projectName(rawProject),
       regionId: region.regionId,
       regionName: region.regionName,
+      projectFieldSnapshot: projectFieldSnapshot(rawProject),
+      syncPortalContext,
+      syncPortalHeaders: sanitizedVpcPortalHeaders(syncPortalContext),
       natGatewayCount: 0,
       natGateways: []
     };
@@ -458,7 +515,7 @@ async function inspectTenant(vdc, session) {
 
     try {
       await delay(REQUEST_DELAY_MS);
-      const result = await fetchNatGateways(id, session);
+      const result = await fetchNatGateways(id, session, syncPortalContext);
       const gateways = result.natGateways.map(summarizeNatGateway);
       projects.push({
         ...row,
