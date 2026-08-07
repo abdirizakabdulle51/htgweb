@@ -13,6 +13,14 @@ const TENANT_FILTER = String(process.env.MANAGEONE_DIAGNOSTIC_TENANT_FILTER || "
 const MAX_TENANTS = Number(process.env.MANAGEONE_DIAGNOSTIC_MAX_TENANTS || 0);
 const MAX_SAMPLE_GATEWAYS = Number(process.env.MANAGEONE_DIAGNOSTIC_NAT_SAMPLE_LIMIT || 20);
 const projectScopedTokenCache = new Map();
+const VPC_PORTAL_HEADER_ENV_KEYS = [
+  "MANAGEONE_VPC_COOKIE",
+  "MANAGEONE_VPC_AGENCY_ID",
+  "MANAGEONE_VPC_REGION",
+  "MANAGEONE_VPC_PROJECT_NAME",
+  "MANAGEONE_VPC_X_LANGUAGE",
+  "MANAGEONE_VPC_X_TARGET_SERVICES"
+];
 
 const NAT_SPEC_CATALOG = {
   "1": "Small (150 Mbps)",
@@ -117,6 +125,67 @@ async function readJson(label, url, session) {
 
   if (!response.ok) {
     throw new HttpStatusError(response.status, `${label}: HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (text && !contentType.toLowerCase().includes("json")) {
+    throw new Error(
+      `${label}: expected JSON but got ${contentType || "unknown content-type"} ${safeSnippet(text)}`
+    );
+  }
+
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch (error) {
+    throw new Error(
+      `${label}: invalid JSON response (${error instanceof Error ? error.message : String(error)}) ${safeSnippet(text)}`
+    );
+  }
+}
+
+function optionalVpcPortalHeaders() {
+  const headers = {};
+  const cookie = String(process.env.MANAGEONE_VPC_COOKIE || "").trim();
+  const agencyId = String(process.env.MANAGEONE_VPC_AGENCY_ID || "").trim();
+  const region = String(process.env.MANAGEONE_VPC_REGION || "").trim();
+  const projectName = String(process.env.MANAGEONE_VPC_PROJECT_NAME || "").trim();
+  const language = String(process.env.MANAGEONE_VPC_X_LANGUAGE || "en-us").trim();
+  const targetServices = String(process.env.MANAGEONE_VPC_X_TARGET_SERVICES || "").trim();
+
+  if (cookie) headers.Cookie = cookie;
+  if (agencyId) headers.Agencyid = agencyId;
+  if (region) headers.Region = region;
+  if (projectName) headers.Projectname = projectName;
+  if (language) headers["X-Language"] = language;
+  if (targetServices) headers["X-Target-Services"] = targetServices;
+  headers["X-Requested-With"] = "XMLHttpRequest";
+
+  return headers;
+}
+
+function configuredVpcPortalHeaderNames() {
+  return VPC_PORTAL_HEADER_ENV_KEYS.filter((key) => String(process.env[key] || "").trim()).map((key) =>
+    key.replace(/^MANAGEONE_VPC_/, "")
+  );
+}
+
+async function readVpcPortalJson(label, url) {
+  const portalHeaders = optionalVpcPortalHeaders();
+  if (!portalHeaders.Cookie) {
+    throw new Error("VPC portal headers are not configured: MANAGEONE_VPC_COOKIE is required for portal-auth attempt");
+  }
+
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      ...portalHeaders
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `${label}: HTTP ${response.status}${text ? ` ${safeSnippet(text)}` : ""}`);
   }
 
   const contentType = response.headers.get("content-type") || "";
@@ -272,6 +341,21 @@ async function fetchNatGateways(projectIdValue, adminSession) {
   });
   const url = `${vpcConsoleBaseUrl()}/${encodeURIComponent(projectIdValue)}/nat_gateways?${params}`;
   const attempts = [];
+
+  try {
+    const body = await readVpcPortalJson(`VPC NAT gateway list for project ${projectIdValue} with VPC portal headers`, url);
+    return {
+      url,
+      authMode: "vpc-portal-headers",
+      attempts,
+      natGateways: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
+    };
+  } catch (error) {
+    attempts.push({
+      authMode: "vpc-portal-headers",
+      error: error instanceof Error ? error.message : String(error || "Unknown error")
+    });
+  }
 
   try {
     const projectSession = await authenticateProjectScoped(projectIdValue);
@@ -456,6 +540,7 @@ async function main() {
     tenantCount: results.length,
     tenantsWithNatGatewayCount: results.filter((row) => Number(row.natGatewayCount || 0) > 0).length,
     natGatewayCount: results.reduce((total, row) => total + Number(row.natGatewayCount || 0), 0),
+    configuredVpcPortalHeaders: configuredVpcPortalHeaderNames(),
     specCatalogMap: NAT_SPEC_CATALOG,
     tenants: results
   };
