@@ -45,6 +45,43 @@ function firstDefined(...values) {
   return values.find((value) => value !== undefined && value !== null && value !== "");
 }
 
+function localizedString(value) {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object") {
+        return localizedString(parsed);
+      }
+    } catch {
+      return value;
+    }
+
+    return value;
+  }
+  if (typeof value === "object") {
+    return (
+      value.en_us ||
+      value.en_US ||
+      value["en-us"] ||
+      value.zh_cn ||
+      value.zh_CN ||
+      value.name ||
+      value.id ||
+      null
+    );
+  }
+
+  return String(value);
+}
+
+function addCandidate(candidates, value, source) {
+  const candidate = localizedString(value);
+  if (!candidate) return;
+  if (candidates.some((item) => item.value === candidate)) return;
+  candidates.push({ value: candidate, source });
+}
+
 function listFromResponse(body, keys) {
   if (Array.isArray(body)) return body;
 
@@ -248,8 +285,8 @@ function extractTenantRegion(detail) {
   if (!region) return null;
 
   return {
-    regionId: firstDefined(region?.id, region?.region_id, region?.regionId, region?.code) ?? null,
-    regionName: firstDefined(region?.name, region?.region_name, region?.regionName, region?.displayName) ?? null
+    regionId: localizedString(firstDefined(region?.id, region?.region_id, region?.regionId, region?.code)),
+    regionName: localizedString(firstDefined(region?.name, region?.region_name, region?.regionName, region?.displayName))
   };
 }
 
@@ -302,17 +339,19 @@ async function fetchResourceTypes(regionId, session) {
   };
 }
 
-async function fetchBillingItems(regionId, session) {
+async function fetchBillingItems(regionId, session, includeIsActive = true) {
   const params = new URLSearchParams({
     region_id: String(regionId),
-    is_active: "true",
     resource_type_code: NAT_RESOURCE_TYPE,
     time_zone: DEFAULT_TIME_ZONE,
     start: "0",
     limit: "1000"
   });
+  if (includeIsActive) {
+    params.set("is_active", "true");
+  }
   const body = await readJson(
-    `NAT billing items for ${regionId}`,
+    `NAT billing items${includeIsActive ? "" : " without is_active"} for ${regionId}`,
     `${meteringEndpointBaseUrl()}/v3.0/billing-items?${params}`,
     session
   );
@@ -407,31 +446,72 @@ function projectSummary(project) {
   return {
     id: firstDefined(project?.id, project?.project_id, project?.projectId) ?? null,
     name: firstDefined(project?.name, project?.project_name, project?.projectName) ?? null,
-    regionId: firstDefined(project?.region_id, project?.regionId) ?? null,
-    regionName: firstDefined(project?.region_name, project?.regionName) ?? null
+    regionId: localizedString(firstDefined(project?.region_id, project?.regionId)) ?? null,
+    regionName: localizedString(firstDefined(project?.region_name, project?.regionName)) ?? null
   };
+}
+
+function buildRegionCandidates(vdc, region, projects) {
+  const candidates = [];
+  const envCandidates = String(process.env.MANAGEONE_DIAGNOSTIC_REGION_CODES || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  for (const envCandidate of envCandidates) {
+    addCandidate(candidates, envCandidate, "MANAGEONE_DIAGNOSTIC_REGION_CODES");
+  }
+
+  addCandidate(candidates, region?.regionId, "tenant.regionId");
+  addCandidate(candidates, region?.regionName, "tenant.regionName");
+  addCandidate(candidates, vdc.regionId, "vdc.regionId");
+  addCandidate(candidates, vdc.regionName, "vdc.regionName");
+
+  if (Array.isArray(projects)) {
+    for (const project of projects) {
+      const name = localizedString(firstDefined(project?.name, project?.project_name, project?.projectName));
+      addCandidate(candidates, firstDefined(project?.region_id, project?.regionId), `project.regionId:${name || "unknown"}`);
+      addCandidate(candidates, firstDefined(project?.region_name, project?.regionName), `project.regionName:${name || "unknown"}`);
+      addCandidate(candidates, name, `project.name:${name || "unknown"}`);
+    }
+  }
+
+  return candidates;
+}
+
+async function probeRegion(vdc, regionCandidate, session) {
+  const regionCode = regionCandidate.value;
+  const probes = {
+    source: regionCandidate.source,
+    resourceTypes: await safeProbe(() => fetchResourceTypes(regionCode, session))
+  };
+
+  await delay(REQUEST_DELAY_MS);
+  probes.billingItems = await safeProbe(() => fetchBillingItems(regionCode, session, true));
+  await delay(REQUEST_DELAY_MS);
+  probes.billingItemsWithoutIsActive = await safeProbe(() => fetchBillingItems(regionCode, session, false));
+  await delay(REQUEST_DELAY_MS);
+  probes.meteringUnitResources = await safeProbe(() => fetchMeteringUnitResources(vdc, regionCode, session));
+  await delay(REQUEST_DELAY_MS);
+  probes.listResourceInstances = await safeProbe(() => fetchResourceInstances(vdc, regionCode, session));
+  await delay(REQUEST_DELAY_MS);
+  probes.queryMetricsData = await safeProbe(() => fetchMetricsData(vdc, regionCode, session));
+
+  return probes;
 }
 
 async function diagnoseTenant(vdc, session) {
   console.log(`[NAT METERING] diagnosing ${vdc.name || vdc.id}`);
 
   const region = await safeProbe(() => fetchTenantRegion(vdc, session));
-  const regionId = region?.regionId || vdc.regionId || null;
   const projects = await safeProbe(() => listTenantProjects(vdc, session));
+  const regionCandidates = buildRegionCandidates(vdc, region, projects);
 
-  const probes = {};
-  if (regionId) {
-    probes.resourceTypes = await safeProbe(() => fetchResourceTypes(regionId, session));
+  const probesByRegion = {};
+  for (const candidate of regionCandidates) {
+    console.log(`[NAT METERING] trying region candidate for ${vdc.name || vdc.id}: ${candidate.value} (${candidate.source})`);
+    probesByRegion[candidate.value] = await probeRegion(vdc, candidate, session);
     await delay(REQUEST_DELAY_MS);
-    probes.billingItems = await safeProbe(() => fetchBillingItems(regionId, session));
-    await delay(REQUEST_DELAY_MS);
-    probes.meteringUnitResources = await safeProbe(() => fetchMeteringUnitResources(vdc, regionId, session));
-    await delay(REQUEST_DELAY_MS);
-    probes.listResourceInstances = await safeProbe(() => fetchResourceInstances(vdc, regionId, session));
-    await delay(REQUEST_DELAY_MS);
-    probes.queryMetricsData = await safeProbe(() => fetchMetricsData(vdc, regionId, session));
-  } else {
-    probes.error = "No regionId available; metering APIs require region_id/region_code";
   }
 
   return {
@@ -439,11 +519,12 @@ async function diagnoseTenant(vdc, session) {
       vdcId: String(vdc.id),
       domainId: vdc.domain_id ?? null,
       name: String(vdc.name || vdc.id),
-      regionId,
+      regionId: region?.regionId ?? vdc.regionId ?? null,
       regionName: region?.regionName ?? null
     },
     projects: Array.isArray(projects) ? projects.map(projectSummary) : projects,
-    probes
+    regionCandidates,
+    probesByRegion
   };
 }
 
