@@ -288,13 +288,25 @@ async function fetchNatGateways(projectIdValue, adminSession) {
     });
   }
 
-  const body = await readJson(`VPC NAT gateway list for project ${projectIdValue} with admin domain token`, url, adminSession);
-  return {
-    url,
-    authMode: "admin-domain-token",
-    attempts,
-    natGateways: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
-  };
+  try {
+    const body = await readJson(`VPC NAT gateway list for project ${projectIdValue} with admin domain token`, url, adminSession);
+    return {
+      url,
+      authMode: "admin-domain-token",
+      attempts,
+      natGateways: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
+    };
+  } catch (error) {
+    attempts.push({
+      authMode: "admin-domain-token",
+      error: error instanceof Error ? error.message : String(error || "Unknown error")
+    });
+    const summary = attempts.map((attempt) => `${attempt.authMode}: ${attempt.error}`).join(" | ");
+    const combinedError = new Error(`VPC NAT gateway list for project ${projectIdValue} failed. Attempts: ${summary}`);
+    combinedError.attempts = attempts;
+    combinedError.requestUrl = url;
+    throw combinedError;
+  }
 }
 
 function summarizeNatGateway(gateway) {
@@ -376,6 +388,8 @@ async function inspectTenant(vdc, session) {
     } catch (error) {
       projects.push({
         ...row,
+        requestUrl: error?.requestUrl || null,
+        attempts: Array.isArray(error?.attempts) ? error.attempts : [],
         error: error instanceof Error ? error.message : String(error || "Unknown error")
       });
     }
