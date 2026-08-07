@@ -1550,7 +1550,7 @@ async function fetchTenantNatGatewayBreakdown(vdc, session) {
     };
     const vpcPortalProjectName = vpcPortalProjectHeaderName(project);
     const portalContext = {
-      regionHeader: vpcPortalProjectName,
+      regionHeader: firstDefined(projectContext.regionId, projectContext.regionName, process.env.MANAGEONE_VPC_REGION),
       projectNameHeader: vpcPortalProjectName
     };
 
