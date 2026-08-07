@@ -15,6 +15,9 @@ const NATIVE_RESOURCE_PAGE_LIMIT = 1000;
 const NATIVE_RESOURCE_MAX_PAGES = 20;
 const USE_DOMAIN_NATIVE_BREAKDOWN = process.env.MANAGEONE_SYNC_DOMAIN_NATIVE_BREAKDOWN !== "false";
 const DEFAULT_VPC_CONSOLE_BASE_URL = "https://service-hq3.htgclouds.com/vpc/rest/v2";
+const SYNC_TENANT_FILTER = String(process.env.MANAGEONE_SYNC_TENANT_FILTER || "")
+  .trim()
+  .toLowerCase();
 const SYNC_NAT_GATEWAYS = process.env.MANAGEONE_SYNC_NAT_GATEWAYS === "true";
 const SYNC_NAT_GATEWAY_TENANT_FILTER = String(process.env.MANAGEONE_SYNC_NAT_GATEWAY_TENANT_FILTER || "")
   .trim()
@@ -169,6 +172,23 @@ function isSystemVdc(vdc) {
   );
 }
 
+function tenantMatchesFilter(vdc, filter) {
+  if (!filter) return true;
+  if (filter === "__all__") return true;
+
+  const haystack = `${vdc?.name || ""} ${vdc?.id || ""} ${vdc?.domain_id || ""}`.toLowerCase();
+  return filter
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .some((filterItem) => haystack.includes(filterItem));
+}
+
+function filterSyncTenants(vdcs) {
+  if (!SYNC_TENANT_FILTER) return vdcs;
+  return vdcs.filter((vdc) => tenantMatchesFilter(vdc, SYNC_TENANT_FILTER));
+}
+
 function shouldUseDomainNativeBreakdown(vdc) {
   return USE_DOMAIN_NATIVE_BREAKDOWN && Boolean(vdc?.domain_id) && !isSystemVdc(vdc);
 }
@@ -208,14 +228,7 @@ function resourceUsageIndicatesVpn(resourceUsage) {
 function shouldFetchNatGatewayBreakdown(vdc) {
   if (!SYNC_NAT_GATEWAYS) return false;
   if (!SYNC_NAT_GATEWAY_TENANT_FILTER) return false;
-  if (SYNC_NAT_GATEWAY_TENANT_FILTER === "__all__") return true;
-
-  const haystack = `${vdc?.name || ""} ${vdc?.id || ""} ${vdc?.domain_id || ""}`.toLowerCase();
-  return SYNC_NAT_GATEWAY_TENANT_FILTER
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .some((filter) => haystack.includes(filter));
+  return tenantMatchesFilter(vdc, SYNC_NAT_GATEWAY_TENANT_FILTER);
 }
 
 function shouldFetchEcsFlavorBreakdown(vdc, resourceUsage) {
@@ -885,8 +898,8 @@ function mapTenantForCrm(tenant) {
   };
 }
 
-async function loadSyncedTenantsForCrm() {
-  return prisma.$queryRaw`
+async function loadSyncedTenantsForCrm(vdcIds = null) {
+  const tenants = await prisma.$queryRaw`
     SELECT
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
@@ -896,6 +909,13 @@ async function loadSyncedTenantsForCrm() {
     FROM manageone_tenants
     ORDER BY name ASC
   `;
+
+  if (!Array.isArray(vdcIds) || vdcIds.length === 0) {
+    return tenants;
+  }
+
+  const allowedVdcIds = new Set(vdcIds.map((id) => String(id)));
+  return tenants.filter((tenant) => allowedVdcIds.has(String(tenant.vdc_id)));
 }
 
 async function fetchTenantRegion(vdc, session) {
@@ -1731,7 +1751,7 @@ async function fetchTenantResourceUsageWithRetry(vdc, session) {
   return retryRateLimited(`resource usage for ${vdc.name || vdc.id}`, () => fetchTenantResourceUsage(vdc.id, session));
 }
 
-async function pushTenantsToCrm() {
+async function pushTenantsToCrm(vdcIds = null) {
   const syncUrl = process.env.CRM_SYNC_URL;
   const syncSecret = process.env.CRM_SYNC_SECRET;
 
@@ -1740,7 +1760,12 @@ async function pushTenantsToCrm() {
     return;
   }
 
-  const tenants = await loadSyncedTenantsForCrm();
+  if (Array.isArray(vdcIds) && vdcIds.length === 0) {
+    console.warn("[MANAGEONE SYNC] CRM push skipped: no synced tenants matched the active filter");
+    return;
+  }
+
+  const tenants = await loadSyncedTenantsForCrm(vdcIds);
   const payload = tenants.map(mapTenantForCrm);
   const response = await fetch(syncUrl, {
     method: "POST",
@@ -1798,10 +1823,18 @@ async function syncManageOneTenants() {
   const runId = run.id;
 
   try {
-    const vdcs = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
+    const allVdcs = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
+    const vdcs = filterSyncTenants(allVdcs);
     const session = await authenticate();
     const tenantUsageHistoryPayload = [];
+    const syncedTenantVdcIds = [];
     const syncedAt = Date.now();
+
+    if (SYNC_TENANT_FILTER) {
+      console.log(
+        `[MANAGEONE SYNC] tenant filter active: ${SYNC_TENANT_FILTER}; selected ${vdcs.length}/${allVdcs.length} tenant(s)`
+      );
+    }
 
     for (let index = 0; index < vdcs.length; index += 1) {
       const vdc = vdcs[index];
@@ -1931,10 +1964,12 @@ async function syncManageOneTenants() {
           cloud_bastion_host_breakdown = COALESCE(EXCLUDED.cloud_bastion_host_breakdown, manageone_tenants.cloud_bastion_host_breakdown),
           nat_gateway_breakdown = COALESCE(EXCLUDED.nat_gateway_breakdown, manageone_tenants.nat_gateway_breakdown)
       `;
+
+      syncedTenantVdcIds.push(String(vdc.id));
     }
 
     try {
-      await pushTenantsToCrm();
+      await pushTenantsToCrm(SYNC_TENANT_FILTER ? syncedTenantVdcIds : null);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || "Unknown error");
       console.error("[MANAGEONE SYNC] CRM push failed:", message);
