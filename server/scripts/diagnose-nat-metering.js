@@ -388,46 +388,74 @@ async function fetchMeteringUnitResources(vdc, regionId, session) {
   return summarizeNatRecords(listFromResponse(body, ["resources", "resource_list"]));
 }
 
-async function fetchResourceInstances(vdc, regionId, session) {
+async function fetchResourceInstances(vdc, regionId, session, scope = {}) {
   const { startTime, endTime } = defaultMeteringWindow();
+  const requestBody = {
+    region_code: String(regionId),
+    start_time: startTime,
+    end_time: endTime,
+    time_zone: DEFAULT_TIME_ZONE,
+    domain_id: String(vdc.domain_id || ""),
+    vdc_id: String(vdc.id || ""),
+    resource_type_code: [NAT_RESOURCE_TYPE],
+    limit: 1000
+  };
+  if (scope.projectId) {
+    requestBody.project_id = [String(scope.projectId)];
+  }
+
   const body = await postJson(
-    `NAT resource instances for ${vdc.name || vdc.id}`,
+    `NAT resource instances for ${vdc.name || vdc.id}${scope.label ? ` ${scope.label}` : ""}`,
     `${meteringEndpointBaseUrl()}/v3.0/list-resource-instances`,
-    {
-      region_code: String(regionId),
-      start_time: startTime,
-      end_time: endTime,
-      time_zone: DEFAULT_TIME_ZONE,
-      domain_id: String(vdc.domain_id || ""),
-      limit: 1000
-    },
+    requestBody,
     session
   );
   return {
     window: { startTime, endTime, timeZone: DEFAULT_TIME_ZONE },
+    request: {
+      regionCode: regionId,
+      vdcId: requestBody.vdc_id,
+      projectIds: requestBody.project_id || null,
+      resourceTypeCode: requestBody.resource_type_code
+    },
     ...summarizeNatRecords(listFromResponse(body, ["resources", "resource_instances", "resourceInstances"]))
   };
 }
 
-async function fetchMetricsData(vdc, regionId, session) {
+async function fetchMetricsData(vdc, regionId, session, scope = {}) {
   const { startTime, endTime } = defaultMeteringWindow();
+  const requestBody = {
+    region_code: String(regionId),
+    start_time: startTime,
+    end_time: endTime,
+    time_zone: DEFAULT_TIME_ZONE,
+    period: DEFAULT_PERIOD,
+    locale: DEFAULT_LOCALE,
+    domain_id: String(vdc.domain_id || ""),
+    vdc_id: String(vdc.id || ""),
+    cloud_service_type_code: "vpc",
+    resource_type_code: NAT_RESOURCE_TYPE,
+    limit: 1000
+  };
+  if (Array.isArray(scope.resourceIds) && scope.resourceIds.length > 0) {
+    requestBody.resource_id = scope.resourceIds.map(String);
+  }
+
   const body = await postJson(
-    `NAT metrics data for ${vdc.name || vdc.id}`,
+    `NAT metrics data for ${vdc.name || vdc.id}${scope.label ? ` ${scope.label}` : ""}`,
     `${meteringEndpointBaseUrl()}/v3.0/query-metrics-data`,
-    {
-      region_code: String(regionId),
-      start_time: startTime,
-      end_time: endTime,
-      time_zone: DEFAULT_TIME_ZONE,
-      period: DEFAULT_PERIOD,
-      locale: DEFAULT_LOCALE,
-      domain_id: String(vdc.domain_id || ""),
-      limit: 1000
-    },
+    requestBody,
     session
   );
   return {
     window: { startTime, endTime, timeZone: DEFAULT_TIME_ZONE, period: DEFAULT_PERIOD },
+    request: {
+      regionCode: regionId,
+      vdcId: requestBody.vdc_id,
+      cloudServiceTypeCode: requestBody.cloud_service_type_code,
+      resourceTypeCode: requestBody.resource_type_code,
+      resourceIds: requestBody.resource_id || null
+    },
     ...summarizeNatRecords(listFromResponse(body, ["metrics", "metrics_data", "metric_data", "resources", "datas"]))
   };
 }
@@ -493,11 +521,50 @@ async function probeRegion(vdc, regionCandidate, session) {
   await delay(REQUEST_DELAY_MS);
   probes.meteringUnitResources = await safeProbe(() => fetchMeteringUnitResources(vdc, regionCode, session));
   await delay(REQUEST_DELAY_MS);
-  probes.listResourceInstances = await safeProbe(() => fetchResourceInstances(vdc, regionCode, session));
+  probes.listResourceInstances = await safeProbe(() => fetchResourceInstances(vdc, regionCode, session, { label: "vdc-scope" }));
   await delay(REQUEST_DELAY_MS);
-  probes.queryMetricsData = await safeProbe(() => fetchMetricsData(vdc, regionCode, session));
+  probes.queryMetricsData = await safeProbe(() => fetchMetricsData(vdc, regionCode, session, { label: "vdc-scope" }));
 
   return probes;
+}
+
+async function probeProjectRegion(vdc, project, session) {
+  const projectId = firstDefined(project?.id, project?.project_id, project?.projectId);
+  const projectName = localizedString(firstDefined(project?.name, project?.project_name, project?.projectName));
+  const projectRegionCandidates = [];
+  addCandidate(projectRegionCandidates, project?.region_id ?? project?.regionId, `project.regionId:${projectName || projectId}`);
+  addCandidate(projectRegionCandidates, project?.region_name ?? project?.regionName, `project.regionName:${projectName || projectId}`);
+  addCandidate(projectRegionCandidates, projectName, `project.name:${projectName || projectId}`);
+
+  const probesByRegion = {};
+  for (const candidate of projectRegionCandidates) {
+    console.log(
+      `[NAT METERING] trying project candidate for ${vdc.name || vdc.id}: ${projectName || projectId} / ${
+        candidate.value
+      } (${candidate.source})`
+    );
+    probesByRegion[candidate.value] = {
+      source: candidate.source,
+      listResourceInstances: await safeProbe(() =>
+        fetchResourceInstances(vdc, candidate.value, session, {
+          label: `project-scope ${projectName || projectId}`,
+          projectId
+        })
+      )
+    };
+    await delay(REQUEST_DELAY_MS);
+    probesByRegion[candidate.value].queryMetricsData = await safeProbe(() =>
+      fetchMetricsData(vdc, candidate.value, session, {
+        label: `project-scope ${projectName || projectId}`
+      })
+    );
+    await delay(REQUEST_DELAY_MS);
+  }
+
+  return {
+    project: projectSummary(project),
+    probesByRegion
+  };
 }
 
 async function diagnoseTenant(vdc, session) {
@@ -514,6 +581,14 @@ async function diagnoseTenant(vdc, session) {
     await delay(REQUEST_DELAY_MS);
   }
 
+  const projectProbes = [];
+  if (Array.isArray(projects)) {
+    for (const project of projects) {
+      projectProbes.push(await probeProjectRegion(vdc, project, session));
+      await delay(REQUEST_DELAY_MS);
+    }
+  }
+
   return {
     tenant: {
       vdcId: String(vdc.id),
@@ -524,7 +599,8 @@ async function diagnoseTenant(vdc, session) {
     },
     projects: Array.isArray(projects) ? projects.map(projectSummary) : projects,
     regionCandidates,
-    probesByRegion
+    probesByRegion,
+    projectProbes
   };
 }
 
