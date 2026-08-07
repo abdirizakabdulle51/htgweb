@@ -739,6 +739,24 @@ function projectName(project) {
   );
 }
 
+function vpcPortalProjectHeaderName(project) {
+  return String(
+    firstDefined(
+      project?.iam_project_name,
+      project?.iamProjectName,
+      project?.project_name,
+      project?.projectName,
+      project?.name,
+      project?.resource_space_name,
+      project?.resourceSpaceName,
+      project?.display_name,
+      project?.displayName,
+      project?.id,
+      "unknown"
+    )
+  );
+}
+
 function projectRegionKey(project) {
   const fields = projectRegionFields(project);
   return `${fields.regionId || ""}|${fields.regionName || ""}`;
@@ -1530,9 +1548,10 @@ async function fetchTenantNatGatewayBreakdown(vdc, session) {
       resourceSpaceName: projectName(project),
       ...projectRegionFields(project)
     };
+    const vpcPortalProjectName = vpcPortalProjectHeaderName(project);
     const portalContext = {
-      regionHeader: projectContext.resourceSpaceName,
-      projectNameHeader: projectContext.resourceSpaceName
+      regionHeader: vpcPortalProjectName,
+      projectNameHeader: vpcPortalProjectName
     };
 
     await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
