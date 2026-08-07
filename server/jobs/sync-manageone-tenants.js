@@ -14,6 +14,11 @@ const PROJECT_MAX_PAGES = 20;
 const NATIVE_RESOURCE_PAGE_LIMIT = 1000;
 const NATIVE_RESOURCE_MAX_PAGES = 20;
 const USE_DOMAIN_NATIVE_BREAKDOWN = process.env.MANAGEONE_SYNC_DOMAIN_NATIVE_BREAKDOWN !== "false";
+const DEFAULT_VPC_CONSOLE_BASE_URL = "https://service-hq3.htgclouds.com/vpc/rest/v2";
+const SYNC_NAT_GATEWAYS = process.env.MANAGEONE_SYNC_NAT_GATEWAYS === "true";
+const SYNC_NAT_GATEWAY_TENANT_FILTER = String(process.env.MANAGEONE_SYNC_NAT_GATEWAY_TENANT_FILTER || "")
+  .trim()
+  .toLowerCase();
 
 class HttpStatusError extends Error {
   constructor(status, message) {
@@ -105,6 +110,10 @@ function vdcEndpointBaseUrl() {
   return stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
 }
 
+function vpcConsoleBaseUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_VPC_CONSOLE_BASE_URL || DEFAULT_VPC_CONSOLE_BASE_URL);
+}
+
 async function fetchTextWithTimeout(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MANAGEONE_READ_TIMEOUT_MS);
@@ -194,6 +203,19 @@ function resourceUsageIndicatesVpn(resourceUsage) {
     const resourceName = String(resource.resource || "").toLowerCase();
     return serviceId.includes("vpc") && resourceName.includes("vpn") && Number(resource.used) > 0;
   });
+}
+
+function shouldFetchNatGatewayBreakdown(vdc) {
+  if (!SYNC_NAT_GATEWAYS) return false;
+  if (!SYNC_NAT_GATEWAY_TENANT_FILTER) return false;
+  if (SYNC_NAT_GATEWAY_TENANT_FILTER === "__all__") return true;
+
+  const haystack = `${vdc?.name || ""} ${vdc?.id || ""} ${vdc?.domain_id || ""}`.toLowerCase();
+  return SYNC_NAT_GATEWAY_TENANT_FILTER
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .some((filter) => haystack.includes(filter));
 }
 
 function shouldFetchEcsFlavorBreakdown(vdc, resourceUsage) {
@@ -482,6 +504,104 @@ function aggregateCloudBastionHostBreakdown(resourceIndexResponses) {
   };
 }
 
+const NAT_SPEC_CATALOG = {
+  "1": "Small (150 Mbps)",
+  "2": "Medium (600 Mbps)",
+  "3": "Large (1.5 Gbps)",
+  "4": "Extra-large (4 Gbps+)"
+};
+
+function optionalVpcPortalHeaders() {
+  const headers = {};
+  const cookie = String(process.env.MANAGEONE_VPC_COOKIE || "").trim();
+  const agencyId = String(process.env.MANAGEONE_VPC_AGENCY_ID || "").trim();
+  const region = String(process.env.MANAGEONE_VPC_REGION || "").trim();
+  const projectName = String(process.env.MANAGEONE_VPC_PROJECT_NAME || "").trim();
+  const language = String(process.env.MANAGEONE_VPC_X_LANGUAGE || "en-us").trim();
+  const targetServices = String(process.env.MANAGEONE_VPC_X_TARGET_SERVICES || "").trim();
+
+  if (cookie) headers.Cookie = cookie;
+  if (agencyId) headers.Agencyid = agencyId;
+  if (region) headers.Region = region;
+  if (projectName) headers.Projectname = projectName;
+  if (language) headers["X-Language"] = language;
+  if (targetServices) headers["X-Target-Services"] = targetServices;
+  headers["X-Requested-With"] = "XMLHttpRequest";
+
+  return headers;
+}
+
+async function readVpcPortalJson(label, url) {
+  const portalHeaders = optionalVpcPortalHeaders();
+  if (!portalHeaders.Cookie) {
+    throw new Error("MANAGEONE_VPC_COOKIE is required for NAT gateway sync");
+  }
+
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      ...portalHeaders
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `${label}: HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (text && !contentType.toLowerCase().includes("json")) {
+    throw new Error(`${label}: expected JSON but got ${contentType || "unknown content-type"}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchVpcNatGateways(projectId) {
+  const params = new URLSearchParams({
+    sort_key: "created_at",
+    sort_dir: "desc",
+    enterprise_project_id: "all_granted_eps"
+  });
+  const url = `${vpcConsoleBaseUrl()}/${encodeURIComponent(projectId)}/nat_gateways?${params}`;
+  const body = await readVpcPortalJson(`VPC NAT gateway list for project ${projectId}`, url);
+  return listFromResponse(body, ["nat_gateways", "natGateways", "gateways"]);
+}
+
+function summarizeNatGateway(gateway, project) {
+  const spec = gateway?.spec === undefined || gateway?.spec === null ? null : String(gateway.spec);
+  const catalogName = spec ? NAT_SPEC_CATALOG[spec] || null : null;
+
+  return {
+    id: String(firstDefined(gateway?.id, gateway?.name, `${project.projectId}:${spec || "unknown"}`)),
+    name: String(firstDefined(gateway?.name, gateway?.id, "NAT Gateway")),
+    resourceTypeName: "CLOUD_NAT_GATEWAY",
+    spec,
+    catalogItemName: catalogName,
+    status: gateway?.status ? String(gateway.status) : null,
+    projectId: project.projectId,
+    resourceSpaceName: project.resourceSpaceName,
+    ...(project.regionId ? { regionId: project.regionId } : {}),
+    ...(project.regionName ? { regionName: project.regionName } : {})
+  };
+}
+
+function aggregateNatGatewayBreakdown(items) {
+  const itemsByKey = new Map();
+
+  for (const item of items) {
+    if (!item.catalogItemName) continue;
+    itemsByKey.set(item.id, item);
+  }
+
+  return {
+    count: itemsByKey.size,
+    resourceTypeName: "CLOUD_NAT_GATEWAY",
+    items: [...itemsByKey.values()].sort((a, b) => a.name.localeCompare(b.name))
+  };
+}
+
 function flattenResourceUsage(resourceUsage) {
   const resources = [];
 
@@ -599,6 +719,26 @@ function projectRegionFields(project) {
   };
 }
 
+function projectId(project) {
+  const value = firstDefined(project?.id, project?.project_id, project?.projectId);
+  return value ? String(value) : null;
+}
+
+function projectName(project) {
+  return String(
+    firstDefined(
+      project?.resource_space_name,
+      project?.resourceSpaceName,
+      project?.display_name,
+      project?.displayName,
+      project?.iam_project_name,
+      project?.name,
+      project?.id,
+      "unknown"
+    )
+  );
+}
+
 function projectRegionKey(project) {
   const fields = projectRegionFields(project);
   return `${fields.regionId || ""}|${fields.regionName || ""}`;
@@ -697,6 +837,7 @@ function mapTenantForCrm(tenant) {
   const eipBandwidths = tenant.eip_bandwidth_breakdown || [];
   const vpnGateways = tenant.vpn_gateway_breakdown || null;
   const cloudBastionHosts = tenant.cloud_bastion_host_breakdown || null;
+  const natGateways = tenant.nat_gateway_breakdown || null;
   const derivedEcsUsed = ecsUsedFromBreakdown(ecsFlavors);
   const derivedEvsUsed = evsUsedFromBreakdown(evsVolumeTypes);
 
@@ -721,7 +862,8 @@ function mapTenantForCrm(tenant) {
     evsDiskManagedFees,
     eipBandwidths,
     ...(vpnGateways ? { vpnGateways } : {}),
-    ...(cloudBastionHosts ? { cloudBastionHosts } : {})
+    ...(cloudBastionHosts ? { cloudBastionHosts } : {}),
+    ...(natGateways ? { natGateways } : {})
   };
 }
 
@@ -731,7 +873,8 @@ async function loadSyncedTenantsForCrm() {
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
       ecs_used, evs_used, project_count, raw_payload, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown,
-      evs_disk_managed_fee_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown
+      evs_disk_managed_fee_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown,
+      nat_gateway_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
   `;
@@ -1364,6 +1507,42 @@ async function fetchTenantCloudBastionHostBreakdown(vdc, session) {
   return breakdown;
 }
 
+async function fetchTenantNatGatewayBreakdown(vdc, session) {
+  if (!shouldFetchNatGatewayBreakdown(vdc)) {
+    if (SYNC_NAT_GATEWAYS && !SYNC_NAT_GATEWAY_TENANT_FILTER) {
+      console.warn(
+        "[MANAGEONE SYNC] NAT Gateway sync skipped: MANAGEONE_SYNC_NAT_GATEWAY_TENANT_FILTER is required for safe rollout"
+      );
+    }
+    return { count: 0, resourceTypeName: "CLOUD_NAT_GATEWAY", items: [] };
+  }
+
+  const projects = await listTenantProjects(vdc, session);
+  const items = [];
+  console.log(`[MANAGEONE SYNC] NAT Gateway lookup for ${vdc.name || vdc.id}: VPC portal nat_gateways`);
+
+  for (const project of projects) {
+    const id = projectId(project);
+    if (!id) continue;
+
+    const projectContext = {
+      projectId: id,
+      resourceSpaceName: projectName(project),
+      ...projectRegionFields(project)
+    };
+
+    await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    const gateways = await fetchVpcNatGateways(id);
+    items.push(...gateways.map((gateway) => summarizeNatGateway(gateway, projectContext)));
+  }
+
+  const breakdown = aggregateNatGatewayBreakdown(items);
+  console.log(
+    `[MANAGEONE SYNC] NAT Gateway breakdown for ${vdc.name || vdc.id}: ${breakdown.count} gateway(s), ${items.length} VPC NAT record(s)`
+  );
+  return breakdown;
+}
+
 async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
   if (!shouldFetchEcsFlavorBreakdown(vdc, resourceUsage)) {
     return [];
@@ -1606,6 +1785,7 @@ async function syncManageOneTenants() {
       let eipBandwidthBreakdownPayload = null;
       let vpnGatewayBreakdownPayload = null;
       let cloudBastionHostBreakdownPayload = null;
+      let natGatewayBreakdownPayload = null;
 
       try {
         const region = await fetchTenantRegion(vdc, session);
@@ -1669,6 +1849,14 @@ async function syncManageOneTenants() {
         console.error(`[MANAGEONE SYNC] Cloud Bastion Host breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
       }
 
+      try {
+        const natGatewayBreakdown = await fetchTenantNatGatewayBreakdown(vdc, session);
+        natGatewayBreakdownPayload = natGatewayBreakdown.count > 0 ? JSON.stringify(natGatewayBreakdown) : null;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[MANAGEONE SYNC] NAT Gateway breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
+
       await prisma.$executeRaw`
         INSERT INTO manageone_tenants
           (vdc_id, domain_id, name, level, upper_vdc_id, enabled,
@@ -1676,7 +1864,7 @@ async function syncManageOneTenants() {
            ecs_used, evs_used, project_count, create_user_name,
            manageone_create_at, last_synced_at, raw_payload, resource_usage,
            ecs_flavor_breakdown, evs_volume_type_breakdown, evs_disk_managed_fee_breakdown,
-           eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown)
+           eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown, nat_gateway_breakdown)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
@@ -1686,7 +1874,8 @@ async function syncManageOneTenants() {
            CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb),
            CAST(${ecsFlavorBreakdownPayload} AS jsonb), CAST(${evsVolumeTypeBreakdownPayload} AS jsonb),
            CAST(${evsDiskManagedFeeBreakdownPayload} AS jsonb), CAST(${eipBandwidthBreakdownPayload} AS jsonb),
-           CAST(${vpnGatewayBreakdownPayload} AS jsonb), CAST(${cloudBastionHostBreakdownPayload} AS jsonb))
+           CAST(${vpnGatewayBreakdownPayload} AS jsonb), CAST(${cloudBastionHostBreakdownPayload} AS jsonb),
+           CAST(${natGatewayBreakdownPayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
           domain_id = EXCLUDED.domain_id,
           name = EXCLUDED.name,
@@ -1709,7 +1898,8 @@ async function syncManageOneTenants() {
           evs_disk_managed_fee_breakdown = COALESCE(EXCLUDED.evs_disk_managed_fee_breakdown, manageone_tenants.evs_disk_managed_fee_breakdown),
           eip_bandwidth_breakdown = COALESCE(EXCLUDED.eip_bandwidth_breakdown, manageone_tenants.eip_bandwidth_breakdown),
           vpn_gateway_breakdown = COALESCE(EXCLUDED.vpn_gateway_breakdown, manageone_tenants.vpn_gateway_breakdown),
-          cloud_bastion_host_breakdown = COALESCE(EXCLUDED.cloud_bastion_host_breakdown, manageone_tenants.cloud_bastion_host_breakdown)
+          cloud_bastion_host_breakdown = COALESCE(EXCLUDED.cloud_bastion_host_breakdown, manageone_tenants.cloud_bastion_host_breakdown),
+          nat_gateway_breakdown = COALESCE(EXCLUDED.nat_gateway_breakdown, manageone_tenants.nat_gateway_breakdown)
       `;
     }
 
