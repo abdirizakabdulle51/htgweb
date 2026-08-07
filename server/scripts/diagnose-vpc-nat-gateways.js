@@ -2,6 +2,8 @@ import "dotenv/config";
 import { authenticate, listAllVdcs } from "../manageone.js";
 
 const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
+const DEFAULT_AUTH_BASE_URL = "https://10.20.24.9:26335";
+const DEFAULT_AUTH_DOMAIN = "mo_bss_admin";
 const DEFAULT_VPC_CONSOLE_BASE_URL = "https://service-hq3.htgclouds.com/vpc/rest/v2";
 const REQUEST_TIMEOUT_MS = Number(process.env.MANAGEONE_TIMEOUT_MS || 30000);
 const REQUEST_DELAY_MS = Number(process.env.MANAGEONE_DIAGNOSTIC_DELAY_MS || 500);
@@ -10,6 +12,7 @@ const PROJECT_MAX_PAGES = Number(process.env.MANAGEONE_DIAGNOSTIC_PROJECT_MAX_PA
 const TENANT_FILTER = String(process.env.MANAGEONE_DIAGNOSTIC_TENANT_FILTER || "").trim().toLowerCase();
 const MAX_TENANTS = Number(process.env.MANAGEONE_DIAGNOSTIC_MAX_TENANTS || 0);
 const MAX_SAMPLE_GATEWAYS = Number(process.env.MANAGEONE_DIAGNOSTIC_NAT_SAMPLE_LIMIT || 20);
+const projectScopedTokenCache = new Map();
 
 const NAT_SPEC_CATALOG = {
   "1": "Small (150 Mbps)",
@@ -32,6 +35,10 @@ function stripTrailingSlash(value) {
 
 function vdcEndpointBaseUrl() {
   return stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
+}
+
+function authBaseUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_AUTH_BASE_URL || DEFAULT_AUTH_BASE_URL);
 }
 
 function vpcConsoleBaseUrl() {
@@ -112,7 +119,78 @@ async function readJson(label, url, session) {
     throw new HttpStatusError(response.status, `${label}: HTTP ${response.status}${text ? ` ${text}` : ""}`);
   }
 
-  return text ? JSON.parse(text) : {};
+  const contentType = response.headers.get("content-type") || "";
+  if (text && !contentType.toLowerCase().includes("json")) {
+    throw new Error(
+      `${label}: expected JSON but got ${contentType || "unknown content-type"} ${safeSnippet(text)}`
+    );
+  }
+
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch (error) {
+    throw new Error(
+      `${label}: invalid JSON response (${error instanceof Error ? error.message : String(error)}) ${safeSnippet(text)}`
+    );
+  }
+}
+
+function safeSnippet(value, limit = 220) {
+  const compact = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return compact ? `body="${compact.slice(0, limit)}${compact.length > limit ? "..." : ""}"` : "";
+}
+
+async function authenticateProjectScoped(projectIdValue) {
+  if (projectScopedTokenCache.has(projectIdValue)) {
+    return projectScopedTokenCache.get(projectIdValue);
+  }
+
+  const { response, text } = await fetchTextWithTimeout(`${authBaseUrl()}/v3/auth/tokens`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      auth: {
+        identity: {
+          methods: ["password"],
+          password: {
+            user: {
+              name: process.env.MANAGEONE_USERNAME || "",
+              password: process.env.MANAGEONE_PASSWORD || "",
+              domain: {
+                name: process.env.MANAGEONE_AUTH_DOMAIN || DEFAULT_AUTH_DOMAIN
+              }
+            }
+          }
+        },
+        scope: {
+          project: {
+            id: projectIdValue
+          }
+        }
+      }
+    })
+  });
+
+  if (response.status !== 201) {
+    throw new HttpStatusError(
+      response.status,
+      `project-scoped token for ${projectIdValue}: HTTP ${response.status} ${safeSnippet(text)}`
+    );
+  }
+
+  const token = response.headers.get("x-subject-token");
+  if (!token) {
+    throw new Error(`project-scoped token for ${projectIdValue}: response did not include X-Subject-Token`);
+  }
+
+  const session = { token };
+  projectScopedTokenCache.set(projectIdValue, session);
+  return session;
 }
 
 async function fetchProjectPage(vdc, session, start, limit) {
@@ -186,16 +264,35 @@ function primaryProjectRegion(project) {
   return regions[0] || { regionId: null, regionName: null };
 }
 
-async function fetchNatGateways(projectIdValue, session) {
+async function fetchNatGateways(projectIdValue, adminSession) {
   const params = new URLSearchParams({
     sort_key: "created_at",
     sort_dir: "desc",
     enterprise_project_id: "all_granted_eps"
   });
   const url = `${vpcConsoleBaseUrl()}/${encodeURIComponent(projectIdValue)}/nat_gateways?${params}`;
-  const body = await readJson(`VPC NAT gateway list for project ${projectIdValue}`, url, session);
+  const attempts = [];
+
+  try {
+    const projectSession = await authenticateProjectScoped(projectIdValue);
+    const body = await readJson(`VPC NAT gateway list for project ${projectIdValue} with project-scoped token`, url, projectSession);
+    return {
+      url,
+      authMode: "project-scoped-token",
+      natGateways: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
+    };
+  } catch (error) {
+    attempts.push({
+      authMode: "project-scoped-token",
+      error: error instanceof Error ? error.message : String(error || "Unknown error")
+    });
+  }
+
+  const body = await readJson(`VPC NAT gateway list for project ${projectIdValue} with admin domain token`, url, adminSession);
   return {
     url,
+    authMode: "admin-domain-token",
+    attempts,
     natGateways: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
   };
 }
@@ -270,6 +367,8 @@ async function inspectTenant(vdc, session) {
       projects.push({
         ...row,
         requestUrl: result.url,
+        authMode: result.authMode,
+        attempts: result.attempts || [],
         natGatewayCount: gateways.length,
         natGateways: gateways.slice(0, MAX_SAMPLE_GATEWAYS),
         omittedNatGatewaySamples: Math.max(0, gateways.length - MAX_SAMPLE_GATEWAYS)
