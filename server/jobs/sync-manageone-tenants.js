@@ -511,12 +511,12 @@ const NAT_SPEC_CATALOG = {
   "4": "Extra-large (4 Gbps+)"
 };
 
-function optionalVpcPortalHeaders() {
+function optionalVpcPortalHeaders(context = {}) {
   const headers = {};
   const cookie = String(process.env.MANAGEONE_VPC_COOKIE || "").trim();
   const agencyId = String(process.env.MANAGEONE_VPC_AGENCY_ID || "").trim();
-  const region = String(process.env.MANAGEONE_VPC_REGION || "").trim();
-  const projectName = String(process.env.MANAGEONE_VPC_PROJECT_NAME || "").trim();
+  const region = String(firstDefined(context.regionHeader, process.env.MANAGEONE_VPC_REGION) || "").trim();
+  const projectName = String(firstDefined(context.projectNameHeader, process.env.MANAGEONE_VPC_PROJECT_NAME) || "").trim();
   const language = String(process.env.MANAGEONE_VPC_X_LANGUAGE || "en-us").trim();
   const targetServices = String(process.env.MANAGEONE_VPC_X_TARGET_SERVICES || "").trim();
 
@@ -531,8 +531,8 @@ function optionalVpcPortalHeaders() {
   return headers;
 }
 
-async function readVpcPortalJson(label, url) {
-  const portalHeaders = optionalVpcPortalHeaders();
+async function readVpcPortalJson(label, url, context = {}) {
+  const portalHeaders = optionalVpcPortalHeaders(context);
   if (!portalHeaders.Cookie) {
     throw new Error("MANAGEONE_VPC_COOKIE is required for NAT gateway sync");
   }
@@ -558,14 +558,14 @@ async function readVpcPortalJson(label, url) {
   return text ? JSON.parse(text) : {};
 }
 
-async function fetchVpcNatGateways(projectId) {
+async function fetchVpcNatGateways(projectId, context = {}) {
   const params = new URLSearchParams({
     sort_key: "created_at",
     sort_dir: "desc",
     enterprise_project_id: "all_granted_eps"
   });
   const url = `${vpcConsoleBaseUrl()}/${encodeURIComponent(projectId)}/nat_gateways?${params}`;
-  const body = await readVpcPortalJson(`VPC NAT gateway list for project ${projectId}`, url);
+  const body = await readVpcPortalJson(`VPC NAT gateway list for project ${projectId}`, url, context);
   return listFromResponse(body, ["nat_gateways", "natGateways", "gateways"]);
 }
 
@@ -1530,10 +1530,21 @@ async function fetchTenantNatGatewayBreakdown(vdc, session) {
       resourceSpaceName: projectName(project),
       ...projectRegionFields(project)
     };
+    const portalContext = {
+      regionHeader: projectContext.resourceSpaceName,
+      projectNameHeader: projectContext.resourceSpaceName
+    };
 
     await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
-    const gateways = await fetchVpcNatGateways(id);
-    items.push(...gateways.map((gateway) => summarizeNatGateway(gateway, projectContext)));
+    try {
+      const gateways = await fetchVpcNatGateways(id, portalContext);
+      items.push(...gateways.map((gateway) => summarizeNatGateway(gateway, projectContext)));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.error(
+        `[MANAGEONE SYNC] NAT Gateway project skipped for ${vdc.name || vdc.id} / ${projectContext.resourceSpaceName}: ${message}`
+      );
+    }
   }
 
   const breakdown = aggregateNatGatewayBreakdown(items);
