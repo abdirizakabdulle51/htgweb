@@ -177,7 +177,15 @@ function computeCapacity(record) {
 }
 
 function summarizeShape(value, depth = 0) {
-  if (!value || typeof value !== "object") {
+  if (value === null) {
+    return "null";
+  }
+
+  if (value === undefined) {
+    return "undefined";
+  }
+
+  if (typeof value !== "object") {
     return typeof value;
   }
 
