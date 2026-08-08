@@ -8,18 +8,59 @@ const CAPACITY_BASE_URL = (process.env.MANAGEONE_CAPACITY_BASE_URL || "https://1
   /\/+$/,
   ""
 );
+const PRODUCT_BASE_URL = (process.env.MANAGEONE_PRODUCT_BASE_URL || "https://10.20.24.9:26335").replace(/\/+$/, "");
 const CAPACITY_RESOURCE_TYPES = "cpu,memory,storage-pool";
 const TB_TO_GB = 1024;
 const PB_TO_GB = 1024 * 1024;
 const REGIONS = [
   {
     regionId: "3A462C0E713B3BF389CC4359D2618F9D",
-    regionName: "Mogadishu-region-hq3"
+    regionCode: "htgcloud-region-02",
+    regionName: "Mogadishu-region-hq3",
+    cloudInfraId: "FUSION_CLOUD_htgcloud-region-02"
   },
   {
     regionId: "3A03042C29813F5DBA6DBDC2E95CB101",
-    regionName: "Hoa-Mogadishu-2"
+    regionCode: "hoa-mogadishu-2",
+    regionName: "Hoa-Mogadishu-2",
+    cloudInfraId: "FUSION_CLOUD_hoa-mogadishu-2"
   }
+];
+const TARGET_FLAVORS = [
+  { name: "S6_large.1", vcpus: 2, ramGb: 2, cpuVendor: "Intel" },
+  { name: "C6_large.2", vcpus: 2, ramGb: 4, cpuVendor: "Intel" },
+  { name: "S6_large.2", vcpus: 2, ramGb: 4, cpuVendor: "Intel" },
+  { name: "C6_large.4", vcpus: 2, ramGb: 8, cpuVendor: "Intel" },
+  { name: "S6_large.4", vcpus: 2, ramGb: 8, cpuVendor: "Intel" },
+  { name: "C6_xlarge.2", vcpus: 4, ramGb: 8, cpuVendor: "Intel" },
+  { name: "S6_xlarge.2", vcpus: 4, ramGb: 8, cpuVendor: "Intel" },
+  { name: "S6_4U_12G", vcpus: 4, ramGb: 12, cpuVendor: "Intel" },
+  { name: "C6_xlarge.4", vcpus: 4, ramGb: 16, cpuVendor: "Intel" },
+  { name: "S6_xlarge.4", vcpus: 4, ramGb: 16, cpuVendor: "Intel" },
+  { name: "S6_4U_32G", vcpus: 4, ramGb: 32, cpuVendor: "Intel" },
+  { name: "S6_2xlarge.2", vcpus: 8, ramGb: 16, cpuVendor: "Intel" },
+  { name: "S6_8U_24G", vcpus: 8, ramGb: 24, cpuVendor: "Intel" },
+  { name: "C6_2xlarge.2", vcpus: 8, ramGb: 26, cpuVendor: "Intel" },
+  { name: "C6_2xlarge.4", vcpus: 8, ramGb: 32, cpuVendor: "Intel" },
+  { name: "S6_2xlarge.4", vcpus: 8, ramGb: 32, cpuVendor: "Intel" },
+  { name: "C6_2xlarge.8", vcpus: 8, ramGb: 64, cpuVendor: "Intel" },
+  { name: "C6_3xlarge.2", vcpus: 12, ramGb: 24, cpuVendor: "Intel" },
+  { name: "C6_3xlarge.4", vcpus: 12, ramGb: 36, cpuVendor: "Intel" },
+  { name: "S6_12U_64G", vcpus: 12, ramGb: 64, cpuVendor: "Intel" },
+  { name: "C6_4xlarge.2", vcpus: 16, ramGb: 24, cpuVendor: "Intel" },
+  { name: "S6_4xlarge.2", vcpus: 16, ramGb: 32, cpuVendor: "Intel" },
+  { name: "C6_4xlarge.4", vcpus: 16, ramGb: 48, cpuVendor: "Intel" },
+  { name: "S6_16U_64G", vcpus: 16, ramGb: 64, cpuVendor: "Intel" },
+  { name: "C6_6xlarge.2", vcpus: 24, ramGb: 48, cpuVendor: "Intel" },
+  { name: "C6_6xlarge.4", vcpus: 24, ramGb: 96, cpuVendor: "Intel" },
+  { name: "S6_32U_64G", vcpus: 32, ramGb: 64, cpuVendor: "Intel" },
+  { name: "S6_32U_128G", vcpus: 32, ramGb: 128, cpuVendor: "Intel" },
+  { name: "C6_12xlarge.2", vcpus: 48, ramGb: 96, cpuVendor: "Intel" },
+  { name: "S6_48U_160G", vcpus: 48, ramGb: 160, cpuVendor: "Intel" },
+  { name: "C6_12xlarge.4", vcpus: 48, ramGb: 192, cpuVendor: "Intel" },
+  { name: "C6_16xlarge.2", vcpus: 64, ramGb: 128, cpuVendor: "Intel" },
+  { name: "S6_64U_256G", vcpus: 64, ramGb: 256, cpuVendor: "Intel" },
+  { name: "C6_16xlarge.4", vcpus: 64, ramGb: 256, cpuVendor: "Intel" }
 ];
 
 function requireEnv(name) {
@@ -139,6 +180,80 @@ function getDimensionValue(dimensions, dimensionType) {
 
   const match = dimensions.find((dimension) => dimension?.dimensionType === dimensionType);
   return match?.dimensionValue;
+}
+
+function normalizeName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[-\s]+/g, "_");
+}
+
+function extractFlavors(body) {
+  if (Array.isArray(body)) return body;
+  if (Array.isArray(body?.flavors)) return body.flavors;
+  if (typeof body?.flavors === "string") {
+    try {
+      const parsed = JSON.parse(body.flavors);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(body?.records)) return body.records;
+  if (Array.isArray(body?.items)) return body.items;
+  return [];
+}
+
+function flavorName(flavor) {
+  return (
+    flavor?.flavor_name ||
+    flavor?.flavorName ||
+    flavor?.name ||
+    flavor?.display_name ||
+    flavor?.id ||
+    flavor?.flavor_id ||
+    ""
+  );
+}
+
+function regionIdCandidates(region) {
+  return [...new Set([region.regionCode, region.regionId, region.regionName].filter(Boolean))];
+}
+
+function queryParamVariants(region) {
+  return [
+    { start: "0", limit: "500", vdc_level: "0", cloud_infra_id: region.cloudInfraId },
+    { start: "0", limit: "500", cloud_infra_id: region.cloudInfraId },
+    { start: "0", limit: "500" }
+  ];
+}
+
+function estimateFlavorFit(capacity, flavor) {
+  const cpuFree = Math.max(capacity.cpuTotal - capacity.cpuUsed, 0);
+  const memoryFreeGb = Math.max(capacity.memoryTotalGb - capacity.memoryUsedGb, 0);
+  return Math.max(0, Math.min(Math.floor(cpuFree / flavor.vcpus), Math.floor(memoryFreeGb / flavor.ramGb)));
+}
+
+function mapFlavorAvailability(capacity, flavors) {
+  const availableNames = new Map();
+  for (const flavor of flavors) {
+    const name = flavorName(flavor);
+    if (name) availableNames.set(normalizeName(name), flavor);
+  }
+
+  return TARGET_FLAVORS.map((target) => {
+    const match = availableNames.get(normalizeName(target.name));
+    const estimatedFitCount = match ? estimateFlavorFit(capacity, target) : 0;
+    return {
+      ...target,
+      available: Boolean(match),
+      matchedName: match ? flavorName(match) : undefined,
+      availabilityZones: Array.isArray(match?.availability_zone) ? match.availability_zone : [],
+      estimatedFitCount,
+      status: !match ? "not_offered" : estimatedFitCount < 1 ? "low_capacity" : "available"
+    };
+  });
 }
 
 function transformStoragePools(body) {
@@ -271,6 +386,50 @@ async function fetchRegionStoragePools(region, session) {
   return transformStoragePools(parseJson(text, `ManageOne storage pool capacity response for ${region.regionName}`));
 }
 
+async function fetchRegionFlavorAvailability(region, session, capacity) {
+  const attempts = [];
+
+  for (const regionId of regionIdCandidates(region)) {
+    for (const flavorQueryParams of queryParamVariants(region)) {
+      const search = new URLSearchParams({
+        region_id: regionId,
+        resource_pool_id: region.cloudInfraId,
+        service_id: "nova-ext",
+        flavor_query_params: JSON.stringify(flavorQueryParams)
+      });
+      const url = `${PRODUCT_BASE_URL}/rest/product/v3.0/flavor?${search.toString()}`;
+
+      try {
+        const { response, text } = await fetchTextWithTimeout(url, {
+          method: "GET",
+          headers: {
+            Accept: "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "X-Auth-Token": session.token,
+            "X-Language": "en-us"
+          },
+          redirect: "manual"
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}${text ? ` ${text.slice(0, 500)}` : ""}`);
+        }
+
+        const body = parseJson(text, `ECS flavor list for ${region.regionName}`);
+        return {
+          status: "verified",
+          message: `ManageOne returned ${extractFlavors(body).length} ECS flavor(s).`,
+          flavors: mapFlavorAvailability(capacity, extractFlavors(body))
+        };
+      } catch (error) {
+        attempts.push(error instanceof Error ? error.message : String(error || "Unknown error"));
+      }
+    }
+  }
+
+  throw new Error(attempts[0] || `No flavor query attempt succeeded for ${region.regionName}`);
+}
+
 async function pushCapacityToCrm(syncSecret, payload) {
   const { response, text } = await fetchTextWithTimeout(CRM_SYNC_URL, {
     method: "POST",
@@ -330,6 +489,21 @@ async function main() {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
         console.error(`[CLOUD CAPACITY] storage pool breakdown skipped for ${region.regionName}: ${message}`);
+      }
+      try {
+        const flavorAvailability = await fetchRegionFlavorAvailability(region, session, capacity);
+        capacity.ecsFlavorAvailabilityStatus = flavorAvailability.status;
+        capacity.ecsFlavorAvailabilityMessage = flavorAvailability.message;
+        capacity.ecsFlavorAvailability = flavorAvailability.flavors;
+        const availableCount = flavorAvailability.flavors.filter((flavor) => flavor.available).length;
+        console.log(
+          `[CLOUD CAPACITY] ECS flavor availability for ${region.regionName}: ${availableCount}/${flavorAvailability.flavors.length} target flavor(s)`
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        capacity.ecsFlavorAvailabilityStatus = "unavailable";
+        capacity.ecsFlavorAvailabilityMessage = message;
+        console.error(`[CLOUD CAPACITY] ECS flavor availability unavailable for ${region.regionName}: ${message}`);
       }
       payload.push(capacity);
     } catch (error) {
