@@ -4,8 +4,13 @@ import { authenticate } from "../manageone.js";
 const CRM_SYNC_URL = "https://crm-api.102-203-134-106.sslip.io/cloud-capacity/sync";
 const CRM_SNAPSHOT_URL = "https://crm-api.102-203-134-106.sslip.io/cloud-capacity/snapshot";
 const CAPACITY_REQUEST_TIMEOUT_MS = Number(process.env.MANAGEONE_TIMEOUT_MS || 30000);
+const CAPACITY_BASE_URL = (process.env.MANAGEONE_CAPACITY_BASE_URL || "https://10.20.24.9:26335").replace(
+  /\/+$/,
+  ""
+);
 const CAPACITY_RESOURCE_TYPES = "cpu,memory,storage-pool";
 const TB_TO_GB = 1024;
+const PB_TO_GB = 1024 * 1024;
 const REGIONS = [
   {
     regionId: "3A462C0E713B3BF389CC4359D2618F9D",
@@ -71,6 +76,27 @@ function capacityNumber(value, label) {
   return numberFrom(value, label);
 }
 
+function capacityToGb(value, label) {
+  if (!value || typeof value !== "object") {
+    return numberFrom(value, label);
+  }
+
+  const capacityValue = numberFrom(value.capacityValue, `${label}.capacityValue`);
+  const unit = String(value.unit || "GB").trim().toUpperCase();
+
+  if (unit === "PB") {
+    return capacityValue * PB_TO_GB;
+  }
+  if (unit === "TB") {
+    return capacityValue * TB_TO_GB;
+  }
+  if (unit === "MB") {
+    return capacityValue / 1024;
+  }
+
+  return capacityValue;
+}
+
 function capacityValues(record, label) {
   if (!record) {
     throw new Error(`${label} capacity record missing`);
@@ -91,6 +117,91 @@ function capacityValues(record, label) {
       `${label}.oversubscriptionCapacity.allocatedCapacity.ratio`
     )
   };
+}
+
+function optionalCapacityToGb(value, label) {
+  if (value == null) {
+    return undefined;
+  }
+
+  return capacityToGb(value, label);
+}
+
+function optionalNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function getDimensionValue(dimensions, dimensionType) {
+  if (!Array.isArray(dimensions)) {
+    return undefined;
+  }
+
+  const match = dimensions.find((dimension) => dimension?.dimensionType === dimensionType);
+  return match?.dimensionValue;
+}
+
+function transformStoragePools(body) {
+  const capacityList = Array.isArray(body?.capacityList) ? body.capacityList : [];
+
+  return capacityList
+    .map((item) => {
+      const volumeType = getDimensionValue(item?.dimensions, "volumeTypeName");
+      const actualCapacity = item?.capacity?.actualCapacity;
+      if (!volumeType || !actualCapacity) {
+        return null;
+      }
+
+      return {
+        volumeType: String(volumeType),
+        usedGb: capacityToGb(actualCapacity?.usedCapacity, `storagePools.${volumeType}.usedCapacity`),
+        totalGb: capacityToGb(actualCapacity?.totalCapacity, `storagePools.${volumeType}.totalCapacity`),
+        freeGb: capacityToGb(actualCapacity?.freeCapacity, `storagePools.${volumeType}.freeCapacity`),
+        usedRatio: numberFrom(actualCapacity?.usedCapacity?.ratio, `storagePools.${volumeType}.usedCapacity.ratio`),
+        ...(optionalCapacityToGb(
+          item?.capacity?.oversubscriptionCapacity?.totalCapacity,
+          `storagePools.${volumeType}.oversubscriptionCapacity.totalCapacity`
+        ) !== undefined
+          ? {
+              oversubscriptionTotalGb: optionalCapacityToGb(
+                item?.capacity?.oversubscriptionCapacity?.totalCapacity,
+                `storagePools.${volumeType}.oversubscriptionCapacity.totalCapacity`
+              )
+            }
+          : {}),
+        ...(optionalCapacityToGb(
+          item?.capacity?.oversubscriptionCapacity?.allocatedCapacity,
+          `storagePools.${volumeType}.oversubscriptionCapacity.allocatedCapacity`
+        ) !== undefined
+          ? {
+              oversubscriptionAllocatedGb: optionalCapacityToGb(
+                item?.capacity?.oversubscriptionCapacity?.allocatedCapacity,
+                `storagePools.${volumeType}.oversubscriptionCapacity.allocatedCapacity`
+              )
+            }
+          : {}),
+        ...(optionalCapacityToGb(
+          item?.capacity?.oversubscriptionCapacity?.freeCapacity,
+          `storagePools.${volumeType}.oversubscriptionCapacity.freeCapacity`
+        ) !== undefined
+          ? {
+              oversubscriptionFreeGb: optionalCapacityToGb(
+                item?.capacity?.oversubscriptionCapacity?.freeCapacity,
+                `storagePools.${volumeType}.oversubscriptionCapacity.freeCapacity`
+              )
+            }
+          : {}),
+        ...(optionalNumber(item?.capacity?.oversubscriptionCapacity?.allocatedCapacity?.ratio) !== undefined
+          ? {
+              oversubscriptionAllocatedRatio: optionalNumber(
+                item?.capacity?.oversubscriptionCapacity?.allocatedCapacity?.ratio
+              )
+            }
+          : {})
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.volumeType.localeCompare(b.volumeType));
 }
 
 function transformCapacity(region, body) {
@@ -117,7 +228,7 @@ function transformCapacity(region, body) {
 }
 
 async function fetchRegionCapacity(region, session) {
-  const url = `https://10.20.24.9:26335/rest/capacity/v1/capbase/regions/${encodeURIComponent(
+  const url = `${CAPACITY_BASE_URL}/rest/capacity/v1/capbase/regions/${encodeURIComponent(
     region.regionId
   )}/resource-types/${CAPACITY_RESOURCE_TYPES}/current-capacities`;
 
@@ -136,6 +247,28 @@ async function fetchRegionCapacity(region, session) {
   }
 
   return transformCapacity(region, parseJson(text, `ManageOne capacity response for ${region.regionName}`));
+}
+
+async function fetchRegionStoragePools(region, session) {
+  const url = `${CAPACITY_BASE_URL}/rest/capacity/v1/capbase/regions/${encodeURIComponent(
+    region.regionId
+  )}/resource-types/storage-pool/dimension-types/volumeTypeName/capacities?limit=100&offset=0&sort=-storPoolUsageRatio`;
+
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return transformStoragePools(parseJson(text, `ManageOne storage pool capacity response for ${region.regionName}`));
 }
 
 async function pushCapacityToCrm(syncSecret, payload) {
@@ -189,7 +322,16 @@ async function main() {
     console.log(`[CLOUD CAPACITY] syncing region ${index + 1}/${REGIONS.length}: ${region.regionName}`);
 
     try {
-      payload.push(await fetchRegionCapacity(region, session));
+      const capacity = await fetchRegionCapacity(region, session);
+      try {
+        const storagePools = await fetchRegionStoragePools(region, session);
+        capacity.storagePools = storagePools;
+        console.log(`[CLOUD CAPACITY] storage pool breakdown for ${region.regionName}: ${storagePools.length} type(s)`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[CLOUD CAPACITY] storage pool breakdown skipped for ${region.regionName}: ${message}`);
+      }
+      payload.push(capacity);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || "Unknown error");
       failures.push(`${region.regionName}: ${message}`);
