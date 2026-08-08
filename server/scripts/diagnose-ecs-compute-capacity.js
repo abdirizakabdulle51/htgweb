@@ -136,10 +136,12 @@ function computeCapacity(record) {
   const memory = record.memory || record?.bms?.memory;
   if (!cpu || !memory) return null;
 
-  const cpuActual = cpu.actualCapacity || {};
-  const cpuOversubscription = cpu.oversubscriptionCapacity || {};
-  const memoryActual = memory.actualCapacity || {};
-  const memoryOversubscription = memory.oversubscriptionCapacity || {};
+  const cpuCapacity = cpu.capacity || cpu;
+  const memoryCapacity = memory.capacity || memory;
+  const cpuActual = cpuCapacity.actualCapacity || {};
+  const cpuOversubscription = cpuCapacity.oversubscriptionCapacity || {};
+  const memoryActual = memoryCapacity.actualCapacity || {};
+  const memoryOversubscription = memoryCapacity.oversubscriptionCapacity || {};
 
   const cpuActualTotal = capacityValue(cpuActual.totalCapacity);
   const cpuActualUsed = capacityValue(cpuActual.usedCapacity);
@@ -172,6 +174,26 @@ function computeCapacity(record) {
     memoryGbUsedForFit: memoryOverFreeGb ?? memoryActualFreeGb,
     sourceForFit: cpuOverFree !== undefined || memoryOverFreeGb !== undefined ? "oversubscriptionFree" : "actualFree"
   };
+}
+
+function summarizeShape(value, depth = 0) {
+  if (!value || typeof value !== "object") {
+    return typeof value;
+  }
+
+  if (depth >= 2) {
+    return Array.isArray(value) ? `array(${value.length})` : Object.keys(value).sort();
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0 ? [`array(${value.length})`, summarizeShape(value[0], depth + 1)] : ["array(0)"];
+  }
+
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, summarizeShape(value[key], depth + 1)])
+  );
 }
 
 function fitFlavors(capacity, flavors) {
@@ -234,7 +256,13 @@ async function fetchCapacityByScope(session, scope) {
   return {
     ...scope,
     capacity: computeCapacity(body),
-    rawKeys: body && typeof body === "object" ? Object.keys(body).sort() : []
+    rawKeys: body && typeof body === "object" ? Object.keys(body).sort() : [],
+    shape: {
+      cpu: summarizeShape(body?.cpu),
+      memory: summarizeShape(body?.memory),
+      bmsCpu: summarizeShape(body?.bms?.cpu),
+      bmsMemory: summarizeShape(body?.bms?.memory)
+    }
   };
 }
 
