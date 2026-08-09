@@ -232,10 +232,28 @@ function obsStorageClass(row) {
   return value ? String(value) : "Standard";
 }
 
+function obsBucketUsedMb(row) {
+  const value = firstDefined(row?.bucketUsed, row?.bucket_used, row?.usedMb, row?.used_mb, row?.used, row?.usage);
+  const numericValue = numberOrNull(value);
+  if (numericValue !== null) return numericValue;
+
+  const match = String(value || "")
+    .trim()
+    .match(/^(-?\d+(?:\.\d+)?)\s*([a-z]+)?$/i);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) return null;
+
+  const unit = String(match[2] || "MB").toLowerCase();
+  if (unit === "gb" || unit === "gib") return amount * 1024;
+  if (unit === "kb" || unit === "kib") return amount / 1024;
+  if (unit === "b" || unit === "byte" || unit === "bytes") return amount / (1024 * 1024);
+  return amount;
+}
+
 function obsBucketUsedGb(row) {
-  const usedMb = numberOrNull(
-    firstDefined(row?.bucketUsed, row?.bucket_used, row?.usedMb, row?.used_mb, row?.used, row?.usage)
-  );
+  const usedMb = obsBucketUsedMb(row);
   if (usedMb === null || usedMb <= 0) return 0;
   return Math.round((usedMb / 1024) * 1000) / 1000;
 }
@@ -300,9 +318,7 @@ async function fetchObsBucketBreakdownByTenant(session, vdcs) {
           existing.push({
             bucketName: String(firstDefined(row?.bucketName, row?.bucket_name, row?.name, "OBS bucket")),
             totalGb,
-            usedMb:
-              numberOrNull(firstDefined(row?.bucketUsed, row?.bucket_used, row?.usedMb, row?.used_mb, row?.used, row?.usage)) ??
-              undefined,
+            usedMb: obsBucketUsedMb(row) ?? undefined,
             storageClass: obsStorageClass(row),
             catalogItemName: "Fusion bucket",
             regionId: region.regionCode,
