@@ -13,6 +13,19 @@ const PROJECT_PAGE_LIMIT = 100;
 const PROJECT_MAX_PAGES = 20;
 const NATIVE_RESOURCE_PAGE_LIMIT = 1000;
 const NATIVE_RESOURCE_MAX_PAGES = 20;
+const DEFAULT_CAPACITY_BASE_URL = "https://10.20.24.9:26335";
+const OBS_CAPACITY_REGIONS = [
+  {
+    regionId: "3A462C0E713B3BF389CC4359D2618F9D",
+    regionCode: "htgcloud-region-02",
+    regionName: "Mogadishu-region-hq3"
+  },
+  {
+    regionId: "3A03042C29813F5DBA6DBDC2E95CB101",
+    regionCode: "hoa-mogadishu-2",
+    regionName: "Hoa-Mogadishu-2"
+  }
+];
 const USE_DOMAIN_NATIVE_BREAKDOWN = process.env.MANAGEONE_SYNC_DOMAIN_NATIVE_BREAKDOWN !== "false";
 const DEFAULT_VPC_CONSOLE_BASE_URL = "https://service-hq3.htgclouds.com/vpc/rest/v2";
 const SYNC_TENANT_FILTER = String(process.env.MANAGEONE_SYNC_TENANT_FILTER || "")
@@ -117,6 +130,10 @@ function vpcConsoleBaseUrl() {
   return stripTrailingSlash(process.env.MANAGEONE_VPC_CONSOLE_BASE_URL || DEFAULT_VPC_CONSOLE_BASE_URL);
 }
 
+function capacityBaseUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_CAPACITY_BASE_URL || DEFAULT_CAPACITY_BASE_URL);
+}
+
 async function fetchTextWithTimeout(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MANAGEONE_READ_TIMEOUT_MS);
@@ -146,6 +163,127 @@ function listFromResponse(body, keys) {
   }
 
   return [];
+}
+
+function parseJsonResponse(text, label) {
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`${label} returned invalid JSON: ${String(text || "").slice(0, 300)}`);
+  }
+}
+
+function normalizeObsIdentity(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function obsTenantRows(body) {
+  if (Array.isArray(body?.tenant)) return body.tenant;
+  if (Array.isArray(body?.obs?.tenant)) return body.obs.tenant;
+  if (Array.isArray(body?.OBSCapacity?.tenant)) return body.OBSCapacity.tenant;
+  return [];
+}
+
+function obsTenantRowMatches(row, tenant) {
+  const tenantKeys = [
+    tenant?.name,
+    tenant?.id,
+    tenant?.domain_id,
+    tenant?.domainId,
+    tenant?.vdcId,
+    tenant?.tenantName
+  ].map(normalizeObsIdentity);
+  const rowKeys = [row?.tenantName, row?.tenantId, row?.vdcId, row?.domainId].map(normalizeObsIdentity);
+  return rowKeys.some((rowKey) => rowKey && tenantKeys.includes(rowKey));
+}
+
+function obsStorageClass(row) {
+  const value = firstDefined(
+    row?.storageClass,
+    row?.storage_class,
+    row?.bucketStorageClass,
+    row?.bucket_storage_class,
+    row?.storageClassName,
+    row?.dataStorageClass,
+    row?.type
+  );
+  return value ? String(value) : "Standard";
+}
+
+function obsBucketUsedGb(row) {
+  const usedMb = numberOrNull(firstDefined(row?.bucketUsed, row?.usedMb, row?.used_mb));
+  if (usedMb === null || usedMb <= 0) return 0;
+  return Math.round((usedMb / 1024) * 1000) / 1000;
+}
+
+function obsGbFromBreakdown(obsBuckets) {
+  if (!Array.isArray(obsBuckets) || obsBuckets.length === 0) return null;
+  return obsBuckets.reduce((total, bucket) => total + (numberOrNull(bucket?.totalGb) || 0), 0);
+}
+
+async function fetchObsCapacity(region, session) {
+  const url = `${capacityBaseUrl()}/rest/capacity/v1/capbase/regions/${encodeURIComponent(
+    region.regionId
+  )}/resource-types/obs/current-capacities`;
+
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "X-Auth-Token": session.token
+    },
+    redirect: "manual"
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}${text ? ` ${text.slice(0, 500)}` : ""}`);
+  }
+
+  return obsTenantRows(parseJsonResponse(text, `OBS capacity for ${region.regionName}`));
+}
+
+async function fetchObsBucketBreakdownByTenant(session, vdcs) {
+  const bucketsByVdcId = new Map();
+
+  for (const region of OBS_CAPACITY_REGIONS) {
+    try {
+      const rows = await fetchObsCapacity(region, session);
+      console.log(`[MANAGEONE SYNC] OBS3 capacity probe for ${region.regionName}: ${rows.length} tenant bucket row(s)`);
+
+      for (const vdc of vdcs) {
+        const matches = rows.filter((row) => obsTenantRowMatches(row, vdc));
+        if (matches.length === 0) continue;
+
+        const existing = bucketsByVdcId.get(String(vdc.id)) || [];
+        for (const row of matches) {
+          const totalGb = obsBucketUsedGb(row);
+          if (totalGb <= 0) continue;
+
+          existing.push({
+            bucketName: String(firstDefined(row?.bucketName, row?.name, "OBS bucket")),
+            totalGb,
+            usedMb: numberOrNull(firstDefined(row?.bucketUsed, row?.usedMb, row?.used_mb)) ?? undefined,
+            storageClass: obsStorageClass(row),
+            catalogItemName: "Fusion bucket",
+            regionId: region.regionCode,
+            regionName: region.regionName
+          });
+        }
+        if (existing.length > 0) {
+          bucketsByVdcId.set(String(vdc.id), existing);
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.warn(`[MANAGEONE SYNC] OBS3 capacity probe skipped for ${region.regionName}: ${message}`);
+    }
+  }
+
+  return bucketsByVdcId;
 }
 
 function responseTotal(body) {
@@ -780,9 +918,10 @@ function hasMixedProjectRegions(projects) {
   return regionKeys.size > 1;
 }
 
-function mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }) {
+function mapTenantUsageHistoryItem({ vdc, resourceUsage, obsBuckets, syncedAt }) {
   const resources = flattenResourceUsage(resourceUsage);
   const extra = parseExtra(vdc.extra);
+  const obsGb = obsGbFromBreakdown(obsBuckets);
 
   return {
     vdcId: String(vdc.id),
@@ -795,7 +934,7 @@ function mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }) {
     rdsInstances: resourceUsed(resources, "rds", "instance"),
     cceClusters: resourceUsed(resources, "cce", "hybrid.resource.type.cce.cluster"),
     evsGb: resourceUsed(resources, "evs", "gigabytes"),
-    obsGb: resourceUsed(resources, "obsv3", "capacity"),
+    obsGb: obsGb ?? resourceUsed(resources, "obsv3", "capacity"),
     sfsGb: resourceUsed(resources, "sfs", "gigabytes"),
     publicIps: resourceUsed(resources, "vpc", "publicIp"),
     wafInstances: resourceUsed(resources, "waf", "waf.instance"),
@@ -865,6 +1004,7 @@ function mapTenantForCrm(tenant) {
   const ecsFlavors = tenant.ecs_flavor_breakdown || [];
   const evsVolumeTypes = tenant.evs_volume_type_breakdown || [];
   const evsDiskManagedFees = tenant.evs_disk_managed_fee_breakdown || evsDiskManagedFeeFromBreakdown(evsVolumeTypes);
+  const obsBuckets = tenant.obs_bucket_breakdown || [];
   const eipBandwidths = tenant.eip_bandwidth_breakdown || [];
   const vpnGateways = tenant.vpn_gateway_breakdown || null;
   const cloudBastionHosts = tenant.cloud_bastion_host_breakdown || null;
@@ -891,6 +1031,7 @@ function mapTenantForCrm(tenant) {
     ecsFlavors,
     evsVolumeTypes,
     evsDiskManagedFees,
+    obsBuckets,
     eipBandwidths,
     ...(vpnGateways ? { vpnGateways } : {}),
     ...(cloudBastionHosts ? { cloudBastionHosts } : {}),
@@ -904,7 +1045,7 @@ async function loadSyncedTenantsForCrm(vdcIds = null) {
       vdc_id, domain_id, name, level, upper_vdc_id, enabled,
       manager_name, manager_phone, manager_email,
       ecs_used, evs_used, project_count, raw_payload, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown,
-      evs_disk_managed_fee_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown,
+      evs_disk_managed_fee_breakdown, obs_bucket_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown,
       nat_gateway_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
@@ -1826,6 +1967,7 @@ async function syncManageOneTenants() {
     const allVdcs = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
     const vdcs = filterSyncTenants(allVdcs);
     const session = await authenticate();
+    const obsBucketBreakdownByVdcId = await fetchObsBucketBreakdownByTenant(session, vdcs);
     const tenantUsageHistoryPayload = [];
     const syncedTenantVdcIds = [];
     const syncedAt = Date.now();
@@ -1845,6 +1987,7 @@ async function syncManageOneTenants() {
       let ecsFlavorBreakdownPayload = null;
       let evsVolumeTypeBreakdownPayload = null;
       let evsDiskManagedFeeBreakdownPayload = null;
+      let obsBucketBreakdownPayload = null;
       let eipBandwidthBreakdownPayload = null;
       let vpnGatewayBreakdownPayload = null;
       let cloudBastionHostBreakdownPayload = null;
@@ -1861,6 +2004,14 @@ async function syncManageOneTenants() {
       }
 
       const rawPayload = JSON.stringify(vdc);
+      const obsBucketBreakdown = obsBucketBreakdownByVdcId.get(String(vdc.id)) || [];
+      if (obsBucketBreakdown.length > 0) {
+        const totalGb = obsGbFromBreakdown(obsBucketBreakdown) || 0;
+        obsBucketBreakdownPayload = JSON.stringify(obsBucketBreakdown);
+        console.log(
+          `[MANAGEONE SYNC] OBS3 bucket breakdown for ${vdc.name || vdc.id}: ${obsBucketBreakdown.length} bucket(s), ${totalGb.toFixed(2)} GB`
+        );
+      }
 
       try {
         if (index > 0) {
@@ -1869,7 +2020,7 @@ async function syncManageOneTenants() {
 
         resourceUsage = await fetchTenantResourceUsageWithRetry(vdc, session);
         resourceUsagePayload = JSON.stringify(resourceUsage);
-        tenantUsageHistoryPayload.push(mapTenantUsageHistoryItem({ vdc, resourceUsage, syncedAt }));
+        tenantUsageHistoryPayload.push(mapTenantUsageHistoryItem({ vdc, resourceUsage, obsBuckets: obsBucketBreakdown, syncedAt }));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error || "Unknown error");
         console.error(`[MANAGEONE SYNC] resource usage skipped for ${vdc.name || vdc.id}: ${message}`);
@@ -1927,7 +2078,7 @@ async function syncManageOneTenants() {
            ecs_used, evs_used, project_count, create_user_name,
            manageone_create_at, last_synced_at, raw_payload, resource_usage,
            ecs_flavor_breakdown, evs_volume_type_breakdown, evs_disk_managed_fee_breakdown,
-           eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown, nat_gateway_breakdown)
+           obs_bucket_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown, nat_gateway_breakdown)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
@@ -1936,7 +2087,8 @@ async function syncManageOneTenants() {
            ${vdc.create_user_name ?? null}, ${dateFromMilliseconds(vdc.create_at)}, now(),
            CAST(${rawPayload} AS jsonb), CAST(${resourceUsagePayload} AS jsonb),
            CAST(${ecsFlavorBreakdownPayload} AS jsonb), CAST(${evsVolumeTypeBreakdownPayload} AS jsonb),
-           CAST(${evsDiskManagedFeeBreakdownPayload} AS jsonb), CAST(${eipBandwidthBreakdownPayload} AS jsonb),
+           CAST(${evsDiskManagedFeeBreakdownPayload} AS jsonb), CAST(${obsBucketBreakdownPayload} AS jsonb),
+           CAST(${eipBandwidthBreakdownPayload} AS jsonb),
            CAST(${vpnGatewayBreakdownPayload} AS jsonb), CAST(${cloudBastionHostBreakdownPayload} AS jsonb),
            CAST(${natGatewayBreakdownPayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
@@ -1959,6 +2111,7 @@ async function syncManageOneTenants() {
           ecs_flavor_breakdown = COALESCE(EXCLUDED.ecs_flavor_breakdown, manageone_tenants.ecs_flavor_breakdown),
           evs_volume_type_breakdown = COALESCE(EXCLUDED.evs_volume_type_breakdown, manageone_tenants.evs_volume_type_breakdown),
           evs_disk_managed_fee_breakdown = COALESCE(EXCLUDED.evs_disk_managed_fee_breakdown, manageone_tenants.evs_disk_managed_fee_breakdown),
+          obs_bucket_breakdown = COALESCE(EXCLUDED.obs_bucket_breakdown, manageone_tenants.obs_bucket_breakdown),
           eip_bandwidth_breakdown = COALESCE(EXCLUDED.eip_bandwidth_breakdown, manageone_tenants.eip_bandwidth_breakdown),
           vpn_gateway_breakdown = COALESCE(EXCLUDED.vpn_gateway_breakdown, manageone_tenants.vpn_gateway_breakdown),
           cloud_bastion_host_breakdown = COALESCE(EXCLUDED.cloud_bastion_host_breakdown, manageone_tenants.cloud_bastion_host_breakdown),
