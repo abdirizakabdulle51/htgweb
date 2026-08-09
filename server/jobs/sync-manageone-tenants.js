@@ -184,6 +184,15 @@ function obsTenantRows(body) {
   if (Array.isArray(body?.tenant)) return body.tenant;
   if (Array.isArray(body?.obs?.tenant)) return body.obs.tenant;
   if (Array.isArray(body?.OBSCapacity?.tenant)) return body.OBSCapacity.tenant;
+  if (Array.isArray(body?.data?.tenant)) return body.data.tenant;
+  if (Array.isArray(body?.data?.obs?.tenant)) return body.data.obs.tenant;
+  if (Array.isArray(body?.data?.OBSCapacity?.tenant)) return body.data.OBSCapacity.tenant;
+  if (Array.isArray(body?.tenants)) return body.tenants;
+  if (Array.isArray(body?.data?.tenants)) return body.data.tenants;
+  if (Array.isArray(body?.rows)) return body.rows;
+  if (Array.isArray(body?.data?.rows)) return body.data.rows;
+  if (Array.isArray(body?.items)) return body.items;
+  if (Array.isArray(body?.data?.items)) return body.data.items;
   return [];
 }
 
@@ -196,7 +205,17 @@ function obsTenantRowMatches(row, tenant) {
     tenant?.vdcId,
     tenant?.tenantName
   ].map(normalizeObsIdentity);
-  const rowKeys = [row?.tenantName, row?.tenantId, row?.vdcId, row?.domainId].map(normalizeObsIdentity);
+  const rowKeys = [
+    row?.tenantName,
+    row?.tenant_name,
+    row?.name,
+    row?.tenantId,
+    row?.tenant_id,
+    row?.vdcId,
+    row?.vdc_id,
+    row?.domainId,
+    row?.domain_id
+  ].map(normalizeObsIdentity);
   return rowKeys.some((rowKey) => rowKey && tenantKeys.includes(rowKey));
 }
 
@@ -214,9 +233,22 @@ function obsStorageClass(row) {
 }
 
 function obsBucketUsedGb(row) {
-  const usedMb = numberOrNull(firstDefined(row?.bucketUsed, row?.usedMb, row?.used_mb));
+  const usedMb = numberOrNull(
+    firstDefined(row?.bucketUsed, row?.bucket_used, row?.usedMb, row?.used_mb, row?.used, row?.usage)
+  );
   if (usedMb === null || usedMb <= 0) return 0;
   return Math.round((usedMb / 1024) * 1000) / 1000;
+}
+
+function obsCapacityRowSample(row) {
+  return {
+    tenantName: firstDefined(row?.tenantName, row?.tenant_name, row?.name) ?? null,
+    tenantId: firstDefined(row?.tenantId, row?.tenant_id) ?? null,
+    vdcId: firstDefined(row?.vdcId, row?.vdc_id) ?? null,
+    domainId: firstDefined(row?.domainId, row?.domain_id) ?? null,
+    bucketName: firstDefined(row?.bucketName, row?.bucket_name, row?.name) ?? null,
+    bucketUsed: firstDefined(row?.bucketUsed, row?.bucket_used, row?.usedMb, row?.used_mb, row?.used, row?.usage) ?? null
+  };
 }
 
 function obsGbFromBreakdown(obsBuckets) {
@@ -254,19 +286,23 @@ async function fetchObsBucketBreakdownByTenant(session, vdcs) {
       const rows = await fetchObsCapacity(region, session);
       console.log(`[MANAGEONE SYNC] OBS3 capacity probe for ${region.regionName}: ${rows.length} tenant bucket row(s)`);
 
+      let regionMatchCount = 0;
       for (const vdc of vdcs) {
         const matches = rows.filter((row) => obsTenantRowMatches(row, vdc));
         if (matches.length === 0) continue;
 
+        regionMatchCount += matches.length;
         const existing = bucketsByVdcId.get(String(vdc.id)) || [];
         for (const row of matches) {
           const totalGb = obsBucketUsedGb(row);
           if (totalGb <= 0) continue;
 
           existing.push({
-            bucketName: String(firstDefined(row?.bucketName, row?.name, "OBS bucket")),
+            bucketName: String(firstDefined(row?.bucketName, row?.bucket_name, row?.name, "OBS bucket")),
             totalGb,
-            usedMb: numberOrNull(firstDefined(row?.bucketUsed, row?.usedMb, row?.used_mb)) ?? undefined,
+            usedMb:
+              numberOrNull(firstDefined(row?.bucketUsed, row?.bucket_used, row?.usedMb, row?.used_mb, row?.used, row?.usage)) ??
+              undefined,
             storageClass: obsStorageClass(row),
             catalogItemName: "Fusion bucket",
             regionId: region.regionCode,
@@ -276,6 +312,13 @@ async function fetchObsBucketBreakdownByTenant(session, vdcs) {
         if (existing.length > 0) {
           bucketsByVdcId.set(String(vdc.id), existing);
         }
+      }
+      if (rows.length > 0 && regionMatchCount === 0) {
+        console.warn(
+          `[MANAGEONE SYNC] OBS3 capacity rows for ${region.regionName} did not match selected tenants; sample ${JSON.stringify(
+            rows.slice(0, 3).map(obsCapacityRowSample)
+          )}`
+        );
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || "Unknown error");
