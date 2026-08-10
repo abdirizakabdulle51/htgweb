@@ -82,6 +82,18 @@ function vpcConsoleBaseUrl() {
   return stripTrailingSlash(process.env.MANAGEONE_VPC_CONSOLE_BASE_URL || DEFAULT_VPC_CONSOLE_BASE_URL);
 }
 
+function copiedNatUrlProjectId() {
+  if (!NAT_REQUEST_URL) return "";
+  try {
+    const url = new URL(NAT_REQUEST_URL);
+    const parts = url.pathname.split("/").filter(Boolean);
+    const v2Index = parts.findIndex((part) => part === "v2");
+    return v2Index >= 0 ? parts[v2Index + 1] || "" : "";
+  } catch {
+    return "";
+  }
+}
+
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -948,12 +960,60 @@ async function diagnoseTenant(vdc, session) {
   };
 }
 
+async function findTenantProjectOwner(vdcs, targetProjectId, session) {
+  if (!targetProjectId) return null;
+
+  for (const vdc of vdcs) {
+    try {
+      const projects = await listTenantProjects(vdc, session);
+      const project = projects.find((candidate) => String(projectId(candidate) || "") === String(targetProjectId));
+      if (project) {
+        const regionFields = projectRegionFields(project);
+        return {
+          projectId: String(targetProjectId),
+          tenant: {
+            vdcId: String(vdc.id),
+            domainId: vdc.domain_id ?? null,
+            name: String(vdc.name || vdc.id)
+          },
+          project: {
+            id: String(projectId(project)),
+            name: projectName(project),
+            vpcPortalProjectName: vpcPortalProjectHeaderName(project),
+            regionId: regionFields.regionId ?? null,
+            regionName: regionFields.regionName ?? null
+          }
+        };
+      }
+    } catch (error) {
+      console.warn(
+        `[EDGE EXPOSURE] copied NAT project owner lookup skipped ${vdc.name || vdc.id}: ${
+          error instanceof Error ? error.message : String(error || "Unknown error")
+        }`
+      );
+    }
+
+    await delay(REQUEST_DELAY_MS);
+  }
+
+  return {
+    projectId: String(targetProjectId),
+    tenant: null,
+    project: null
+  };
+}
+
 async function main() {
   console.log("[EDGE EXPOSURE] read-only diagnostic started");
   console.log("[EDGE EXPOSURE] no DB writes, no CRM push, no API response changes");
 
   const session = await authenticate();
-  const tenants = filterTenants(await listAllVdcs({ upper_vdc_id: "0", used: "true" }));
+  const allTenants = await listAllVdcs({ upper_vdc_id: "0", used: "true" });
+  const copiedNatProjectId = copiedNatUrlProjectId();
+  const copiedNatProjectLookup = copiedNatProjectId
+    ? await findTenantProjectOwner(allTenants, copiedNatProjectId, session)
+    : null;
+  const tenants = filterTenants(allTenants);
   const results = [];
 
   console.log(`[EDGE EXPOSURE] tenants selected: ${tenants.length}`);
@@ -974,7 +1034,17 @@ async function main() {
   }
 
   console.log("\n================ EDGE EXPOSURE REPORT ================");
-  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), tenants: results }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        ...(copiedNatProjectLookup ? { copiedNatProjectLookup } : {}),
+        tenants: results
+      },
+      null,
+      2
+    )
+  );
   console.log("================ END EDGE EXPOSURE REPORT ================");
 }
 
