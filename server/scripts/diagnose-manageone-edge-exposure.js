@@ -2,6 +2,7 @@ import "dotenv/config";
 import { authenticate, listAllVdcs } from "../manageone.js";
 
 const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
+const DEFAULT_VPC_CONSOLE_BASE_URL = "https://service-hq3.htgclouds.com/vpc/rest/v2";
 const REQUEST_TIMEOUT_MS = Number(process.env.MANAGEONE_TIMEOUT_MS || 30000);
 const REQUEST_DELAY_MS = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_DELAY_MS || 500);
 const PROJECT_PAGE_LIMIT = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_PROJECT_PAGE_LIMIT || 100);
@@ -18,25 +19,30 @@ const EDGE_PROBES = [
     key: "publicIps",
     label: "Public IPs",
     serviceId: "vpc",
-    resourceTypeNames: ["CLOUD_FLOATING_IPS", "CLOUD_EIP"]
+    resourceTypeNames: ["CLOUD_FLOATING_IPS", "CLOUD_EIP"],
+    tenantResourceClasses: ["CLOUD_FLOATING_IPS"]
   },
   {
     key: "bandwidths",
     label: "Bandwidths",
     serviceId: "vpc",
-    resourceTypeNames: ["CLOUD_BANDWIDTHS"]
+    resourceTypeNames: ["CLOUD_BANDWIDTHS"],
+    tenantResourceClasses: ["CLOUD_BANDWIDTHS"]
   },
   {
     key: "loadBalancers",
     label: "Load Balancers",
     serviceId: "elb",
-    resourceTypeNames: ["CLOUD_ELB", "CLOUD_ELB_LOADBALANCER"]
+    resourceTypeNames: ["CLOUD_ELB", "CLOUD_ELB_LOADBALANCER"],
+    tenantResourceClasses: ["CLOUD_ELB"]
   },
   {
     key: "natGateways",
     label: "NAT Gateways",
     serviceId: "vpc",
-    resourceTypeNames: ["CLOUD_NAT_GATEWAY", "CLOUD_NAT", "NAT Gateway"]
+    resourceTypeNames: ["CLOUD_NAT_GATEWAY", "CLOUD_NAT", "NAT Gateway"],
+    tenantResourceClasses: ["CLOUD_NAT_GATEWAY", "CLOUD_NAT"],
+    vpcPortal: true
   },
   {
     key: "vpnGateways",
@@ -60,6 +66,10 @@ function vdcEndpointBaseUrl() {
 
 function resourceEndpointBaseUrl() {
   return `${manageOneRootUrl()}/rest/resource`;
+}
+
+function vpcConsoleBaseUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_VPC_CONSOLE_BASE_URL || DEFAULT_VPC_CONSOLE_BASE_URL);
 }
 
 function delay(milliseconds) {
@@ -206,6 +216,18 @@ async function fetchNativeResourcePage({ projectId: id, probe, resourceTypeName,
   return readManageOneJson(`${probe.key} native ${resourceTypeName}`, url, session);
 }
 
+async function fetchDomainNativeResourcePage({ vdc, probe, resourceTypeName, session, start, limit }) {
+  const params = new URLSearchParams({
+    service_id: probe.serviceId,
+    resource_type_name: resourceTypeName,
+    domain_id: String(vdc.domain_id || ""),
+    start: String(start),
+    limit: String(limit)
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  return readManageOneJson(`${probe.key} domain native ${resourceTypeName}`, url, session);
+}
+
 async function fetchResourceIndexPage({ vdc, resourceTypeName, session, start, limit, scope }) {
   const params = new URLSearchParams({
     start: String(start),
@@ -217,6 +239,22 @@ async function fetchResourceIndexPage({ vdc, resourceTypeName, session, start, l
   });
   const url = `${resourceEndpointBaseUrl()}/v3.0/resources?${params}`;
   return readManageOneJson(`${resourceTypeName} resource index for ${vdc.name || vdc.id}`, url, session);
+}
+
+async function fetchTenantResourceClassPage({ vdc, className, session, start, limit }) {
+  const params = new URLSearchParams({
+    start: String(start),
+    limit: String(limit),
+    domain_id: String(vdc.domain_id || ""),
+    vdc_id: String(vdc.id || ""),
+    tenant_id: String(vdc.id || ""),
+    extendParam: makeExtendParam({
+      domain_id: String(vdc.domain_id || ""),
+      vdc_id: String(vdc.id || "")
+    })
+  });
+  const url = `${manageOneRootUrl()}/rest/tenant-resource/v1/tenant/resources/${encodeURIComponent(className)}?${params}`;
+  return readManageOneJson(`${className} tenant resource class for ${vdc.name || vdc.id}`, url, session);
 }
 
 async function pagedNativeResources({ project, probe, resourceTypeName, session }) {
@@ -253,6 +291,69 @@ async function pagedNativeResources({ project, probe, resourceTypeName, session 
   return responses.flatMap((response) => listFromResponse(response, ["resources", "resource_list", "native_resources"]));
 }
 
+async function pagedDomainNativeResources({ vdc, probe, resourceTypeName, session }) {
+  if (!vdc?.domain_id) return [];
+
+  const responses = [];
+  let start = 0;
+  let total = Infinity;
+  let page = 0;
+
+  while (start < total) {
+    page += 1;
+    if (page > RESOURCE_MAX_PAGES) {
+      throw new Error(`${probe.key} domain native pagination exceeded ${RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`);
+    }
+
+    const body = await fetchDomainNativeResourcePage({
+      vdc,
+      probe,
+      resourceTypeName,
+      session,
+      start,
+      limit: RESOURCE_PAGE_LIMIT
+    });
+    responses.push(body);
+    const records = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    total = responseTotal(body, start + records.length);
+    start += RESOURCE_PAGE_LIMIT;
+
+    if (start < total) await delay(REQUEST_DELAY_MS);
+  }
+
+  return responses.flatMap((response) => listFromResponse(response, ["resources", "resource_list", "native_resources"]));
+}
+
+async function pagedTenantResourceClass({ vdc, className, session }) {
+  const responses = [];
+  let start = 0;
+  let total = Infinity;
+  let page = 0;
+
+  while (start < total) {
+    page += 1;
+    if (page > RESOURCE_MAX_PAGES) {
+      throw new Error(`${className} tenant-resource pagination exceeded ${RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`);
+    }
+
+    const body = await fetchTenantResourceClassPage({
+      vdc,
+      className,
+      session,
+      start,
+      limit: RESOURCE_PAGE_LIMIT
+    });
+    responses.push(body);
+    const records = listFromResponse(body, ["objList", "resources", "resource_list", "instances"]);
+    total = responseTotal(body, start + records.length);
+    start += RESOURCE_PAGE_LIMIT;
+
+    if (start < total) await delay(REQUEST_DELAY_MS);
+  }
+
+  return responses.flatMap((response) => listFromResponse(response, ["objList", "resources", "resource_list", "instances"]));
+}
+
 async function resourceIndexSample({ vdc, resourceTypeName, session, scope }) {
   const body = await fetchResourceIndexPage({
     vdc,
@@ -263,6 +364,75 @@ async function resourceIndexSample({ vdc, resourceTypeName, session, scope }) {
     limit: Math.min(RESOURCE_PAGE_LIMIT, 100)
   });
   return listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+}
+
+function optionalVpcPortalHeaders(context = {}) {
+  const cookie = String(process.env.MANAGEONE_VPC_COOKIE || "").trim();
+  const region = String(firstDefined(context.regionHeader, process.env.MANAGEONE_VPC_REGION) || "").trim();
+  const projectName = String(firstDefined(context.projectNameHeader, process.env.MANAGEONE_VPC_PROJECT_NAME) || "").trim();
+  const language = String(process.env.MANAGEONE_VPC_X_LANGUAGE || "en-us").trim();
+  const targetServices = String(process.env.MANAGEONE_VPC_X_TARGET_SERVICES || "").trim();
+  const headers = {};
+
+  if (cookie) headers.Cookie = cookie;
+  if (region) headers.Region = region;
+  if (projectName) headers.Projectname = projectName;
+  if (language) headers["X-Language"] = language;
+  if (targetServices) headers["X-Target-Services"] = targetServices;
+
+  return headers;
+}
+
+async function readVpcPortalJson(label, url, context = {}) {
+  const portalHeaders = optionalVpcPortalHeaders(context);
+  if (!portalHeaders.Cookie) {
+    throw new Error("MANAGEONE_VPC_COOKIE is required for VPC portal NAT lookup");
+  }
+
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      ...portalHeaders
+    }
+  });
+  const body = parseJson(text, label);
+  if (!response.ok) {
+    throw new Error(`${label} failed: HTTP ${response.status}${text ? ` ${text.slice(0, 500)}` : ""}`);
+  }
+  return body;
+}
+
+function vpcPortalProjectHeaderName(project) {
+  return String(
+    firstDefined(
+      project?.iam_project_name,
+      project?.iamProjectName,
+      project?.project_name,
+      project?.projectName,
+      project?.name,
+      project?.resource_space_name,
+      project?.resourceSpaceName,
+      project?.display_name,
+      project?.displayName,
+      project?.id
+    ) || ""
+  );
+}
+
+async function fetchVpcNatGateways(project, context = {}) {
+  const id = projectId(project);
+  if (!id) return [];
+
+  const params = new URLSearchParams({
+    limit: String(RESOURCE_PAGE_LIMIT),
+    marker: "",
+    enterprise_project_id: "all_granted_eps"
+  });
+  const url = `${vpcConsoleBaseUrl()}/${encodeURIComponent(String(id))}/nat_gateways?${params}`;
+  const body = await readVpcPortalJson(`VPC NAT gateway list for project ${id}`, url, context);
+  return listFromResponse(body, ["nat_gateways", "natGateways", "gateways"]);
 }
 
 function uniqueResourceKey(record) {
@@ -324,6 +494,31 @@ async function collectEdgeResources(vdc, projects, session) {
     const failures = [];
 
     for (const resourceTypeName of probe.resourceTypeNames) {
+      try {
+        await delay(REQUEST_DELAY_MS);
+        const records = await pagedDomainNativeResources({
+          vdc,
+          probe,
+          resourceTypeName,
+          session
+        });
+        for (const record of records) {
+          const resource = compactResource(
+            pickResourceFields(record, {
+              resourceTypeName,
+              serviceId: probe.serviceId
+            })
+          );
+          if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+        }
+      } catch (error) {
+        failures.push({
+          method: "domainNative",
+          resourceTypeName,
+          message: error instanceof Error ? error.message : String(error || "Unknown error")
+        });
+      }
+
       for (const project of projects) {
         const id = projectId(project);
         const regionFields = projectRegionFields(project);
@@ -384,6 +579,67 @@ async function collectEdgeResources(vdc, projects, session) {
             method: "resourceIndex",
             resourceTypeName,
             scope,
+            message: error instanceof Error ? error.message : String(error || "Unknown error")
+          });
+        }
+      }
+    }
+
+    for (const className of probe.tenantResourceClasses || []) {
+      try {
+        await delay(REQUEST_DELAY_MS);
+        const records = await pagedTenantResourceClass({
+          vdc,
+          className,
+          session
+        });
+        for (const record of records) {
+          const resource = compactResource(
+            pickResourceFields(record, {
+              resourceTypeName: className,
+              serviceId: probe.serviceId
+            })
+          );
+          if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+        }
+      } catch (error) {
+        failures.push({
+          method: "tenantResource",
+          className,
+          message: error instanceof Error ? error.message : String(error || "Unknown error")
+        });
+      }
+    }
+
+    if (probe.vpcPortal) {
+      for (const project of projects) {
+        const id = projectId(project);
+        const regionFields = projectRegionFields(project);
+        const portalContext = {
+          regionHeader: firstDefined(regionFields.regionId, regionFields.regionName, process.env.MANAGEONE_VPC_REGION),
+          projectNameHeader: vpcPortalProjectHeaderName(project)
+        };
+
+        try {
+          await delay(REQUEST_DELAY_MS);
+          const records = await fetchVpcNatGateways(project, portalContext);
+          for (const record of records) {
+            const resource = compactResource(
+              pickResourceFields(record, {
+                resourceTypeName: "CLOUD_NAT_GATEWAY",
+                serviceId: probe.serviceId,
+                projectId: id ? String(id) : undefined,
+                projectName: projectName(project),
+                ...regionFields
+              })
+            );
+            if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+          }
+        } catch (error) {
+          failures.push({
+            method: "vpcPortal",
+            resourceTypeName: "CLOUD_NAT_GATEWAY",
+            projectId: id ? String(id) : undefined,
             message: error instanceof Error ? error.message : String(error || "Unknown error")
           });
         }
