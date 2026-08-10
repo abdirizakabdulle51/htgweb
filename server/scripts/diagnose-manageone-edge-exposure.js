@@ -833,41 +833,71 @@ async function collectEdgeResources(vdc, projects, session) {
       }
 
       if (NAT_REQUEST_URL) {
-        const copiedUrlContext = {
-          regionHeader: process.env.MANAGEONE_VPC_REGION,
-          projectNameHeader: process.env.MANAGEONE_VPC_PROJECT_NAME
+        const copiedUrlContexts = [
+          {
+            label: "env",
+            regionHeader: process.env.MANAGEONE_VPC_REGION,
+            projectNameHeader: process.env.MANAGEONE_VPC_PROJECT_NAME
+          },
+          ...projects.map((project) => {
+            const regionFields = projectRegionFields(project);
+            return {
+              label: projectName(project),
+              projectId: projectId(project),
+              regionHeader: firstDefined(regionFields.regionId, regionFields.regionName, process.env.MANAGEONE_VPC_REGION),
+              projectNameHeader: vpcPortalProjectHeaderName(project)
+            };
+          })
+        ].filter((context, index, contexts) => {
+          const key = `${context.regionHeader || ""}:${context.projectNameHeader || ""}`;
+          return key !== ":" && contexts.findIndex((candidate) => `${candidate.regionHeader || ""}:${candidate.projectNameHeader || ""}` === key) === index;
+        });
+
+        diagnostics.copiedBrowserNatRequest = {
+          requestUrl: NAT_REQUEST_URL,
+          attempts: []
         };
 
-        try {
-          await delay(REQUEST_DELAY_MS);
-          const result = await fetchVpcNatGatewaysFromUrl(NAT_REQUEST_URL, copiedUrlContext);
-          diagnostics.copiedBrowserNatRequest = {
-            requestUrl: result.url,
-            authMode: result.authMode,
-            recordCount: result.records.length,
-            requestHeaders: sanitizedVpcPortalHeaders(copiedUrlContext)
-          };
-          for (const record of result.records) {
-            const resource = compactResource(
-              pickResourceFields(record, {
-                resourceTypeName: "CLOUD_NAT_GATEWAY",
-                serviceId: probe.serviceId,
-                source: "vpcPortal:copied-browser-url"
-              })
-            );
-            if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+        for (const copiedUrlContext of copiedUrlContexts) {
+          try {
+            await delay(REQUEST_DELAY_MS);
+            const result = await fetchVpcNatGatewaysFromUrl(NAT_REQUEST_URL, copiedUrlContext);
+            diagnostics.copiedBrowserNatRequest.attempts.push({
+              context: copiedUrlContext.label,
+              projectId: copiedUrlContext.projectId ? String(copiedUrlContext.projectId) : undefined,
+              authMode: result.authMode,
+              recordCount: result.records.length,
+              requestHeaders: sanitizedVpcPortalHeaders(copiedUrlContext)
+            });
+            for (const record of result.records) {
+              const resource = compactResource(
+                pickResourceFields(record, {
+                  resourceTypeName: "CLOUD_NAT_GATEWAY",
+                  serviceId: probe.serviceId,
+                  source: "vpcPortal:copied-browser-url",
+                  projectId: copiedUrlContext.projectId ? String(copiedUrlContext.projectId) : undefined,
+                  projectName: copiedUrlContext.label
+                })
+              );
+              if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+            }
+          } catch (error) {
+            diagnostics.copiedBrowserNatRequest.attempts.push({
+              context: copiedUrlContext.label,
+              projectId: copiedUrlContext.projectId ? String(copiedUrlContext.projectId) : undefined,
+              recordCount: 0,
+              requestHeaders: sanitizedVpcPortalHeaders(copiedUrlContext),
+              error: error instanceof Error ? error.message : String(error || "Unknown error")
+            });
           }
-        } catch (error) {
-          diagnostics.copiedBrowserNatRequest = {
-            requestUrl: NAT_REQUEST_URL,
-            recordCount: 0,
-            requestHeaders: sanitizedVpcPortalHeaders(copiedUrlContext),
-            error: error instanceof Error ? error.message : String(error || "Unknown error")
-          };
+        }
+
+        if (!diagnostics.copiedBrowserNatRequest.attempts.some((attempt) => attempt.recordCount > 0)) {
+          await delay(REQUEST_DELAY_MS);
           failures.push({
             method: "vpcPortalCopiedBrowserUrl",
             resourceTypeName: "CLOUD_NAT_GATEWAY",
-            message: error instanceof Error ? error.message : String(error || "Unknown error")
+            message: "Copied browser NAT URL returned no records for all tested project header contexts"
           });
         }
       }
