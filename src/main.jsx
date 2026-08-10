@@ -58,7 +58,7 @@ import {
 } from "./pricing/pricingEngine";
 import "./styles.css";
 
-const logoPath = "/logo.png";
+const logoPath = "/Logo.svg";
 const authPanelPath = "/auth-side-panel.png";
 const externalSignInUrl =
   "https://auth.htgclouds.com/mounisso/login.action/authenticate?service=https:%2F%2Fauth.htgclouds.com%2Fmounisso%2Fv1%2Fsc%2Fcas%2Flogin%3Fservice%3Dhttps%253A%252F%252Fservice.htgclouds.com%252Fmotenantconsolehomewebsite%252F";
