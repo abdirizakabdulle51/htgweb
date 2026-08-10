@@ -13581,14 +13581,16 @@ function SkuPreview({ sku, service, billingPeriod, region, includedStorageLabel 
             <dd>{sku.ramGb} GB</dd>
           </div>
         )}
-        <div className="selected-config-storage" key={includedStorageLabel}>
-          <span className="storage-free-ribbon">FREE</span>
-          <dt>Included Storage</dt>
-          <dd>
-            <CircleCheck size={14} aria-hidden="true" />
-            {includedStorageLabel}
-          </dd>
-        </div>
+        {service.category === "compute" && (
+          <div className="selected-config-storage" key={includedStorageLabel}>
+            <span className="storage-free-ribbon">FREE</span>
+            <dt>Included Storage</dt>
+            <dd>
+              <CircleCheck size={14} aria-hidden="true" />
+              {includedStorageLabel}
+            </dd>
+          </div>
+        )}
         {sku.storageGb !== undefined && (
           <div>
             <dt>Storage</dt>
