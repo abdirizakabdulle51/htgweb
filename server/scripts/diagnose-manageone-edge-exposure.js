@@ -2,24 +2,29 @@ import "dotenv/config";
 import { authenticate, listAllVdcs } from "../manageone.js";
 
 const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
+const DEFAULT_AUTH_BASE_URL = "https://10.20.24.9:26335";
+const DEFAULT_AUTH_DOMAIN = "mo_bss_admin";
 const DEFAULT_VPC_CONSOLE_BASE_URL = "https://service-hq3.htgclouds.com/vpc/rest/v2";
 const REQUEST_TIMEOUT_MS = Number(process.env.MANAGEONE_TIMEOUT_MS || 30000);
 const REQUEST_DELAY_MS = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_DELAY_MS || 500);
 const PROJECT_PAGE_LIMIT = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_PROJECT_PAGE_LIMIT || 100);
 const PROJECT_MAX_PAGES = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_PROJECT_MAX_PAGES || 20);
-const RESOURCE_PAGE_LIMIT = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_RESOURCE_PAGE_LIMIT || 300);
-const RESOURCE_MAX_PAGES = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_RESOURCE_MAX_PAGES || 10);
+const RESOURCE_PAGE_LIMIT = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_RESOURCE_PAGE_LIMIT || 1000);
+const RESOURCE_MAX_PAGES = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_RESOURCE_MAX_PAGES || 20);
+const RESOURCE_SAMPLE_LIMIT = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_RESOURCE_SAMPLE_LIMIT || 20);
+const INCLUDE_ALL_RESOURCES = process.env.MANAGEONE_EDGE_DIAGNOSTIC_INCLUDE_ALL_RESOURCES === "true";
 const TENANT_FILTER = String(process.env.MANAGEONE_EDGE_DIAGNOSTIC_TENANT_FILTER || "")
   .trim()
   .toLowerCase();
 const MAX_TENANTS = Number(process.env.MANAGEONE_EDGE_DIAGNOSTIC_MAX_TENANTS || 2);
+const projectScopedTokenCache = new Map();
 
 const EDGE_PROBES = [
   {
     key: "publicIps",
     label: "Public IPs",
     serviceId: "vpc",
-    resourceTypeNames: ["CLOUD_FLOATING_IPS", "CLOUD_EIP"],
+    resourceTypeNames: ["CLOUD_FLOATING_IPS", "CLOUD_EIP", "CLOUD_PUBLIC_IP", "CLOUD_PUBLICIPS"],
     tenantResourceClasses: ["CLOUD_FLOATING_IPS"]
   },
   {
@@ -60,6 +65,10 @@ function manageOneRootUrl() {
   return stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL).replace(/\/rest\/vdc$/, "");
 }
 
+function authBaseUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_AUTH_BASE_URL || DEFAULT_AUTH_BASE_URL);
+}
+
 function vdcEndpointBaseUrl() {
   return stripTrailingSlash(process.env.MANAGEONE_BASE_URL || DEFAULT_MANAGEONE_BASE_URL);
 }
@@ -93,7 +102,13 @@ function listFromResponse(body, keys) {
 
 function responseTotal(body, fallbackTotal) {
   const total = Number(body?.total ?? body?.totalNum);
-  return Number.isFinite(total) ? total : fallbackTotal;
+  return Number.isFinite(total) ? total : fallbackTotal ?? null;
+}
+
+function shouldFetchNextPage({ reportedTotal, start, pageSize, pageResourceCount }) {
+  if (pageResourceCount === 0) return false;
+  if (reportedTotal !== null && reportedTotal > start + pageResourceCount) return true;
+  return pageResourceCount >= pageSize;
 }
 
 function makeExtendParam(value) {
@@ -148,6 +163,54 @@ async function readManageOneJson(label, url, session) {
   return body;
 }
 
+async function authenticateProjectScoped(projectIdValue) {
+  if (projectScopedTokenCache.has(projectIdValue)) {
+    return projectScopedTokenCache.get(projectIdValue);
+  }
+
+  const { response, text } = await fetchTextWithTimeout(`${authBaseUrl()}/v3/auth/tokens`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      auth: {
+        identity: {
+          methods: ["password"],
+          password: {
+            user: {
+              name: process.env.MANAGEONE_USERNAME || "",
+              password: process.env.MANAGEONE_PASSWORD || "",
+              domain: {
+                name: process.env.MANAGEONE_AUTH_DOMAIN || DEFAULT_AUTH_DOMAIN
+              }
+            }
+          }
+        },
+        scope: {
+          project: {
+            id: projectIdValue
+          }
+        }
+      }
+    })
+  });
+
+  if (response.status !== 201) {
+    throw new Error(`project-scoped token for ${projectIdValue} failed: HTTP ${response.status}${text ? ` ${text.slice(0, 500)}` : ""}`);
+  }
+
+  const token = response.headers.get("x-subject-token");
+  if (!token) {
+    throw new Error(`project-scoped token for ${projectIdValue}: response did not include X-Subject-Token`);
+  }
+
+  const session = { token };
+  projectScopedTokenCache.set(projectIdValue, session);
+  return session;
+}
+
 async function fetchProjectPage(vdc, session, start, limit) {
   const url = `${vdcEndpointBaseUrl()}/v3.1/vdcs/${encodeURIComponent(vdc.id)}/projects?start=${start}&limit=${limit}`;
   return readManageOneJson(`projects for ${vdc.name || vdc.id}`, url, session);
@@ -168,10 +231,18 @@ async function listTenantProjects(vdc, session) {
     const body = await fetchProjectPage(vdc, session, start, PROJECT_PAGE_LIMIT);
     const pageProjects = listFromResponse(body, ["projects", "project_list"]);
     projects.push(...pageProjects);
+    const pageCount = pageProjects.length;
     total = responseTotal(body, projects.length);
+    const hasNextPage = shouldFetchNextPage({
+      reportedTotal: total,
+      start,
+      pageSize: PROJECT_PAGE_LIMIT,
+      pageResourceCount: pageCount
+    });
     start += PROJECT_PAGE_LIMIT;
 
-    if (start < total) await delay(REQUEST_DELAY_MS);
+    if (!hasNextPage) break;
+    await delay(REQUEST_DELAY_MS);
   }
 
   return projects;
@@ -282,10 +353,17 @@ async function pagedNativeResources({ project, probe, resourceTypeName, session 
     });
     responses.push(body);
     const records = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
-    total = responseTotal(body, start + records.length);
+    total = responseTotal(body);
+    const hasNextPage = shouldFetchNextPage({
+      reportedTotal: total,
+      start,
+      pageSize: RESOURCE_PAGE_LIMIT,
+      pageResourceCount: records.length
+    });
     start += RESOURCE_PAGE_LIMIT;
 
-    if (start < total) await delay(REQUEST_DELAY_MS);
+    if (!hasNextPage) break;
+    await delay(REQUEST_DELAY_MS);
   }
 
   return responses.flatMap((response) => listFromResponse(response, ["resources", "resource_list", "native_resources"]));
@@ -315,10 +393,17 @@ async function pagedDomainNativeResources({ vdc, probe, resourceTypeName, sessio
     });
     responses.push(body);
     const records = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
-    total = responseTotal(body, start + records.length);
+    total = responseTotal(body);
+    const hasNextPage = shouldFetchNextPage({
+      reportedTotal: total,
+      start,
+      pageSize: RESOURCE_PAGE_LIMIT,
+      pageResourceCount: records.length
+    });
     start += RESOURCE_PAGE_LIMIT;
 
-    if (start < total) await delay(REQUEST_DELAY_MS);
+    if (!hasNextPage) break;
+    await delay(REQUEST_DELAY_MS);
   }
 
   return responses.flatMap((response) => listFromResponse(response, ["resources", "resource_list", "native_resources"]));
@@ -345,10 +430,17 @@ async function pagedTenantResourceClass({ vdc, className, session }) {
     });
     responses.push(body);
     const records = listFromResponse(body, ["objList", "resources", "resource_list", "instances"]);
-    total = responseTotal(body, start + records.length);
+    total = responseTotal(body);
+    const hasNextPage = shouldFetchNextPage({
+      reportedTotal: total,
+      start,
+      pageSize: RESOURCE_PAGE_LIMIT,
+      pageResourceCount: records.length
+    });
     start += RESOURCE_PAGE_LIMIT;
 
-    if (start < total) await delay(REQUEST_DELAY_MS);
+    if (!hasNextPage) break;
+    await delay(REQUEST_DELAY_MS);
   }
 
   return responses.flatMap((response) => listFromResponse(response, ["objList", "resources", "resource_list", "instances"]));
@@ -368,6 +460,7 @@ async function resourceIndexSample({ vdc, resourceTypeName, session, scope }) {
 
 function optionalVpcPortalHeaders(context = {}) {
   const cookie = String(process.env.MANAGEONE_VPC_COOKIE || "").trim();
+  const agencyId = String(process.env.MANAGEONE_VPC_AGENCY_ID || "").trim();
   const region = String(firstDefined(context.regionHeader, process.env.MANAGEONE_VPC_REGION) || "").trim();
   const projectName = String(firstDefined(context.projectNameHeader, process.env.MANAGEONE_VPC_PROJECT_NAME) || "").trim();
   const language = String(process.env.MANAGEONE_VPC_X_LANGUAGE || "en-us").trim();
@@ -375,10 +468,12 @@ function optionalVpcPortalHeaders(context = {}) {
   const headers = {};
 
   if (cookie) headers.Cookie = cookie;
+  if (agencyId) headers.Agencyid = agencyId;
   if (region) headers.Region = region;
   if (projectName) headers.Projectname = projectName;
   if (language) headers["X-Language"] = language;
   if (targetServices) headers["X-Target-Services"] = targetServices;
+  headers["X-Requested-With"] = "XMLHttpRequest";
 
   return headers;
 }
@@ -421,18 +516,65 @@ function vpcPortalProjectHeaderName(project) {
   );
 }
 
-async function fetchVpcNatGateways(project, context = {}) {
+async function fetchVpcNatGateways(project, adminSession, context = {}) {
   const id = projectId(project);
-  if (!id) return [];
+  if (!id) return { authMode: null, attempts: [], records: [] };
 
   const params = new URLSearchParams({
-    limit: String(RESOURCE_PAGE_LIMIT),
-    marker: "",
+    sort_key: "created_at",
+    sort_dir: "desc",
     enterprise_project_id: "all_granted_eps"
   });
   const url = `${vpcConsoleBaseUrl()}/${encodeURIComponent(String(id))}/nat_gateways?${params}`;
-  const body = await readVpcPortalJson(`VPC NAT gateway list for project ${id}`, url, context);
-  return listFromResponse(body, ["nat_gateways", "natGateways", "gateways"]);
+  const attempts = [];
+
+  try {
+    const body = await readVpcPortalJson(`VPC NAT gateway list for project ${id} with VPC portal headers`, url, context);
+    return {
+      authMode: "vpc-portal-headers",
+      attempts,
+      records: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
+    };
+  } catch (error) {
+    attempts.push({
+      authMode: "vpc-portal-headers",
+      error: error instanceof Error ? error.message : String(error || "Unknown error")
+    });
+  }
+
+  try {
+    const projectSession = await authenticateProjectScoped(String(id));
+    const body = await readManageOneJson(`VPC NAT gateway list for project ${id} with project-scoped token`, url, projectSession);
+    return {
+      authMode: "project-scoped-token",
+      attempts,
+      records: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
+    };
+  } catch (error) {
+    attempts.push({
+      authMode: "project-scoped-token",
+      error: error instanceof Error ? error.message : String(error || "Unknown error")
+    });
+  }
+
+  try {
+    const body = await readManageOneJson(`VPC NAT gateway list for project ${id} with admin domain token`, url, adminSession);
+    return {
+      authMode: "admin-domain-token",
+      attempts,
+      records: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
+    };
+  } catch (error) {
+    attempts.push({
+      authMode: "admin-domain-token",
+      error: error instanceof Error ? error.message : String(error || "Unknown error")
+    });
+  }
+
+  const summary = attempts.map((attempt) => `${attempt.authMode}: ${attempt.error}`).join(" | ");
+  const combinedError = new Error(`VPC NAT gateway list for project ${id} failed. Attempts: ${summary}`);
+  combinedError.attempts = attempts;
+  throw combinedError;
 }
 
 function uniqueResourceKey(record) {
@@ -457,6 +599,7 @@ function pickResourceFields(record, context = {}) {
     name: firstDefined(record?.name, record?.resource_name, record?.resourceName, record?.deviceName),
     resourceTypeName: firstDefined(record?.resource_type_name, record?.resourceTypeName, record?.cloud_resource_type, context.resourceTypeName),
     serviceId: firstDefined(record?.service_id, record?.serviceId, record?.service_name, record?.serviceName, context.serviceId),
+    source: context.source,
     status: firstDefined(record?.status, record?.state, record?.resource_status, record?.resourceStatus),
     ipAddress: firstDefined(
       record?.ip,
@@ -622,12 +765,13 @@ async function collectEdgeResources(vdc, projects, session) {
 
         try {
           await delay(REQUEST_DELAY_MS);
-          const records = await fetchVpcNatGateways(project, portalContext);
-          for (const record of records) {
+          const result = await fetchVpcNatGateways(project, session, portalContext);
+          for (const record of result.records) {
             const resource = compactResource(
               pickResourceFields(record, {
                 resourceTypeName: "CLOUD_NAT_GATEWAY",
                 serviceId: probe.serviceId,
+                source: `vpcPortal:${result.authMode}`,
                 projectId: id ? String(id) : undefined,
                 projectName: projectName(project),
                 ...regionFields
@@ -640,6 +784,7 @@ async function collectEdgeResources(vdc, projects, session) {
             method: "vpcPortal",
             resourceTypeName: "CLOUD_NAT_GATEWAY",
             projectId: id ? String(id) : undefined,
+            attempts: Array.isArray(error?.attempts) ? error.attempts : undefined,
             message: error instanceof Error ? error.message : String(error || "Unknown error")
           });
         }
@@ -652,7 +797,10 @@ async function collectEdgeResources(vdc, projects, session) {
     report[probe.key] = {
       label: probe.label,
       count: resources.length,
-      resources,
+      sampleLimit: RESOURCE_SAMPLE_LIMIT,
+      sampleResources: resources.slice(0, RESOURCE_SAMPLE_LIMIT),
+      omittedResources: Math.max(0, resources.length - RESOURCE_SAMPLE_LIMIT),
+      ...(INCLUDE_ALL_RESOURCES ? { resources } : {}),
       failures
     };
   }
