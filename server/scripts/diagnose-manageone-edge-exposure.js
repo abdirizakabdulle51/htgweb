@@ -666,11 +666,25 @@ function compactResource(resource) {
 
 async function collectEdgeResources(vdc, projects, session) {
   const report = {};
+  const tenantProjectIds = new Set(projects.map((project) => String(projectId(project) || "")).filter(Boolean));
 
   for (const probe of EDGE_PROBES) {
     const resourcesByKey = new Map();
     const failures = [];
     const diagnostics = {};
+    const skippedForeignProjectResources = {};
+    const addResource = (resource, source) => {
+      const id = resource?.id ? String(resource.id) : "";
+      if (!id) return;
+
+      const resourceProjectId = resource?.projectId ? String(resource.projectId) : "";
+      if (resourceProjectId && tenantProjectIds.size && !tenantProjectIds.has(resourceProjectId)) {
+        skippedForeignProjectResources[source] = (skippedForeignProjectResources[source] || 0) + 1;
+        return;
+      }
+
+      resourcesByKey.set(`${probe.key}:${id}`, resource);
+    };
 
     for (const resourceTypeName of probe.resourceTypeNames) {
       try {
@@ -688,7 +702,7 @@ async function collectEdgeResources(vdc, projects, session) {
               serviceId: probe.serviceId
             })
           );
-          if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+          addResource(resource, `domainNative:${resourceTypeName}`);
         }
       } catch (error) {
         failures.push({
@@ -719,7 +733,7 @@ async function collectEdgeResources(vdc, projects, session) {
                 ...regionFields
               })
             );
-            if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+            addResource(resource, `native:${resourceTypeName}`);
           }
         } catch (error) {
           failures.push({
@@ -751,7 +765,7 @@ async function collectEdgeResources(vdc, projects, session) {
                 serviceId: probe.serviceId
               })
             );
-            if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+            addResource(resource, `resourceIndex:${resourceTypeName}`);
           }
         } catch (error) {
           failures.push({
@@ -779,7 +793,7 @@ async function collectEdgeResources(vdc, projects, session) {
               serviceId: probe.serviceId
             })
           );
-          if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+          addResource(resource, `tenantResource:${className}`);
         }
       } catch (error) {
         failures.push({
@@ -823,7 +837,7 @@ async function collectEdgeResources(vdc, projects, session) {
                 ...regionFields
               })
             );
-            if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+            addResource(resource, `vpcPortal:${result.authMode}`);
           }
         } catch (error) {
           diagnostics.vpcPortalProjects.push({
@@ -891,7 +905,7 @@ async function collectEdgeResources(vdc, projects, session) {
                   projectName: copiedUrlContext.label
                 })
               );
-              if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
+              addResource(resource, "vpcPortal:copied-browser-url");
             }
           } catch (error) {
             diagnostics.copiedBrowserNatRequest.attempts.push({
@@ -913,6 +927,10 @@ async function collectEdgeResources(vdc, projects, session) {
           });
         }
       }
+    }
+
+    if (Object.keys(skippedForeignProjectResources).length) {
+      diagnostics.skippedForeignProjectResources = skippedForeignProjectResources;
     }
 
     const resources = [...resourcesByKey.values()].sort((a, b) =>
