@@ -640,15 +640,62 @@ function pickResourceFields(record, context = {}) {
       record?.ip,
       record?.ipAddress,
       record?.ip_address,
+      record?.public_ip_address,
+      record?.publicIpAddress,
       record?.public_ip,
       record?.publicIp,
+      record?.eip,
+      record?.eip_address,
+      record?.eipAddress,
+      record?.external_ip,
+      record?.externalIp,
+      record?.external_ip_address,
+      record?.externalIpAddress,
       record?.floating_ip_address,
       record?.floatingIpAddress,
+      record?.floating_ip?.ip_address,
+      record?.floating_ip?.ipAddress,
+      record?.floating_ip?.public_ip_address,
+      record?.floating_ip?.publicIpAddress,
+      record?.floating_ip?.floating_ip_address,
+      record?.floating_ip?.floatingIpAddress,
+      record?.eip_info?.ip_address,
+      record?.eip_info?.ipAddress,
+      record?.eip_info?.public_ip_address,
+      record?.eip_info?.publicIpAddress,
+      record?.eip?.ip_address,
+      record?.eip?.ipAddress,
+      record?.eip?.public_ip_address,
+      record?.eip?.publicIpAddress,
       record?.properties?.ip,
       record?.properties?.ipAddress,
+      record?.properties?.public_ip_address,
+      record?.properties?.publicIpAddress,
       record?.properties?.public_ip,
       record?.properties?.publicIp,
-      record?.properties?.floating_ip_address
+      record?.properties?.eip,
+      record?.properties?.eip_address,
+      record?.properties?.eipAddress,
+      record?.properties?.external_ip,
+      record?.properties?.externalIp,
+      record?.properties?.external_ip_address,
+      record?.properties?.externalIpAddress,
+      record?.properties?.floating_ip_address,
+      record?.properties?.floatingIpAddress
+    ),
+    publicIpId: firstDefined(
+      record?.public_ip_id,
+      record?.publicIpId,
+      record?.floating_ip_id,
+      record?.floatingIpId,
+      record?.eip_id,
+      record?.eipId,
+      record?.properties?.public_ip_id,
+      record?.properties?.publicIpId,
+      record?.properties?.floating_ip_id,
+      record?.properties?.floatingIpId,
+      record?.properties?.eip_id,
+      record?.properties?.eipId
     ),
     bandwidthName: firstDefined(record?.bandwidth_name, record?.bandwidthName, record?.properties?.bandwidth_name),
     bandwidthSize: firstDefined(record?.bandwidth_size, record?.bandwidthSize, record?.properties?.bandwidth_size),
@@ -947,6 +994,19 @@ async function collectEdgeResources(vdc, projects, session) {
       ...(Object.keys(diagnostics).length ? { diagnostics } : {})
     };
   }
+
+  const natGatewayPublicIpExposure = (report.natGateways?.sampleResources || []).filter(
+    (resource) => resource.ipAddress || resource.publicIpId
+  );
+  const natGatewayWithoutVisibleIp = Math.max(0, (report.natGateways?.count || 0) - natGatewayPublicIpExposure.length);
+  report.publicIpExposure = {
+    label: "Public IP Exposure",
+    count: (report.publicIps?.count || 0) + natGatewayPublicIpExposure.length + natGatewayWithoutVisibleIp,
+    directPublicIps: report.publicIps?.count || 0,
+    natGatewayPublicIps: natGatewayPublicIpExposure.length,
+    natGatewaysWithHiddenPublicIp: natGatewayWithoutVisibleIp,
+    note: "NAT gateways are counted as public IP exposure even when ManageOne hides the attached EIP fields in the gateway list."
+  };
 
   return report;
 }
