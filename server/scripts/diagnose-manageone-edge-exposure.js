@@ -478,6 +478,16 @@ function optionalVpcPortalHeaders(context = {}) {
   return headers;
 }
 
+function sanitizedVpcPortalHeaders(context = {}) {
+  const headers = optionalVpcPortalHeaders(context);
+  return Object.fromEntries(
+    Object.entries(headers).map(([key, value]) => [
+      key,
+      key.toLowerCase() === "cookie" ? (value ? "[configured]" : "[missing]") : value
+    ])
+  );
+}
+
 async function readVpcPortalJson(label, url, context = {}) {
   const portalHeaders = optionalVpcPortalHeaders(context);
   if (!portalHeaders.Cookie) {
@@ -531,6 +541,7 @@ async function fetchVpcNatGateways(project, adminSession, context = {}) {
   try {
     const body = await readVpcPortalJson(`VPC NAT gateway list for project ${id} with VPC portal headers`, url, context);
     return {
+      url,
       authMode: "vpc-portal-headers",
       attempts,
       records: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
@@ -546,6 +557,7 @@ async function fetchVpcNatGateways(project, adminSession, context = {}) {
     const projectSession = await authenticateProjectScoped(String(id));
     const body = await readManageOneJson(`VPC NAT gateway list for project ${id} with project-scoped token`, url, projectSession);
     return {
+      url,
       authMode: "project-scoped-token",
       attempts,
       records: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
@@ -560,6 +572,7 @@ async function fetchVpcNatGateways(project, adminSession, context = {}) {
   try {
     const body = await readManageOneJson(`VPC NAT gateway list for project ${id} with admin domain token`, url, adminSession);
     return {
+      url,
       authMode: "admin-domain-token",
       attempts,
       records: listFromResponse(body, ["nat_gateways", "natGateways", "gateways"])
@@ -635,6 +648,7 @@ async function collectEdgeResources(vdc, projects, session) {
   for (const probe of EDGE_PROBES) {
     const resourcesByKey = new Map();
     const failures = [];
+    const diagnostics = {};
 
     for (const resourceTypeName of probe.resourceTypeNames) {
       try {
@@ -755,6 +769,7 @@ async function collectEdgeResources(vdc, projects, session) {
     }
 
     if (probe.vpcPortal) {
+      diagnostics.vpcPortalProjects = [];
       for (const project of projects) {
         const id = projectId(project);
         const regionFields = projectRegionFields(project);
@@ -766,6 +781,15 @@ async function collectEdgeResources(vdc, projects, session) {
         try {
           await delay(REQUEST_DELAY_MS);
           const result = await fetchVpcNatGateways(project, session, portalContext);
+          diagnostics.vpcPortalProjects.push({
+            projectId: id ? String(id) : undefined,
+            projectName: projectName(project),
+            requestUrl: result.url,
+            authMode: result.authMode,
+            recordCount: result.records.length,
+            requestHeaders: sanitizedVpcPortalHeaders(portalContext),
+            attempts: result.attempts
+          });
           for (const record of result.records) {
             const resource = compactResource(
               pickResourceFields(record, {
@@ -780,6 +804,14 @@ async function collectEdgeResources(vdc, projects, session) {
             if (resource.id) resourcesByKey.set(`${probe.key}:${resource.id}`, resource);
           }
         } catch (error) {
+          diagnostics.vpcPortalProjects.push({
+            projectId: id ? String(id) : undefined,
+            projectName: projectName(project),
+            recordCount: 0,
+            requestHeaders: sanitizedVpcPortalHeaders(portalContext),
+            attempts: Array.isArray(error?.attempts) ? error.attempts : undefined,
+            error: error instanceof Error ? error.message : String(error || "Unknown error")
+          });
           failures.push({
             method: "vpcPortal",
             resourceTypeName: "CLOUD_NAT_GATEWAY",
@@ -801,7 +833,8 @@ async function collectEdgeResources(vdc, projects, session) {
       sampleResources: resources.slice(0, RESOURCE_SAMPLE_LIMIT),
       omittedResources: Math.max(0, resources.length - RESOURCE_SAMPLE_LIMIT),
       ...(INCLUDE_ALL_RESOURCES ? { resources } : {}),
-      failures
+      failures,
+      ...(Object.keys(diagnostics).length ? { diagnostics } : {})
     };
   }
 
