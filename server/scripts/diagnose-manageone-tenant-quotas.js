@@ -13,6 +13,7 @@ const PROJECT_FILTER = String(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_PROJECT_FIL
   .trim()
   .toLowerCase();
 const MAX_TENANTS = Number(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_MAX_TENANTS || 3);
+const INCLUDE_RAW = process.env.MANAGEONE_QUOTA_DIAGNOSTIC_INCLUDE_RAW === "true";
 const QUOTA_SERVICES = new Set(["ecs", "evs"]);
 
 function stripTrailingSlash(value) {
@@ -221,6 +222,8 @@ async function fetchQuotaUnitQuotas(project, session) {
       const body = await readManageOneJson(`quotas for project ${id}`, url, session);
       return {
         services: listFromResponse(body, ["services"]),
+        rawKeys: Object.keys(body || {}),
+        rawSample: INCLUDE_RAW ? body : undefined,
         failures: []
       };
     } catch (error) {
@@ -230,6 +233,8 @@ async function fetchQuotaUnitQuotas(project, session) {
 
   return {
     services: [],
+    rawKeys: [],
+    rawSample: undefined,
     failures
   };
 }
@@ -252,6 +257,8 @@ async function fetchProjectQuotas(project, session) {
     quotaUnitId: quotaUnitId(detailedProject),
     source: "quota_unit",
     services: quotaUnitResult.services,
+    rawKeys: quotaUnitResult.rawKeys,
+    rawSample: quotaUnitResult.rawSample,
     failures: [...detailResult.failures, ...quotaUnitResult.failures]
   };
 }
@@ -325,6 +332,8 @@ async function main() {
         name: projectName(project),
         quotaUnitId: quotas.quotaUnitId,
         quotaSource: quotas.source,
+        quotaRawKeys: quotas.rawKeys,
+        ...(quotas.rawSample !== undefined ? { quotaRawSample: quotas.rawSample } : {}),
         quotaServices: normalizeQuotaServices(quotas.services),
         failures: quotas.failures
       });
