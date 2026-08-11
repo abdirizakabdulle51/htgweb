@@ -13,6 +13,7 @@ const PROJECT_FILTER = String(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_PROJECT_FIL
   .trim()
   .toLowerCase();
 const MAX_TENANTS = Number(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_MAX_TENANTS || 3);
+const QUOTA_MAX_STARTS = Number(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_MAX_STARTS || 30);
 const INCLUDE_RAW = process.env.MANAGEONE_QUOTA_DIAGNOSTIC_INCLUDE_RAW === "true";
 const INCLUDE_PAGINATION_PROBE =
   process.env.MANAGEONE_QUOTA_DIAGNOSTIC_PAGINATION_PROBE !== "false";
@@ -221,6 +222,78 @@ function quotaServicesFromProjectDetails(project) {
   return services;
 }
 
+function serviceKey(service) {
+  return String(service?.service_id || service?.serviceId || service?.id || "");
+}
+
+function mergeQuotaServices(existingServices, nextServices) {
+  const servicesById = new Map();
+
+  for (const service of [...existingServices, ...nextServices]) {
+    const key = serviceKey(service);
+    if (!key) continue;
+
+    const current = servicesById.get(key);
+    if (!current) {
+      servicesById.set(key, { ...service });
+      continue;
+    }
+
+    const currentQuotas = listFromResponse(current, ["quotas"]);
+    const nextQuotas = listFromResponse(service, ["quotas"]);
+    const quotasByKey = new Map(currentQuotas.map((quota) => [JSON.stringify(quota), quota]));
+    for (const quota of nextQuotas) {
+      quotasByKey.set(JSON.stringify(quota), quota);
+    }
+    current.quotas = [...quotasByKey.values()];
+  }
+
+  return [...servicesById.values()];
+}
+
+async function fetchQuotaUnitPages(baseUrl, session) {
+  const failures = [];
+  const pages = [];
+  let services = [];
+  let reportedTotal = null;
+  let previousUniqueCount = 0;
+  let noGrowthCount = 0;
+
+  for (let start = 0; start < QUOTA_MAX_STARTS; start += 1) {
+    const url = start === 0 ? `${baseUrl}?start=0` : `${baseUrl}?start=${start}`;
+    try {
+      const body = await readManageOneJson(`quota page start=${start}`, url, session);
+      const pageServices = listFromResponse(body, ["services"]);
+      reportedTotal = responseTotal(body, reportedTotal);
+      services = mergeQuotaServices(services, pageServices);
+      pages.push({
+        start,
+        ok: true,
+        total: responseTotal(body, null),
+        serviceCount: pageServices.length,
+        serviceIds: pageServices.map((service) => serviceKey(service)).filter(Boolean)
+      });
+
+      if (services.length >= Number(reportedTotal || 0)) break;
+      if (services.length === previousUniqueCount) {
+        noGrowthCount += 1;
+      } else {
+        noGrowthCount = 0;
+      }
+      previousUniqueCount = services.length;
+      if (noGrowthCount >= 3) break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown quota page error");
+      failures.push(message);
+      pages.push({ start, ok: false, error: message });
+      if (start > 1) break;
+    }
+    await delay(REQUEST_DELAY_MS);
+  }
+
+  return { services, reportedTotal, pages, failures };
+}
+
 async function fetchQuotaUnitQuotas(project, session) {
   const id = quotaUnitId(project);
   if (!id) {
@@ -231,6 +304,8 @@ async function fetchQuotaUnitQuotas(project, session) {
   const candidateUrls = [baseUrl, `${baseUrl}?start=0`, `${baseUrl}?start=1`];
   const failures = [];
   let paginationProbe = [];
+  const pageWalkResult = await fetchQuotaUnitPages(baseUrl, session);
+  failures.push(...pageWalkResult.failures);
 
   for (const url of candidateUrls) {
     try {
@@ -238,14 +313,18 @@ async function fetchQuotaUnitQuotas(project, session) {
       if (INCLUDE_PAGINATION_PROBE) {
         paginationProbe = await probeQuotaPagination(baseUrl, session);
       }
+      const baseServices = listFromResponse(body, ["services"]);
+      const services =
+        pageWalkResult.services.length > baseServices.length ? pageWalkResult.services : baseServices;
       return {
-        services: listFromResponse(body, ["services"]),
+        services,
         rawKeys: Object.keys(body || {}),
-        reportedTotal: responseTotal(body, null),
-        returnedServiceCount: listFromResponse(body, ["services"]).length,
+        reportedTotal: pageWalkResult.reportedTotal ?? responseTotal(body, null),
+        returnedServiceCount: services.length,
+        pageWalk: pageWalkResult.pages,
         paginationProbe,
         rawSample: INCLUDE_RAW ? body : undefined,
-        failures: []
+        failures
       };
     } catch (error) {
       failures.push(error instanceof Error ? error.message : String(error || "Unknown quota error"));
@@ -257,6 +336,7 @@ async function fetchQuotaUnitQuotas(project, session) {
     rawKeys: [],
     reportedTotal: null,
     returnedServiceCount: 0,
+    pageWalk: pageWalkResult.pages,
     paginationProbe,
     rawSample: undefined,
     failures
@@ -322,6 +402,7 @@ async function fetchProjectQuotas(project, session) {
     rawKeys: quotaUnitResult.rawKeys,
     reportedTotal: quotaUnitResult.reportedTotal,
     returnedServiceCount: quotaUnitResult.returnedServiceCount,
+    pageWalk: quotaUnitResult.pageWalk,
     paginationProbe: quotaUnitResult.paginationProbe,
     rawSample: quotaUnitResult.rawSample,
     failures: [...detailResult.failures, ...quotaUnitResult.failures]
@@ -445,6 +526,7 @@ async function main() {
         quotaRawKeys: quotas.rawKeys,
         quotaReportedTotal: quotas.reportedTotal,
         quotaReturnedServiceCount: quotas.returnedServiceCount,
+        quotaPageWalk: quotas.pageWalk,
         quotaPaginationProbe: quotas.paginationProbe,
         ...(quotas.rawSample !== undefined ? { quotaRawSample: quotas.rawSample } : {}),
         quotaServiceIds: summary.serviceIds,
