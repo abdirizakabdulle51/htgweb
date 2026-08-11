@@ -124,6 +124,17 @@ function projectId(project) {
   return firstDefined(project?.id, project?.project_id, project?.projectId);
 }
 
+function quotaUnitId(project) {
+  return firstDefined(
+    project?.quota_unit_id,
+    project?.quotaUnitId,
+    project?.quota_unit?.id,
+    project?.quotaUnit?.id,
+    project?.enterprise_project_id,
+    project?.enterpriseProjectId
+  );
+}
+
 function projectName(project) {
   return String(
     firstDefined(
@@ -138,18 +149,71 @@ function projectName(project) {
   );
 }
 
-async function fetchProjectQuotas(project, session) {
+async function fetchProjectDetails(project, session) {
   const id = projectId(project);
   if (!id) {
-    return { services: [], failures: ["Project has no id"] };
+    return { project, failures: ["Project has no id"] };
+  }
+
+  const url = `${vdcEndpointBaseUrl()}/v3.1/projects/${encodeURIComponent(id)}`;
+  try {
+    const body = await readManageOneJson(`project details for ${id}`, url, session);
+    return {
+      project: body?.project || body,
+      failures: []
+    };
+  } catch (error) {
+    return {
+      project,
+      failures: [error instanceof Error ? error.message : String(error || "Unknown project detail error")]
+    };
+  }
+}
+
+function quotaServicesFromProjectDetails(project) {
+  const regions = Array.isArray(project?.regions) ? project.regions : [];
+  const services = [];
+
+  for (const region of regions) {
+    const cloudInfras = Array.isArray(region?.cloud_infras) ? region.cloud_infras : [];
+    for (const cloudInfra of cloudInfras) {
+      const quotas = Array.isArray(cloudInfra?.quotas) ? cloudInfra.quotas : [];
+      for (const quota of quotas) {
+        const serviceId = String(quota?.service_id || "");
+        if (!QUOTA_SERVICES.has(serviceId.toLowerCase())) continue;
+
+        services.push({
+          service_id: serviceId,
+          service_name: quota.service_name,
+          quotas: listFromResponse(quota, ["resources"]).map((resource) => ({
+            region_id: region.region_id,
+            region_name: region.name || region.region_name,
+            cloud_infra_id: cloudInfra.cloud_infra_id,
+            cloud_infra_name: cloudInfra.name || cloudInfra.cloud_infra_name,
+            az_id: resource.az_id,
+            parent_id: resource.parent_id,
+            resource_id: resource.resource,
+            resource_name: resource.resource_name,
+            unit: resource.unit,
+            quota_limit: resource.local_limit,
+            quota_used: resource.local_used
+          }))
+        });
+      }
+    }
+  }
+
+  return services;
+}
+
+async function fetchQuotaUnitQuotas(project, session) {
+  const id = quotaUnitId(project);
+  if (!id) {
+    return { services: [], failures: ["Project has no quota_unit_id"] };
   }
 
   const baseUrl = `${vdcEndpointBaseUrl()}/v3.2/enterprise-projects/${encodeURIComponent(id)}/quotas`;
-  const candidateUrls = [
-    baseUrl,
-    `${baseUrl}?start=0`,
-    `${baseUrl}?start=1`
-  ];
+  const candidateUrls = [baseUrl, `${baseUrl}?start=0`, `${baseUrl}?start=1`];
   const failures = [];
 
   for (const url of candidateUrls) {
@@ -167,6 +231,28 @@ async function fetchProjectQuotas(project, session) {
   return {
     services: [],
     failures
+  };
+}
+
+async function fetchProjectQuotas(project, session) {
+  const detailResult = await fetchProjectDetails(project, session);
+  const detailedProject = detailResult.project;
+  const nestedServices = quotaServicesFromProjectDetails(detailedProject);
+  if (nestedServices.length > 0) {
+    return {
+      quotaUnitId: quotaUnitId(detailedProject),
+      source: "project_details",
+      services: nestedServices,
+      failures: detailResult.failures
+    };
+  }
+
+  const quotaUnitResult = await fetchQuotaUnitQuotas(detailedProject, session);
+  return {
+    quotaUnitId: quotaUnitId(detailedProject),
+    source: "quota_unit",
+    services: quotaUnitResult.services,
+    failures: [...detailResult.failures, ...quotaUnitResult.failures]
   };
 }
 
@@ -237,6 +323,8 @@ async function main() {
       tenantReport.projects.push({
         id: projectId(project),
         name: projectName(project),
+        quotaUnitId: quotas.quotaUnitId,
+        quotaSource: quotas.source,
         quotaServices: normalizeQuotaServices(quotas.services),
         failures: quotas.failures
       });
