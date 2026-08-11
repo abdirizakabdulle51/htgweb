@@ -14,6 +14,8 @@ const PROJECT_FILTER = String(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_PROJECT_FIL
   .toLowerCase();
 const MAX_TENANTS = Number(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_MAX_TENANTS || 3);
 const INCLUDE_RAW = process.env.MANAGEONE_QUOTA_DIAGNOSTIC_INCLUDE_RAW === "true";
+const INCLUDE_PAGINATION_PROBE =
+  process.env.MANAGEONE_QUOTA_DIAGNOSTIC_PAGINATION_PROBE !== "false";
 const QUOTA_SERVICES = new Set(["ecs", "evs"]);
 const FEASIBILITY_RESOURCE_IDS = new Set([
   "instances",
@@ -228,13 +230,20 @@ async function fetchQuotaUnitQuotas(project, session) {
   const baseUrl = `${vdcEndpointBaseUrl()}/v3.2/enterprise-projects/${encodeURIComponent(id)}/quotas`;
   const candidateUrls = [baseUrl, `${baseUrl}?start=0`, `${baseUrl}?start=1`];
   const failures = [];
+  let paginationProbe = [];
 
   for (const url of candidateUrls) {
     try {
       const body = await readManageOneJson(`quotas for project ${id}`, url, session);
+      if (INCLUDE_PAGINATION_PROBE) {
+        paginationProbe = await probeQuotaPagination(baseUrl, session);
+      }
       return {
         services: listFromResponse(body, ["services"]),
         rawKeys: Object.keys(body || {}),
+        reportedTotal: responseTotal(body, null),
+        returnedServiceCount: listFromResponse(body, ["services"]).length,
+        paginationProbe,
         rawSample: INCLUDE_RAW ? body : undefined,
         failures: []
       };
@@ -246,9 +255,50 @@ async function fetchQuotaUnitQuotas(project, session) {
   return {
     services: [],
     rawKeys: [],
+    reportedTotal: null,
+    returnedServiceCount: 0,
+    paginationProbe,
     rawSample: undefined,
     failures
   };
+}
+
+async function probeQuotaPagination(baseUrl, session) {
+  const attempts = [
+    ["base", baseUrl],
+    ["start0", `${baseUrl}?start=0`],
+    ["start1", `${baseUrl}?start=1`],
+    ["start0_limit10", `${baseUrl}?start=0&limit=10`],
+    ["start1_limit10", `${baseUrl}?start=1&limit=10`],
+    ["start0_limit20", `${baseUrl}?start=0&limit=20`],
+    ["offset0_limit10", `${baseUrl}?offset=0&limit=10`],
+    ["page1_size10", `${baseUrl}?page=1&page_size=10`],
+    ["pageNo1_pageSize10", `${baseUrl}?pageNo=1&pageSize=10`]
+  ];
+  const results = [];
+
+  for (const [label, url] of attempts) {
+    try {
+      const body = await readManageOneJson(`quota pagination probe ${label}`, url, session);
+      const services = listFromResponse(body, ["services"]);
+      results.push({
+        label,
+        ok: true,
+        total: responseTotal(body, null),
+        serviceCount: services.length,
+        serviceIds: services.map((service) => String(service?.service_id || "")).filter(Boolean)
+      });
+    } catch (error) {
+      results.push({
+        label,
+        ok: false,
+        error: error instanceof Error ? error.message : String(error || "Unknown quota pagination error")
+      });
+    }
+    await delay(REQUEST_DELAY_MS);
+  }
+
+  return results;
 }
 
 async function fetchProjectQuotas(project, session) {
@@ -270,6 +320,9 @@ async function fetchProjectQuotas(project, session) {
     source: "quota_unit",
     services: quotaUnitResult.services,
     rawKeys: quotaUnitResult.rawKeys,
+    reportedTotal: quotaUnitResult.reportedTotal,
+    returnedServiceCount: quotaUnitResult.returnedServiceCount,
+    paginationProbe: quotaUnitResult.paginationProbe,
     rawSample: quotaUnitResult.rawSample,
     failures: [...detailResult.failures, ...quotaUnitResult.failures]
   };
@@ -390,6 +443,9 @@ async function main() {
         quotaUnitId: quotas.quotaUnitId,
         quotaSource: quotas.source,
         quotaRawKeys: quotas.rawKeys,
+        quotaReportedTotal: quotas.reportedTotal,
+        quotaReturnedServiceCount: quotas.returnedServiceCount,
+        quotaPaginationProbe: quotas.paginationProbe,
         ...(quotas.rawSample !== undefined ? { quotaRawSample: quotas.rawSample } : {}),
         quotaServiceIds: summary.serviceIds,
         quotaResourceIds: summary.resourceIds,
