@@ -15,6 +15,18 @@ const PROJECT_FILTER = String(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_PROJECT_FIL
 const MAX_TENANTS = Number(process.env.MANAGEONE_QUOTA_DIAGNOSTIC_MAX_TENANTS || 3);
 const INCLUDE_RAW = process.env.MANAGEONE_QUOTA_DIAGNOSTIC_INCLUDE_RAW === "true";
 const QUOTA_SERVICES = new Set(["ecs", "evs"]);
+const FEASIBILITY_RESOURCE_IDS = new Set([
+  "instances",
+  "instance",
+  "cores",
+  "cpu",
+  "ram",
+  "memory",
+  "volumes",
+  "volume",
+  "gigabytes",
+  "volume_gigabytes"
+]);
 
 function stripTrailingSlash(value) {
   return String(value || "").replace(/\/+$/, "");
@@ -288,6 +300,50 @@ function normalizeQuotaServices(services) {
     }));
 }
 
+function quotaRowsFromServices(services) {
+  const rows = [];
+
+  for (const service of services) {
+    for (const quota of listFromResponse(service, ["quotas"])) {
+      rows.push({
+        serviceId: String(service?.service_id || ""),
+        serviceName: service?.service_name,
+        regionId: quota.region_id,
+        regionName: quota.region_name,
+        cloudInfraId: quota.cloud_infra_id,
+        azId: quota.az_id,
+        parentId: quota.parent_id,
+        resourceId: quota.resource_id,
+        resourceName: quota.resource_name,
+        unit: quota.unit,
+        limit: quota.quota_limit,
+        used: quota.quota_used,
+        remaining:
+          Number(quota.quota_limit) === -1
+            ? -1
+            : Number(quota.quota_limit ?? 0) - Number(quota.quota_used ?? 0)
+      });
+    }
+  }
+
+  return rows;
+}
+
+function quotaSummary(services) {
+  const serviceIds = services.map((service) => String(service?.service_id || "")).filter(Boolean);
+  const rows = quotaRowsFromServices(services);
+  const resourceIds = [...new Set(rows.map((row) => String(row.resourceId || "")).filter(Boolean))].sort();
+  const feasibilityCandidates = rows.filter((row) =>
+    FEASIBILITY_RESOURCE_IDS.has(String(row.resourceId || "").toLowerCase())
+  );
+
+  return {
+    serviceIds,
+    resourceIds,
+    feasibilityCandidates
+  };
+}
+
 function filterTenants(vdcs) {
   const filtered = TENANT_FILTER
     ? vdcs.filter((vdc) => String(vdc.name || "").toLowerCase().includes(TENANT_FILTER))
@@ -327,6 +383,7 @@ async function main() {
 
     for (const project of projects) {
       const quotas = await fetchProjectQuotas(project, session);
+      const summary = quotaSummary(quotas.services);
       tenantReport.projects.push({
         id: projectId(project),
         name: projectName(project),
@@ -334,6 +391,9 @@ async function main() {
         quotaSource: quotas.source,
         quotaRawKeys: quotas.rawKeys,
         ...(quotas.rawSample !== undefined ? { quotaRawSample: quotas.rawSample } : {}),
+        quotaServiceIds: summary.serviceIds,
+        quotaResourceIds: summary.resourceIds,
+        feasibilityQuotaCandidates: summary.feasibilityCandidates,
         quotaServices: normalizeQuotaServices(quotas.services),
         failures: quotas.failures
       });
