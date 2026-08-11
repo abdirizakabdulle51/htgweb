@@ -144,21 +144,30 @@ async function fetchProjectQuotas(project, session) {
     return { services: [], failures: ["Project has no id"] };
   }
 
-  const params = new URLSearchParams({ start: "0", limit: "1000" });
-  const url = `${vdcEndpointBaseUrl()}/v3.2/enterprise-projects/${encodeURIComponent(id)}/quotas?${params}`;
+  const baseUrl = `${vdcEndpointBaseUrl()}/v3.2/enterprise-projects/${encodeURIComponent(id)}/quotas`;
+  const candidateUrls = [
+    baseUrl,
+    `${baseUrl}?start=0`,
+    `${baseUrl}?start=1`
+  ];
+  const failures = [];
 
-  try {
-    const body = await readManageOneJson(`quotas for project ${id}`, url, session);
-    return {
-      services: listFromResponse(body, ["services"]),
-      failures: []
-    };
-  } catch (error) {
-    return {
-      services: [],
-      failures: [error instanceof Error ? error.message : String(error || "Unknown quota error")]
-    };
+  for (const url of candidateUrls) {
+    try {
+      const body = await readManageOneJson(`quotas for project ${id}`, url, session);
+      return {
+        services: listFromResponse(body, ["services"]),
+        failures: []
+      };
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error || "Unknown quota error"));
+    }
   }
+
+  return {
+    services: [],
+    failures
+  };
 }
 
 function normalizeQuotaServices(services) {
