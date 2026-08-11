@@ -11,6 +11,7 @@ const RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS = 5000;
 const MANAGEONE_READ_TIMEOUT_MS = 30000;
 const PROJECT_PAGE_LIMIT = 100;
 const PROJECT_MAX_PAGES = 20;
+const QUOTA_MAX_STARTS = Number(process.env.MANAGEONE_SYNC_QUOTA_MAX_STARTS || 30);
 const NATIVE_RESOURCE_PAGE_LIMIT = 1000;
 const NATIVE_RESOURCE_MAX_PAGES = 20;
 const DEFAULT_CAPACITY_BASE_URL = "https://10.20.24.9:26335";
@@ -934,6 +935,18 @@ function projectId(project) {
   return value ? String(value) : null;
 }
 
+function quotaUnitId(project) {
+  const value = firstDefined(
+    project?.quota_unit_id,
+    project?.quotaUnitId,
+    project?.quota_unit?.id,
+    project?.quotaUnit?.id,
+    project?.enterprise_project_id,
+    project?.enterpriseProjectId
+  );
+  return value ? String(value) : null;
+}
+
 function projectName(project) {
   return String(
     firstDefined(
@@ -1068,6 +1081,7 @@ function mapTenantForCrm(tenant) {
   const vpnGateways = tenant.vpn_gateway_breakdown || null;
   const cloudBastionHosts = tenant.cloud_bastion_host_breakdown || null;
   const natGateways = tenant.nat_gateway_breakdown || null;
+  const quotas = tenant.quota_breakdown || [];
   const derivedEcsUsed = ecsUsedFromBreakdown(ecsFlavors);
   const derivedEvsUsed = evsUsedFromBreakdown(evsVolumeTypes);
 
@@ -1092,6 +1106,7 @@ function mapTenantForCrm(tenant) {
     evsDiskManagedFees,
     obsBuckets,
     eipBandwidths,
+    quotas,
     ...(vpnGateways ? { vpnGateways } : {}),
     ...(cloudBastionHosts ? { cloudBastionHosts } : {}),
     ...(natGateways ? { natGateways } : {})
@@ -1105,7 +1120,7 @@ async function loadSyncedTenantsForCrm(vdcIds = null) {
       manager_name, manager_phone, manager_email,
       ecs_used, evs_used, project_count, raw_payload, resource_usage, ecs_flavor_breakdown, evs_volume_type_breakdown,
       evs_disk_managed_fee_breakdown, obs_bucket_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown,
-      nat_gateway_breakdown
+      nat_gateway_breakdown, quota_breakdown
     FROM manageone_tenants
     ORDER BY name ASC
   `;
@@ -1227,6 +1242,168 @@ async function listTenantProjects(vdc, session) {
   }
 
   return projects;
+}
+
+async function fetchProjectDetails(project, session) {
+  const id = projectId(project);
+  if (!id) {
+    return project;
+  }
+
+  const url = `${vdcEndpointBaseUrl()}/v3.1/projects/${encodeURIComponent(id)}`;
+  const body = await retryRateLimited(`project details for ${id}`, async () => {
+    const { response, text } = await fetchTextWithTimeout(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "X-Auth-Token": session.token
+      },
+      redirect: "manual"
+    });
+
+    if (!response.ok) {
+      throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+    }
+
+    return text ? JSON.parse(text) : {};
+  });
+
+  return body?.project || body;
+}
+
+function quotaServiceKey(service) {
+  return String(service?.service_id || service?.serviceId || service?.id || "");
+}
+
+function mergeQuotaServices(existingServices, nextServices) {
+  const servicesById = new Map();
+
+  for (const service of [...existingServices, ...nextServices]) {
+    const key = quotaServiceKey(service);
+    if (!key) continue;
+
+    const current = servicesById.get(key);
+    if (!current) {
+      servicesById.set(key, { ...service });
+      continue;
+    }
+
+    const currentQuotas = listFromResponse(current, ["quotas"]);
+    const nextQuotas = listFromResponse(service, ["quotas"]);
+    const quotasByKey = new Map(currentQuotas.map((quota) => [JSON.stringify(quota), quota]));
+    for (const quota of nextQuotas) {
+      quotasByKey.set(JSON.stringify(quota), quota);
+    }
+    current.quotas = [...quotasByKey.values()];
+  }
+
+  return [...servicesById.values()];
+}
+
+async function fetchQuotaUnitServices(quotaUnitIdValue, session) {
+  const baseUrl = `${vdcEndpointBaseUrl()}/v3.2/enterprise-projects/${encodeURIComponent(quotaUnitIdValue)}/quotas`;
+  let services = [];
+  let total = null;
+  let previousUniqueCount = 0;
+  let noGrowthCount = 0;
+
+  for (let start = 0; start < QUOTA_MAX_STARTS; start += 1) {
+    const url = `${baseUrl}?start=${start}`;
+    const body = await retryRateLimited(`quota page start=${start} for ${quotaUnitIdValue}`, async () => {
+      const { response, text } = await fetchTextWithTimeout(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json, text/plain, */*",
+          "X-Auth-Token": session.token
+        },
+        redirect: "manual"
+      });
+
+      if (!response.ok) {
+        throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+      }
+
+      return text ? JSON.parse(text) : {};
+    });
+    const pageServices = listFromResponse(body, ["services"]);
+    total = Number.isFinite(Number(body?.total)) ? Number(body.total) : total;
+    services = mergeQuotaServices(services, pageServices);
+
+    if (services.length >= Number(total || 0)) break;
+    if (services.length === previousUniqueCount) {
+      noGrowthCount += 1;
+    } else {
+      noGrowthCount = 0;
+    }
+    previousUniqueCount = services.length;
+    if (noGrowthCount >= 3) break;
+    await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+  }
+
+  return services;
+}
+
+function normalizeQuotaRows(services, project, quotaUnitIdValue) {
+  const allowedServices = new Set(["ecs", "evs"]);
+  const rows = [];
+
+  for (const service of services) {
+    const serviceId = quotaServiceKey(service).toLowerCase();
+    if (!allowedServices.has(serviceId)) continue;
+
+    for (const quota of listFromResponse(service, ["quotas"])) {
+      const limit = numberOrNull(firstDefined(quota.quota_limit, quota.local_limit, quota.limit));
+      const used = numberOrNull(firstDefined(quota.quota_used, quota.local_used, quota.used));
+      const row = {
+        projectId: projectId(project),
+        projectName: projectName(project),
+        quotaUnitId: quotaUnitIdValue,
+        serviceId,
+        serviceName: parseLocalizedName(service.service_name) || serviceId.toUpperCase(),
+        regionId: quota.region_id ? String(quota.region_id) : null,
+        regionName: parseLocalizedName(firstDefined(quota.region_name, quota.regionName)),
+        cloudInfraId: quota.cloud_infra_id ? String(quota.cloud_infra_id) : null,
+        azId: quota.az_id ? String(quota.az_id) : null,
+        parentId: quota.parent_id ? String(quota.parent_id) : null,
+        resourceId: quota.resource_id ? String(quota.resource_id) : null,
+        resourceName: parseLocalizedName(firstDefined(quota.resource_name, quota.resourceName)),
+        unit: parseLocalizedName(quota.unit),
+        limit: limit ?? -1,
+        used: used ?? 0
+      };
+      row.remaining = row.limit === -1 ? -1 : row.limit - row.used;
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+async function fetchTenantQuotaBreakdown(vdc, session) {
+  const projects = await listTenantProjects(vdc, session);
+  const servicesByQuotaUnitId = new Map();
+  const rows = [];
+
+  console.log(`[MANAGEONE SYNC] quota lookup for ${vdc.name || vdc.id}: ${projects.length} project(s)`);
+
+  for (const project of projects) {
+    await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    const detailedProject = await fetchProjectDetails(project, session);
+    const quotaId = quotaUnitId(detailedProject);
+    if (!quotaId) continue;
+
+    if (!servicesByQuotaUnitId.has(quotaId)) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+      servicesByQuotaUnitId.set(quotaId, await fetchQuotaUnitServices(quotaId, session));
+    }
+
+    rows.push(...normalizeQuotaRows(servicesByQuotaUnitId.get(quotaId), detailedProject, quotaId));
+  }
+
+  console.log(
+    `[MANAGEONE SYNC] quota breakdown for ${vdc.name || vdc.id}: ${rows.length} ECS/EVS quota row(s), ${servicesByQuotaUnitId.size} quota unit(s)`
+  );
+  return rows;
 }
 
 async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit) {
@@ -2051,6 +2228,7 @@ async function syncManageOneTenants() {
       let vpnGatewayBreakdownPayload = null;
       let cloudBastionHostBreakdownPayload = null;
       let natGatewayBreakdownPayload = null;
+      let quotaBreakdownPayload = null;
 
       try {
         const region = await fetchTenantRegion(vdc, session);
@@ -2130,6 +2308,13 @@ async function syncManageOneTenants() {
         console.error(`[MANAGEONE SYNC] NAT Gateway breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
       }
 
+      try {
+        quotaBreakdownPayload = JSON.stringify(await fetchTenantQuotaBreakdown(vdc, session));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.error(`[MANAGEONE SYNC] quota breakdown skipped for ${vdc.name || vdc.id}: ${message}`);
+      }
+
       await prisma.$executeRaw`
         INSERT INTO manageone_tenants
           (vdc_id, domain_id, name, level, upper_vdc_id, enabled,
@@ -2137,7 +2322,8 @@ async function syncManageOneTenants() {
            ecs_used, evs_used, project_count, create_user_name,
            manageone_create_at, last_synced_at, raw_payload, resource_usage,
            ecs_flavor_breakdown, evs_volume_type_breakdown, evs_disk_managed_fee_breakdown,
-           obs_bucket_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown, nat_gateway_breakdown)
+           obs_bucket_breakdown, eip_bandwidth_breakdown, vpn_gateway_breakdown, cloud_bastion_host_breakdown, nat_gateway_breakdown,
+           quota_breakdown)
         VALUES
           (${String(vdc.id)}, ${vdc.domain_id ?? null}, ${String(vdc.name || vdc.id)},
            ${integerOrNull(vdc.level)}, ${vdc.upper_vdc_id ?? null}, ${booleanOrNull(vdc.enabled)},
@@ -2149,7 +2335,7 @@ async function syncManageOneTenants() {
            CAST(${evsDiskManagedFeeBreakdownPayload} AS jsonb), CAST(${obsBucketBreakdownPayload} AS jsonb),
            CAST(${eipBandwidthBreakdownPayload} AS jsonb),
            CAST(${vpnGatewayBreakdownPayload} AS jsonb), CAST(${cloudBastionHostBreakdownPayload} AS jsonb),
-           CAST(${natGatewayBreakdownPayload} AS jsonb))
+           CAST(${natGatewayBreakdownPayload} AS jsonb), CAST(${quotaBreakdownPayload} AS jsonb))
         ON CONFLICT (vdc_id) DO UPDATE SET
           domain_id = EXCLUDED.domain_id,
           name = EXCLUDED.name,
@@ -2174,7 +2360,8 @@ async function syncManageOneTenants() {
           eip_bandwidth_breakdown = COALESCE(EXCLUDED.eip_bandwidth_breakdown, manageone_tenants.eip_bandwidth_breakdown),
           vpn_gateway_breakdown = COALESCE(EXCLUDED.vpn_gateway_breakdown, manageone_tenants.vpn_gateway_breakdown),
           cloud_bastion_host_breakdown = COALESCE(EXCLUDED.cloud_bastion_host_breakdown, manageone_tenants.cloud_bastion_host_breakdown),
-          nat_gateway_breakdown = COALESCE(EXCLUDED.nat_gateway_breakdown, manageone_tenants.nat_gateway_breakdown)
+          nat_gateway_breakdown = COALESCE(EXCLUDED.nat_gateway_breakdown, manageone_tenants.nat_gateway_breakdown),
+          quota_breakdown = COALESCE(EXCLUDED.quota_breakdown, manageone_tenants.quota_breakdown)
       `;
 
       syncedTenantVdcIds.push(String(vdc.id));
