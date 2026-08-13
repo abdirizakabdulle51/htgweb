@@ -5,6 +5,8 @@ import { authenticate, listAllVdcs } from "../manageone.js";
 const prisma = new PrismaClient();
 const DEFAULT_MANAGEONE_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
 const TENANT_USAGE_SYNC_URL = "https://crm-api.102-203-134-106.sslip.io/tenant-usage/sync";
+const DAILY_USAGE_CAPTURE_URL =
+  process.env.DAILY_USAGE_CAPTURE_URL || TENANT_USAGE_SYNC_URL.replace("/tenant-usage/sync", "/daily-usage/capture");
 const RESOURCE_USAGE_REQUEST_DELAY_MS = 2000;
 const RESOURCE_USAGE_RATE_LIMIT_RETRIES = 2;
 const RESOURCE_USAGE_RATE_LIMIT_RETRY_DELAY_MS = 5000;
@@ -2191,6 +2193,39 @@ async function pushTenantUsageHistoryToCrm(payload) {
   console.log(`[MANAGEONE SYNC] tenant usage history push success: ${payload.length} tenant(s) sent`);
 }
 
+async function triggerDailyUsageCaptureInCrm(tenantVdcIds, capturedAt) {
+  const syncSecret = process.env.TENANT_HISTORY_SYNC_SECRET;
+
+  if (!syncSecret) {
+    console.warn("[MANAGEONE SYNC] daily usage capture skipped: TENANT_HISTORY_SYNC_SECRET is not configured");
+    return;
+  }
+
+  if (!Array.isArray(tenantVdcIds) || tenantVdcIds.length === 0) {
+    console.warn("[MANAGEONE SYNC] daily usage capture skipped: no synced tenants matched the active filter");
+    return;
+  }
+
+  const response = await fetch(DAILY_USAGE_CAPTURE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Sync-Secret": syncSecret
+    },
+    body: JSON.stringify({
+      capturedAt,
+      tenantVdcIds
+    })
+  });
+
+  const body = await response.text().catch(() => "");
+  if (!response.ok) {
+    throw new Error(`daily usage capture failed: HTTP ${response.status}${body ? ` ${body}` : ""}`);
+  }
+
+  console.log(`[MANAGEONE SYNC] daily usage capture success: ${body || "ok"}`);
+}
+
 async function syncManageOneTenants() {
   const [run] = await prisma.$queryRaw`
     INSERT INTO manageone_sync_runs (started_at, status)
@@ -2379,6 +2414,13 @@ async function syncManageOneTenants() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || "Unknown error");
       console.error("[MANAGEONE SYNC] tenant usage history push failed:", message);
+    }
+
+    try {
+      await triggerDailyUsageCaptureInCrm(syncedTenantVdcIds, syncedAt);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.error("[MANAGEONE SYNC] daily usage capture failed:", message);
     }
 
     await prisma.$executeRaw`
