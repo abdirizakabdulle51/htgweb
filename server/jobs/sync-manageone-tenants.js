@@ -14,6 +14,7 @@ const MANAGEONE_READ_TIMEOUT_MS = 30000;
 const PROJECT_PAGE_LIMIT = 100;
 const PROJECT_MAX_PAGES = 20;
 const QUOTA_MAX_STARTS = Number(process.env.MANAGEONE_SYNC_QUOTA_MAX_STARTS || 30);
+const CRM_SYNC_BATCH_SIZE = Math.max(1, Number.parseInt(process.env.CRM_SYNC_BATCH_SIZE || "10", 10) || 10);
 const NATIVE_RESOURCE_PAGE_LIMIT = 1000;
 const NATIVE_RESOURCE_MAX_PAGES = 20;
 const DEFAULT_CAPACITY_BASE_URL = "https://10.20.24.9:26335";
@@ -101,6 +102,14 @@ function dateFromMilliseconds(value) {
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function stripTrailingSlash(value) {
@@ -2146,21 +2155,39 @@ async function pushTenantsToCrm(vdcIds = null) {
 
   const tenants = await loadSyncedTenantsForCrm(vdcIds);
   const payload = tenants.map(mapTenantForCrm);
-  const response = await fetch(syncUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Sync-Secret": syncSecret
-    },
-    body: JSON.stringify(payload)
-  });
+  const batches = chunkArray(payload, CRM_SYNC_BATCH_SIZE);
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`CRM sync failed: HTTP ${response.status}${body ? ` ${body}` : ""}`);
+  if (payload.length === 0) {
+    console.warn("[MANAGEONE SYNC] CRM push skipped: no tenant payload rows loaded");
+    return;
   }
 
-  console.log(`[MANAGEONE SYNC] CRM push success: ${payload.length} tenant(s) sent`);
+  console.log(
+    `[MANAGEONE SYNC] CRM push batching ${payload.length} tenant(s) into ${batches.length} batch(es) of up to ${CRM_SYNC_BATCH_SIZE}`
+  );
+
+  for (const [index, batch] of batches.entries()) {
+    const batchNumber = index + 1;
+    console.log(`[MANAGEONE SYNC] CRM push batch ${batchNumber}/${batches.length}: ${batch.length} tenant(s)`);
+
+    const response = await fetch(syncUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Sync-Secret": syncSecret
+      },
+      body: JSON.stringify(batch)
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(
+        `CRM sync batch ${batchNumber}/${batches.length} failed: HTTP ${response.status}${body ? ` ${body}` : ""}`
+      );
+    }
+  }
+
+  console.log(`[MANAGEONE SYNC] CRM push success: ${payload.length} tenant(s) sent in ${batches.length} batch(es)`);
 }
 
 async function pushTenantUsageHistoryToCrm(payload) {
