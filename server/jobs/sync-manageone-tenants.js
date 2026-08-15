@@ -732,6 +732,8 @@ const NAT_SPEC_CATALOG = {
   "3": "Large (1.5 Gbps)",
   "4": "Extra-large (4 Gbps+)"
 };
+const NAT_RESOURCE_TYPE_NAME = "CLOUD_NAT_INSTANCE";
+const NAT_DEFAULT_SPEC = "1";
 
 function optionalVpcPortalHeaders(context = {}) {
   const headers = {};
@@ -791,21 +793,21 @@ async function fetchVpcNatGateways(projectId, context = {}) {
   return listFromResponse(body, ["nat_gateways", "natGateways", "gateways"]);
 }
 
-function summarizeNatGateway(gateway, project) {
-  const spec = gateway?.spec === undefined || gateway?.spec === null ? null : String(gateway.spec);
-  const catalogName = spec ? NAT_SPEC_CATALOG[spec] || null : null;
+function summarizeNatGateway(gateway, project = {}) {
+  const spec = gateway?.spec === undefined || gateway?.spec === null ? NAT_DEFAULT_SPEC : String(gateway.spec);
+  const catalogName = NAT_SPEC_CATALOG[spec] || null;
 
   return {
     id: String(firstDefined(gateway?.id, gateway?.name, `${project.projectId}:${spec || "unknown"}`)),
-    name: String(firstDefined(gateway?.name, gateway?.id, "NAT Gateway")),
-    resourceTypeName: "CLOUD_NAT_GATEWAY",
+    name: String(firstDefined(gateway?.name, gateway?.resource_name, gateway?.id, "NAT Gateway")),
+    resourceTypeName: String(firstDefined(gateway?.resource_type_name, NAT_RESOURCE_TYPE_NAME)),
     spec,
     catalogItemName: catalogName,
-    status: gateway?.status ? String(gateway.status) : null,
-    projectId: project.projectId,
-    resourceSpaceName: project.resourceSpaceName,
-    ...(project.regionId ? { regionId: project.regionId } : {}),
-    ...(project.regionName ? { regionName: project.regionName } : {})
+    status: firstDefined(gateway?.status, gateway?.resource_status) ? String(firstDefined(gateway?.status, gateway?.resource_status)) : null,
+    projectId: firstDefined(project.projectId, gateway?.project_id),
+    resourceSpaceName: firstDefined(project.resourceSpaceName, gateway?.project_name, gateway?.project_display_name),
+    ...(firstDefined(project.regionId, gateway?.region_id) ? { regionId: firstDefined(project.regionId, gateway?.region_id) } : {}),
+    ...(firstDefined(project.regionName, gateway?.region_name) ? { regionName: firstDefined(project.regionName, gateway?.region_name) } : {})
   };
 }
 
@@ -814,12 +816,13 @@ function aggregateNatGatewayBreakdown(items) {
 
   for (const item of items) {
     if (!item.catalogItemName) continue;
+    if (String(item.status || "").toLowerCase() === "deleted") continue;
     itemsByKey.set(item.id, item);
   }
 
   return {
     count: itemsByKey.size,
-    resourceTypeName: "CLOUD_NAT_GATEWAY",
+    resourceTypeName: NAT_RESOURCE_TYPE_NAME,
     items: [...itemsByKey.values()].sort((a, b) => a.name.localeCompare(b.name))
   };
 }
@@ -1940,43 +1943,37 @@ async function fetchTenantNatGatewayBreakdown(vdc, session) {
         "[MANAGEONE SYNC] NAT Gateway sync skipped: MANAGEONE_SYNC_NAT_GATEWAY_TENANT_FILTER is required for safe rollout"
       );
     }
-    return { count: 0, resourceTypeName: "CLOUD_NAT_GATEWAY", items: [] };
+    return { count: 0, resourceTypeName: NAT_RESOURCE_TYPE_NAME, items: [] };
   }
 
-  const projects = await listTenantProjects(vdc, session);
-  const items = [];
-  console.log(`[MANAGEONE SYNC] NAT Gateway lookup for ${vdc.name || vdc.id}: VPC portal nat_gateways`);
+  const resourceIndexResponses = [];
+  console.log(`[MANAGEONE SYNC] NAT Gateway lookup for ${vdc.name || vdc.id}: resource index ${NAT_RESOURCE_TYPE_NAME}`);
 
-  for (const project of projects) {
-    const id = projectId(project);
-    if (!id) continue;
-
-    const projectContext = {
-      projectId: id,
-      resourceSpaceName: projectName(project),
-      ...projectRegionFields(project)
-    };
-    const vpcPortalProjectName = vpcPortalProjectHeaderName(project);
-    const portalContext = {
-      regionHeader: firstDefined(projectContext.regionId, projectContext.regionName, process.env.MANAGEONE_VPC_REGION),
-      projectNameHeader: vpcPortalProjectName
-    };
-
+  for (const scope of resourceIndexScopes(vdc)) {
     await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
     try {
-      const gateways = await fetchVpcNatGateways(id, portalContext);
-      items.push(...gateways.map((gateway) => summarizeNatGateway(gateway, projectContext)));
+      resourceIndexResponses.push(
+        ...(await fetchResourceIndexResources(
+          vdc,
+          scope,
+          { resource_type_name: NAT_RESOURCE_TYPE_NAME },
+          session
+        ))
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || "Unknown error");
       console.error(
-        `[MANAGEONE SYNC] NAT Gateway project skipped for ${vdc.name || vdc.id} / ${projectContext.resourceSpaceName}: ${message}`
+        `[MANAGEONE SYNC] NAT Gateway scope skipped for ${vdc.name || vdc.id} / ${scope.key}: ${message}`
       );
     }
   }
 
+  const items = resourceIndexResponses
+    .flatMap((body) => listFromResponse(body, ["resources", "resource_list", "native_resources"]))
+    .map((gateway) => summarizeNatGateway(gateway));
   const breakdown = aggregateNatGatewayBreakdown(items);
   console.log(
-    `[MANAGEONE SYNC] NAT Gateway breakdown for ${vdc.name || vdc.id}: ${breakdown.count} gateway(s), ${items.length} VPC NAT record(s)`
+    `[MANAGEONE SYNC] NAT Gateway breakdown for ${vdc.name || vdc.id}: ${breakdown.count} gateway(s), ${countNativeRecords(resourceIndexResponses)} resource index record(s)`
   );
   return breakdown;
 }
