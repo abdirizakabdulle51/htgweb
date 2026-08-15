@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "manageone-tenant-sync",
       script: "server/jobs/sync-manageone-tenants.js",
-      cron_restart: "0 3 * * *",
+      cron_restart: "0 0 * * *",
       autorestart: false,
       instances: 1,
       exec_mode: "fork",
