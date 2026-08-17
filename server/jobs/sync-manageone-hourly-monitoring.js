@@ -11,6 +11,7 @@ const MANAGEONE_READ_TIMEOUT_MS = Number(
 const RESOURCE_PAGE_LIMIT = 100;
 const RESOURCE_MAX_PAGES = 20;
 const NAT_RESOURCE_TYPE_NAME = "CLOUD_NAT_INSTANCE";
+const BMS_RESOURCE_TYPE_NAME = "CLOUD_BMS_INSTANCE";
 const DEFAULT_CAPACITY_BASE_URL = "https://10.20.24.9:26335";
 const OBS_CAPACITY_REGIONS = [
   {
@@ -541,6 +542,13 @@ function summarizeNatGateway(gateway) {
   return String(firstDefined(gateway?.id, gateway?.name, gateway?.resource_id, "")).trim();
 }
 
+function summarizeResourceIndexInstance(resource) {
+  const status = String(firstDefined(resource?.status, resource?.resource_status, "")).toLowerCase();
+  if (status === "deleted") return null;
+
+  return String(firstDefined(resource?.id, resource?.resource_id, resource?.name, resource?.resource_name, "")).trim();
+}
+
 async function fetchTenantNatGatewayCount(vdc, session) {
   if (!INCLUDE_NAT_GATEWAYS || !vdc?.domain_id) return 0;
 
@@ -568,7 +576,34 @@ async function fetchTenantNatGatewayCount(vdc, session) {
   return gatewayIds.size;
 }
 
-function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, capturedAt }) {
+async function fetchTenantBmsInstanceCount(vdc, session) {
+  if (!vdc?.domain_id) return 0;
+
+  const instanceIds = new Set();
+  for (const scope of resourceIndexScopes(vdc)) {
+    try {
+      const responses = await fetchResourceIndexResources(
+        vdc,
+        scope,
+        { resource_type_name: BMS_RESOURCE_TYPE_NAME },
+        session,
+      );
+      for (const resource of responses.flatMap((body) =>
+        listFromResponse(body, ["resources", "resource_list", "native_resources"]),
+      )) {
+        const id = summarizeResourceIndexInstance(resource);
+        if (id) instanceIds.add(id);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.warn(`[MANAGEONE HOURLY] BMS scope skipped for ${vdc.name || vdc.id} / ${scope.key}: ${message}`);
+    }
+  }
+
+  return instanceIds.size;
+}
+
+function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, bmsInstances, capturedAt }) {
   const resources = flattenResourceUsage(resourceUsage);
   return {
     vdcId: String(vdc.id),
@@ -583,7 +618,10 @@ function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, capt
     evsGb: resourceUsed(resources, "evs", "gigabytes"),
     obsGb: obsGb ?? obsGbFromResources(resources),
     publicIps: resourceUsed(resources, "vpc", "publicIp"),
-    bmsInstances: resourceUsed(resources, "bms", "instances") || resourceUsedByPattern(resources, /bms/, /instance/),
+    bmsInstances:
+      bmsInstances ||
+      resourceUsed(resources, "bms", "instances") ||
+      resourceUsedByPattern(resources, /bms/, /instance/),
     loadBalancers: resourceUsedByPattern(resources, /elb|vpc/, /load.?balancer|elb/),
     vpnGateways: resourceUsedByPattern(resources, /vpc/, /vpn/),
     natGateways,
@@ -660,9 +698,10 @@ async function syncManageOneHourlyMonitoring() {
         continue;
       }
 
-      const [resourceUsage, natGateways] = await Promise.all([
+      const [resourceUsage, natGateways, bmsInstances] = await Promise.all([
         fetchTenantResourceUsage(vdc.id, session),
         fetchTenantNatGatewayCount(vdc, session),
+        fetchTenantBmsInstanceCount(vdc, session),
       ]);
 
       rows.push(
@@ -672,6 +711,7 @@ async function syncManageOneHourlyMonitoring() {
           resourceUsage,
           obsGb: obsGbByVdcId.get(String(vdc.id)),
           natGateways,
+          bmsInstances,
           capturedAt: startedAt,
         }),
       );
