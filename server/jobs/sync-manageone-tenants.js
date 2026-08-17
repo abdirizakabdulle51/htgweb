@@ -410,6 +410,10 @@ function resourceUsageIndicatesEcs(resourceUsage) {
   });
 }
 
+function ecsUsedFromResourceUsage(resourceUsage) {
+  return resourceUsed(flattenResourceUsage(resourceUsage), "ecs", "instances");
+}
+
 function resourceUsageIndicatesEvs(resourceUsage) {
   return flattenResourceUsage(resourceUsage).some((resource) => {
     const serviceId = String(resource.serviceId || "").toLowerCase();
@@ -2064,6 +2068,7 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
 
   const projects = await listTenantProjects(vdc, session);
   const useProjectRegions = hasMixedProjectRegions(projects);
+  const usageEcsUsed = ecsUsedFromResourceUsage(resourceUsage);
 
   if (shouldUseDomainNativeBreakdown(vdc)) {
     if (!useProjectRegions) {
@@ -2106,9 +2111,34 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
     );
   }
 
-  const breakdown = useProjectRegions ? mergeEcsFlavorBreakdowns(regionAwareBreakdown) : aggregateEcsFlavorBreakdown(nativeResourceResponses);
+  let breakdown = useProjectRegions ? mergeEcsFlavorBreakdowns(regionAwareBreakdown) : aggregateEcsFlavorBreakdown(nativeResourceResponses);
+  let selectedRecordCount = countNativeRecords(nativeResourceResponses);
+  let selectedScope = "project";
+  const projectFlavorCount = ecsUsedFromBreakdown(breakdown) || 0;
+
+  if (shouldUseDomainNativeBreakdown(vdc) && useProjectRegions && usageEcsUsed > projectFlavorCount) {
+    console.log(
+      `[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: project-scoped records ${projectFlavorCount} below usage ${usageEcsUsed}; checking domain-scoped fallback`
+    );
+    const domainResponses = await fetchDomainNativeFlavorResources(vdc, session);
+    const domainBreakdown = aggregateEcsFlavorBreakdown(domainResponses);
+    const domainFlavorCount = ecsUsedFromBreakdown(domainBreakdown) || 0;
+    console.log(
+      `[MANAGEONE SYNC] ECS flavor domain fallback for ${vdc.name || vdc.id}: ${domainBreakdown.length} flavor(s), ${countNativeRecords(domainResponses)} domain record(s), ${domainFlavorCount} billable ECS row(s)`
+    );
+
+    if (domainFlavorCount > projectFlavorCount) {
+      console.log(
+        `[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: using domain-scoped fallback because it has fuller ECS coverage`
+      );
+      breakdown = domainBreakdown;
+      selectedRecordCount = countNativeRecords(domainResponses);
+      selectedScope = "domain fallback";
+    }
+  }
+
   console.log(
-    `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${countNativeRecords(nativeResourceResponses)} project record(s)`
+    `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${selectedRecordCount} ${selectedScope} record(s)`
   );
   return breakdown;
 }
