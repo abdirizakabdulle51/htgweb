@@ -16,6 +16,11 @@ const TENANT_FILTER = String(
 )
   .trim()
   .toLowerCase();
+const REGION_FILTER = String(
+  process.env.MANAGEONE_HOURLY_MONITORING_REGION_FILTER || "",
+)
+  .trim()
+  .toLowerCase();
 const INCLUDE_NAT_GATEWAYS =
   process.env.MANAGEONE_HOURLY_MONITORING_NAT_GATEWAYS === "true";
 const SYNC_URL = String(process.env.MANAGEONE_HOURLY_SYNC_URL || "").trim();
@@ -56,6 +61,18 @@ function tenantMatchesFilter(vdc, filter) {
   if (filter === "__all__") return true;
 
   const haystack = `${vdc?.name || ""} ${vdc?.id || ""} ${vdc?.domain_id || ""}`.toLowerCase();
+  return commaFilterMatches(filter, haystack);
+}
+
+function regionMatchesFilter(region, filter) {
+  if (!filter) return true;
+  if (filter === "__all__") return true;
+
+  const haystack = `${region?.regionName || ""} ${region?.regionId || ""}`.toLowerCase();
+  return commaFilterMatches(filter, haystack);
+}
+
+function commaFilterMatches(filter, haystack) {
   return filter
     .split(",")
     .map((item) => item.trim())
@@ -418,6 +435,9 @@ async function syncManageOneHourlyMonitoring() {
       `[MANAGEONE HOURLY] tenant filter active: ${TENANT_FILTER}; selected ${vdcs.length}/${allVdcs.length} tenant(s)`,
     );
   }
+  if (REGION_FILTER) {
+    console.log(`[MANAGEONE HOURLY] region filter active: ${REGION_FILTER}`);
+  }
 
   for (let index = 0; index < vdcs.length; index += 1) {
     const vdc = vdcs[index];
@@ -428,12 +448,21 @@ async function syncManageOneHourlyMonitoring() {
     }
 
     try {
-      const [region, resourceUsage, natGateways] = await Promise.all([
-        fetchTenantRegion(vdc, session).catch((error) => {
-          const message = error instanceof Error ? error.message : String(error || "Unknown error");
-          console.warn(`[MANAGEONE HOURLY] tenant region skipped for ${vdc.name || vdc.id}: ${message}`);
-          return {};
-        }),
+      const region = await fetchTenantRegion(vdc, session).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.warn(`[MANAGEONE HOURLY] tenant region skipped for ${vdc.name || vdc.id}: ${message}`);
+        return {};
+      });
+
+      if (!regionMatchesFilter(region, REGION_FILTER)) {
+        console.log(
+          `[MANAGEONE HOURLY] tenant skipped by region filter: ${vdc.name || vdc.id} ` +
+            `(${region.regionName || region.regionId || "unknown region"})`,
+        );
+        continue;
+      }
+
+      const [resourceUsage, natGateways] = await Promise.all([
         fetchTenantResourceUsage(vdc.id, session),
         fetchTenantNatGatewayCount(vdc, session),
       ]);
