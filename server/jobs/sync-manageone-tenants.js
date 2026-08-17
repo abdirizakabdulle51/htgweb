@@ -472,13 +472,35 @@ function parseEcsFlavor(rawFlavor) {
   };
 }
 
+function nativeResourceIdentity(resource) {
+  return firstDefined(
+    resource?.id,
+    resource?.resource_id,
+    resource?.resourceId,
+    resource?.native_resource_id,
+    resource?.nativeResourceId,
+    resource?.uuid,
+    resource?.properties?.id,
+    resource?.properties?.resource_id,
+    resource?.properties?.resourceId
+  );
+}
+
 function aggregateEcsFlavorBreakdown(nativeResourceResponses) {
   const flavorsByName = new Map();
+  const seenResources = new Set();
 
   for (const response of nativeResourceResponses) {
     const resources = listFromResponse(response, ["resources", "resource_list", "native_resources"]);
 
     for (const resource of resources) {
+      const identity = nativeResourceIdentity(resource);
+      if (identity) {
+        const key = String(identity);
+        if (seenResources.has(key)) continue;
+        seenResources.add(key);
+      }
+
       const parsed = parseEcsFlavor(resource?.properties?.flavor);
       if (!parsed) continue;
 
@@ -1420,10 +1442,31 @@ async function fetchTenantQuotaBreakdown(vdc, session) {
   return rows;
 }
 
-async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit) {
+const ECS_FLAVOR_NATIVE_RESOURCE_PROBES = [
+  {
+    serviceId: "ecs",
+    resourceTypeName: "CLOUD_ECS_INSTANCE",
+    label: "ECS instance",
+    required: true
+  },
+  {
+    serviceId: "cce",
+    resourceTypeName: "CLOUD_CCE_NODE",
+    label: "CCE node",
+    required: false
+  },
+  {
+    serviceId: "cce",
+    resourceTypeName: "CLOUD_NODE",
+    label: "CCE cloud node",
+    required: false
+  }
+];
+
+async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit, probe = ECS_FLAVOR_NATIVE_RESOURCE_PROBES[0]) {
   const params = new URLSearchParams({
-    service_id: "ecs",
-    resource_type_name: "CLOUD_ECS_INSTANCE",
+    service_id: probe.serviceId,
+    resource_type_name: probe.resourceTypeName,
     project_id: projectId,
     start: String(start),
     limit: String(limit)
@@ -1445,7 +1488,7 @@ async function fetchNativeEcsResourcePage(vdc, projectId, session, start, limit)
   return text ? JSON.parse(text) : {};
 }
 
-async function fetchProjectNativeEcsResources(vdc, projectId, session) {
+async function fetchProjectNativeEcsResources(vdc, projectId, session, probe = ECS_FLAVOR_NATIVE_RESOURCE_PROBES[0]) {
   const limit = NATIVE_RESOURCE_PAGE_LIMIT;
   let start = 0;
   const responses = [];
@@ -1456,13 +1499,13 @@ async function fetchProjectNativeEcsResources(vdc, projectId, session) {
     page += 1;
     if (page > NATIVE_RESOURCE_MAX_PAGES) {
       throw new Error(
-        `Native ECS resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id} project ${projectId}`
+        `Native ${probe.label} resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id} project ${projectId}`
       );
     }
 
     const body = await retryRateLimited(
-      `native ECS resource lookup for ${vdc.name || vdc.id} project ${projectId}`,
-      () => fetchNativeEcsResourcePage(vdc, projectId, session, start, limit)
+      `native ${probe.label} resource lookup for ${vdc.name || vdc.id} project ${projectId}`,
+      () => fetchNativeEcsResourcePage(vdc, projectId, session, start, limit, probe)
     );
     responses.push(body);
     const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
@@ -1483,10 +1526,28 @@ async function fetchProjectNativeEcsResources(vdc, projectId, session) {
   return responses;
 }
 
-async function fetchDomainNativeEcsResourcePage(vdc, session, start, limit) {
+async function fetchProjectNativeFlavorResources(vdc, projectId, session) {
+  const responses = [];
+
+  for (const probe of ECS_FLAVOR_NATIVE_RESOURCE_PROBES) {
+    try {
+      responses.push(...(await fetchProjectNativeEcsResources(vdc, projectId, session, probe)));
+    } catch (error) {
+      if (probe.required) throw error;
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.warn(
+        `[MANAGEONE SYNC] optional ${probe.label} flavor lookup skipped for ${vdc.name || vdc.id} project ${projectId}: ${message}`
+      );
+    }
+  }
+
+  return responses;
+}
+
+async function fetchDomainNativeEcsResourcePage(vdc, session, start, limit, probe = ECS_FLAVOR_NATIVE_RESOURCE_PROBES[0]) {
   const params = new URLSearchParams({
-    service_id: "ecs",
-    resource_type_name: "CLOUD_ECS_INSTANCE",
+    service_id: probe.serviceId,
+    resource_type_name: probe.resourceTypeName,
     domain_id: String(vdc.domain_id || ""),
     start: String(start),
     limit: String(limit)
@@ -1508,7 +1569,7 @@ async function fetchDomainNativeEcsResourcePage(vdc, session, start, limit) {
   return text ? JSON.parse(text) : {};
 }
 
-async function fetchDomainNativeEcsResources(vdc, session) {
+async function fetchDomainNativeEcsResources(vdc, session, probe = ECS_FLAVOR_NATIVE_RESOURCE_PROBES[0]) {
   const limit = NATIVE_RESOURCE_PAGE_LIMIT;
   let start = 0;
   const responses = [];
@@ -1519,13 +1580,13 @@ async function fetchDomainNativeEcsResources(vdc, session) {
     page += 1;
     if (page > NATIVE_RESOURCE_MAX_PAGES) {
       throw new Error(
-        `Domain native ECS resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`
+        `Domain native ${probe.label} resource pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`
       );
     }
 
     const body = await retryRateLimited(
-      `domain native ECS resource lookup for ${vdc.name || vdc.id}`,
-      () => fetchDomainNativeEcsResourcePage(vdc, session, start, limit)
+      `domain native ${probe.label} resource lookup for ${vdc.name || vdc.id}`,
+      () => fetchDomainNativeEcsResourcePage(vdc, session, start, limit, probe)
     );
     responses.push(body);
     const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
@@ -1540,6 +1601,24 @@ async function fetchDomainNativeEcsResources(vdc, session) {
 
     if (hasNextPage) {
       await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+async function fetchDomainNativeFlavorResources(vdc, session) {
+  const responses = [];
+
+  for (const probe of ECS_FLAVOR_NATIVE_RESOURCE_PROBES) {
+    try {
+      responses.push(...(await fetchDomainNativeEcsResources(vdc, session, probe)));
+    } catch (error) {
+      if (probe.required) throw error;
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.warn(
+        `[MANAGEONE SYNC] optional domain ${probe.label} flavor lookup skipped for ${vdc.name || vdc.id}: ${message}`
+      );
     }
   }
 
@@ -1989,7 +2068,7 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
   if (shouldUseDomainNativeBreakdown(vdc)) {
     if (!useProjectRegions) {
       console.log(`[MANAGEONE SYNC] ECS flavor lookup for ${vdc.name || vdc.id}: domain-scoped native resources`);
-      const domainResponses = await fetchDomainNativeEcsResources(vdc, session);
+      const domainResponses = await fetchDomainNativeFlavorResources(vdc, session);
       const breakdown = aggregateEcsFlavorBreakdown(domainResponses);
       console.log(
         `[MANAGEONE SYNC] ECS flavor breakdown for ${vdc.name || vdc.id}: ${breakdown.length} flavor(s), ${countNativeRecords(domainResponses)} domain record(s)`
@@ -2017,7 +2096,7 @@ async function fetchTenantEcsFlavorBreakdown(vdc, session, resourceUsage) {
     if (!projectId) continue;
 
     await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
-    const projectResponses = await fetchProjectNativeEcsResources(vdc, String(projectId), session);
+    const projectResponses = await fetchProjectNativeFlavorResources(vdc, String(projectId), session);
     nativeResourceResponses.push(...projectResponses);
     regionAwareBreakdown.push(
       ...aggregateEcsFlavorBreakdown(projectResponses).map((item) => ({
