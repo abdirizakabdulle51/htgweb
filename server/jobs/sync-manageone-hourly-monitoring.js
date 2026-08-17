@@ -11,6 +11,19 @@ const MANAGEONE_READ_TIMEOUT_MS = Number(
 const RESOURCE_PAGE_LIMIT = 100;
 const RESOURCE_MAX_PAGES = 20;
 const NAT_RESOURCE_TYPE_NAME = "CLOUD_NAT_INSTANCE";
+const DEFAULT_CAPACITY_BASE_URL = "https://10.20.24.9:26335";
+const OBS_CAPACITY_REGIONS = [
+  {
+    regionId: "3A462C0E713B3BF389CC4359D2618F9D",
+    regionCode: "htgcloud-region-02",
+    regionName: "Mogadishu-region-hq3",
+  },
+  {
+    regionId: "3A03042C29813F5DBA6DBDC2E95CB101",
+    regionCode: "hoa-mogadishu-2",
+    regionName: "Hoa-Mogadishu-2",
+  },
+];
 const TENANT_FILTER = String(
   process.env.MANAGEONE_HOURLY_MONITORING_TENANT_FILTER || "",
 )
@@ -92,6 +105,10 @@ function resourceEndpointBaseUrl() {
   return `${manageOneRootUrl()}/rest/resource`;
 }
 
+function capacityBaseUrl() {
+  return stripTrailingSlash(process.env.MANAGEONE_CAPACITY_BASE_URL || DEFAULT_CAPACITY_BASE_URL);
+}
+
 async function fetchTextWithTimeout(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MANAGEONE_READ_TIMEOUT_MS);
@@ -121,6 +138,153 @@ function listFromResponse(body, keys) {
   }
 
   return [];
+}
+
+function parseJsonResponse(text, label) {
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`${label} returned invalid JSON: ${String(text || "").slice(0, 300)}`);
+  }
+}
+
+function normalizeObsIdentity(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function obsTenantRows(body) {
+  if (Array.isArray(body?.tenant)) return body.tenant;
+  if (Array.isArray(body?.obs?.tenant)) return body.obs.tenant;
+  if (Array.isArray(body?.OBSCapacity?.tenant)) return body.OBSCapacity.tenant;
+  if (Array.isArray(body?.data?.tenant)) return body.data.tenant;
+  if (Array.isArray(body?.data?.obs?.tenant)) return body.data.obs.tenant;
+  if (Array.isArray(body?.data?.OBSCapacity?.tenant)) return body.data.OBSCapacity.tenant;
+  if (Array.isArray(body?.tenants)) return body.tenants;
+  if (Array.isArray(body?.data?.tenants)) return body.data.tenants;
+  if (Array.isArray(body?.rows)) return body.rows;
+  if (Array.isArray(body?.data?.rows)) return body.data.rows;
+  if (Array.isArray(body?.items)) return body.items;
+  if (Array.isArray(body?.data?.items)) return body.data.items;
+  return [];
+}
+
+function obsTenantRowMatches(row, tenant) {
+  const tenantKeys = [
+    tenant?.name,
+    tenant?.id,
+    tenant?.domain_id,
+    tenant?.domainId,
+    tenant?.vdcId,
+    tenant?.tenantName,
+  ].map(normalizeObsIdentity);
+  const rowKeys = [
+    row?.tenantName,
+    row?.tenant_name,
+    row?.name,
+    row?.tenantId,
+    row?.tenant_id,
+    row?.vdcId,
+    row?.vdc_id,
+    row?.domainId,
+    row?.domain_id,
+  ].map(normalizeObsIdentity);
+  return rowKeys.some((rowKey) => rowKey && tenantKeys.includes(rowKey));
+}
+
+function obsBucketUsedMb(row) {
+  const value = firstDefined(row?.bucketUsed, row?.bucket_used, row?.usedMb, row?.used_mb, row?.used, row?.usage);
+  const numericValue = numberOrNull(value);
+  if (numericValue !== null) return numericValue;
+
+  const match = String(value || "")
+    .trim()
+    .match(/^(-?\d+(?:\.\d+)?)\s*([a-z]+)?$/i);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) return null;
+
+  const unit = String(match[2] || "MB").toLowerCase();
+  if (unit === "gb" || unit === "gib") return amount * 1024;
+  if (unit === "kb" || unit === "kib") return amount / 1024;
+  if (unit === "b" || unit === "byte" || unit === "bytes") return amount / (1024 * 1024);
+  return amount;
+}
+
+function obsBucketUsedGb(row) {
+  const usedMb = obsBucketUsedMb(row);
+  if (usedMb === null || usedMb <= 0) return 0;
+  return Math.round((usedMb / 1024) * 1000) / 1000;
+}
+
+function obsCapacityRowSample(row) {
+  return {
+    tenantName: firstDefined(row?.tenantName, row?.tenant_name, row?.name) ?? null,
+    tenantId: firstDefined(row?.tenantId, row?.tenant_id) ?? null,
+    vdcId: firstDefined(row?.vdcId, row?.vdc_id) ?? null,
+    domainId: firstDefined(row?.domainId, row?.domain_id) ?? null,
+    bucketUsed: firstDefined(row?.bucketUsed, row?.bucket_used, row?.usedMb, row?.used_mb, row?.used, row?.usage) ?? null,
+  };
+}
+
+async function fetchObsCapacity(region, session) {
+  const url = `${capacityBaseUrl()}/rest/capacity/v1/capbase/regions/${encodeURIComponent(
+    region.regionId,
+  )}/resource-types/obs/current-capacities`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "X-Auth-Token": session.token,
+    },
+    redirect: "manual",
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text.slice(0, 500)}` : ""}`);
+  }
+
+  return obsTenantRows(parseJsonResponse(text, `OBS capacity for ${region.regionName}`));
+}
+
+async function fetchObsGbByTenant(session, vdcs) {
+  const obsGbByVdcId = new Map();
+
+  for (const region of OBS_CAPACITY_REGIONS) {
+    try {
+      const rows = await fetchObsCapacity(region, session);
+      console.log(`[MANAGEONE HOURLY] OBS3 capacity probe for ${region.regionName}: ${rows.length} tenant bucket row(s)`);
+
+      let regionMatchCount = 0;
+      for (const vdc of vdcs) {
+        const matches = rows.filter((row) => obsTenantRowMatches(row, vdc));
+        if (matches.length === 0) continue;
+
+        const totalGb = matches.reduce((total, row) => total + obsBucketUsedGb(row), 0);
+        if (totalGb <= 0) continue;
+
+        regionMatchCount += matches.length;
+        obsGbByVdcId.set(String(vdc.id), Math.round(((obsGbByVdcId.get(String(vdc.id)) || 0) + totalGb) * 1000) / 1000);
+      }
+
+      if (rows.length > 0 && regionMatchCount === 0) {
+        console.warn(
+          `[MANAGEONE HOURLY] OBS3 capacity rows for ${region.regionName} did not match selected tenants; sample ${JSON.stringify(
+            rows.slice(0, 3).map(obsCapacityRowSample),
+          )}`,
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || "Unknown error");
+      console.warn(`[MANAGEONE HOURLY] OBS3 capacity probe skipped for ${region.regionName}: ${message}`);
+    }
+  }
+
+  return obsGbByVdcId;
 }
 
 function responseTotal(body) {
@@ -253,6 +417,10 @@ function resourceUsed(resources, serviceId, resourceName) {
   return numberOrNull(match?.used) || 0;
 }
 
+function resourceUsedAny(resources, serviceId, resourceNames) {
+  return resourceNames.reduce((total, resourceName) => total + resourceUsed(resources, serviceId, resourceName), 0);
+}
+
 function resourceUsedByPattern(resources, serviceIdPattern, resourcePattern) {
   const match = resources.find(
     (resource) =>
@@ -261,6 +429,20 @@ function resourceUsedByPattern(resources, serviceIdPattern, resourcePattern) {
   );
 
   return numberOrNull(match?.used) || 0;
+}
+
+function obsGbFromResources(resources) {
+  return (
+    resourceUsed(resources, "obsv3", "capacity") ||
+    resourceUsedByPattern(resources, /obs|obsv3/, /capacity|storage|gigabytes/)
+  );
+}
+
+function wafInstancesFromResources(resources) {
+  const tieredWaf =
+    resourceUsedAny(resources, "waf", ["waf.instance.100", "waf.instance.500"]) ||
+    resourceUsedByPattern(resources, /waf/, /waf\.instance\.(100|500)|basic|enterprise/);
+  return tieredWaf || resourceUsed(resources, "waf", "waf.instance") || resourceUsedByPattern(resources, /waf/, /instance/);
 }
 
 function resourceIndexScopes(vdc) {
@@ -375,7 +557,7 @@ async function fetchTenantNatGatewayCount(vdc, session) {
   return gatewayIds.size;
 }
 
-function mapMonitoringRow({ vdc, region, resourceUsage, natGateways, capturedAt }) {
+function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, capturedAt }) {
   const resources = flattenResourceUsage(resourceUsage);
   return {
     vdcId: String(vdc.id),
@@ -388,12 +570,12 @@ function mapMonitoringRow({ vdc, region, resourceUsage, natGateways, capturedAt 
     ecsCores: resourceUsed(resources, "ecs", "cores"),
     ecsRamGb: resourceUsed(resources, "ecs", "ram"),
     evsGb: resourceUsed(resources, "evs", "gigabytes"),
-    obsGb: resourceUsed(resources, "obsv3", "capacity"),
+    obsGb: obsGb ?? obsGbFromResources(resources),
     publicIps: resourceUsed(resources, "vpc", "publicIp"),
     loadBalancers: resourceUsedByPattern(resources, /elb|vpc/, /load.?balancer|elb/),
     vpnGateways: resourceUsedByPattern(resources, /vpc/, /vpn/),
     natGateways,
-    wafInstances: resourceUsed(resources, "waf", "waf.instance"),
+    wafInstances: wafInstancesFromResources(resources),
     rawMetrics: {
       resourceUsage,
     },
@@ -439,6 +621,8 @@ async function syncManageOneHourlyMonitoring() {
     console.log(`[MANAGEONE HOURLY] region filter active: ${REGION_FILTER}`);
   }
 
+  const obsGbByVdcId = await fetchObsGbByTenant(session, vdcs);
+
   for (let index = 0; index < vdcs.length; index += 1) {
     const vdc = vdcs[index];
     console.log(`[MANAGEONE HOURLY] checking tenant ${index + 1}/${vdcs.length}: ${vdc.name || vdc.id}`);
@@ -472,6 +656,7 @@ async function syncManageOneHourlyMonitoring() {
           vdc,
           region,
           resourceUsage,
+          obsGb: obsGbByVdcId.get(String(vdc.id)),
           natGateways,
           capturedAt: startedAt,
         }),
