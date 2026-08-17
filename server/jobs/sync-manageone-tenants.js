@@ -414,6 +414,18 @@ function ecsUsedFromResourceUsage(resourceUsage) {
   return resourceUsed(flattenResourceUsage(resourceUsage), "ecs", "instances");
 }
 
+function bmsUsedFromResources(resources) {
+  return resourceUsed(resources, "bms", "instances");
+}
+
+function wafBasicUsedFromResources(resources) {
+  return resourceUsed(resources, "waf", "waf.instance.100");
+}
+
+function wafEnterpriseUsedFromResources(resources) {
+  return resourceUsed(resources, "waf", "waf.instance.500");
+}
+
 function resourceUsageIndicatesEvs(resourceUsage) {
   return flattenResourceUsage(resourceUsage).some((resource) => {
     const serviceId = String(resource.serviceId || "").toLowerCase();
@@ -1049,7 +1061,10 @@ function mapTenantUsageHistoryItem({ vdc, resourceUsage, obsBuckets, syncedAt })
     obsGb: obsGb ?? resourceUsed(resources, "obsv3", "capacity"),
     sfsGb: resourceUsed(resources, "sfs", "gigabytes"),
     publicIps: resourceUsed(resources, "vpc", "publicIp"),
+    bmsInstances: bmsUsedFromResources(resources),
     wafInstances: resourceUsed(resources, "waf", "waf.instance"),
+    wafBasicInstances: wafBasicUsedFromResources(resources),
+    wafEnterpriseInstances: wafEnterpriseUsedFromResources(resources),
     syncedAt
   };
 }

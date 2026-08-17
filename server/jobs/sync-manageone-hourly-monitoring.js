@@ -445,6 +445,17 @@ function wafInstancesFromResources(resources) {
   return tieredWaf || resourceUsed(resources, "waf", "waf.instance") || resourceUsedByPattern(resources, /waf/, /instance/);
 }
 
+function wafBasicInstancesFromResources(resources) {
+  return resourceUsed(resources, "waf", "waf.instance.100") || resourceUsedByPattern(resources, /waf/, /waf\.instance\.100|basic/);
+}
+
+function wafEnterpriseInstancesFromResources(resources) {
+  return (
+    resourceUsed(resources, "waf", "waf.instance.500") ||
+    resourceUsedByPattern(resources, /waf/, /waf\.instance\.500|enterprise/)
+  );
+}
+
 function resourceIndexScopes(vdc) {
   return [
     {
@@ -572,10 +583,13 @@ function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, capt
     evsGb: resourceUsed(resources, "evs", "gigabytes"),
     obsGb: obsGb ?? obsGbFromResources(resources),
     publicIps: resourceUsed(resources, "vpc", "publicIp"),
+    bmsInstances: resourceUsed(resources, "bms", "instances") || resourceUsedByPattern(resources, /bms/, /instance/),
     loadBalancers: resourceUsedByPattern(resources, /elb|vpc/, /load.?balancer|elb/),
     vpnGateways: resourceUsedByPattern(resources, /vpc/, /vpn/),
     natGateways,
     wafInstances: wafInstancesFromResources(resources),
+    wafBasicInstances: wafBasicInstancesFromResources(resources),
+    wafEnterpriseInstances: wafEnterpriseInstancesFromResources(resources),
     rawMetrics: {
       resourceUsage,
     },
