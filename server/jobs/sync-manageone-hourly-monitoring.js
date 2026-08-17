@@ -12,6 +12,7 @@ const RESOURCE_PAGE_LIMIT = 100;
 const RESOURCE_MAX_PAGES = 20;
 const NAT_RESOURCE_TYPE_NAME = "CLOUD_NAT_INSTANCE";
 const BMS_RESOURCE_TYPE_NAME = "CLOUD_BMS_INSTANCE";
+const CCE_NODE_RESOURCE_TYPE_NAME = "CLOUD_CCE_NODE";
 const DEFAULT_CAPACITY_BASE_URL = "https://10.20.24.9:26335";
 const OBS_CAPACITY_REGIONS = [
   {
@@ -439,6 +440,28 @@ function obsGbFromResources(resources) {
   );
 }
 
+function sfsGbFromResources(resources) {
+  return resourceUsed(resources, "sfs", "gigabytes") || resourceUsedByPattern(resources, /sfs/, /gigabytes|capacity|storage/);
+}
+
+function csbsGbFromResources(resources) {
+  return (
+    resourceUsed(resources, "csbs", "backup_capacity") ||
+    resourceUsedByPattern(resources, /csbs/, /backup.*capacity|capacity|gigabytes/)
+  );
+}
+
+function vbsGbFromResources(resources) {
+  return (
+    resourceUsed(resources, "vbs", "volume_backup_capacity") ||
+    resourceUsedByPattern(resources, /vbs/, /volume.*backup.*capacity|backup.*capacity|capacity|gigabytes/)
+  );
+}
+
+function vpcepEndpointsFromResources(resources) {
+  return resourceUsedAny(resources, "vpc", ["endpoint", "endpoint_service"]);
+}
+
 function wafInstancesFromResources(resources) {
   const tieredWaf =
     resourceUsedAny(resources, "waf", ["waf.instance.100", "waf.instance.500"]) ||
@@ -577,6 +600,14 @@ async function fetchTenantNatGatewayCount(vdc, session) {
 }
 
 async function fetchTenantBmsInstanceCount(vdc, session) {
+  return fetchTenantResourceIndexCount(vdc, session, BMS_RESOURCE_TYPE_NAME, "BMS");
+}
+
+async function fetchTenantCceNodeCount(vdc, session) {
+  return fetchTenantResourceIndexCount(vdc, session, CCE_NODE_RESOURCE_TYPE_NAME, "CCE node");
+}
+
+async function fetchTenantResourceIndexCount(vdc, session, resourceTypeName, label) {
   if (!vdc?.domain_id) return 0;
 
   const instanceIds = new Set();
@@ -585,7 +616,7 @@ async function fetchTenantBmsInstanceCount(vdc, session) {
       const responses = await fetchResourceIndexResources(
         vdc,
         scope,
-        { resource_type_name: BMS_RESOURCE_TYPE_NAME },
+        { resource_type_name: resourceTypeName },
         session,
       );
       for (const resource of responses.flatMap((body) =>
@@ -596,14 +627,14 @@ async function fetchTenantBmsInstanceCount(vdc, session) {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || "Unknown error");
-      console.warn(`[MANAGEONE HOURLY] BMS scope skipped for ${vdc.name || vdc.id} / ${scope.key}: ${message}`);
+      console.warn(`[MANAGEONE HOURLY] ${label} scope skipped for ${vdc.name || vdc.id} / ${scope.key}: ${message}`);
     }
   }
 
   return instanceIds.size;
 }
 
-function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, bmsInstances, capturedAt }) {
+function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, bmsInstances, cceNodes, capturedAt }) {
   const resources = flattenResourceUsage(resourceUsage);
   return {
     vdcId: String(vdc.id),
@@ -613,11 +644,19 @@ function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, bmsI
     ...(region.regionName ? { regionName: region.regionName } : {}),
     capturedAt,
     ecsInstances: resourceUsed(resources, "ecs", "instances"),
+    cceNodes:
+      cceNodes ||
+      resourceUsed(resources, "cce", "hybrid.resource.type.cce.cluster") ||
+      resourceUsedByPattern(resources, /cce/, /node|cluster/),
     ecsCores: resourceUsed(resources, "ecs", "cores"),
     ecsRamGb: resourceUsed(resources, "ecs", "ram"),
     evsGb: resourceUsed(resources, "evs", "gigabytes"),
+    sfsGb: sfsGbFromResources(resources),
+    csbsGb: csbsGbFromResources(resources),
+    vbsGb: vbsGbFromResources(resources),
     obsGb: obsGb ?? obsGbFromResources(resources),
     publicIps: resourceUsed(resources, "vpc", "publicIp"),
+    vpcepEndpoints: vpcepEndpointsFromResources(resources),
     bmsInstances:
       bmsInstances ||
       resourceUsed(resources, "bms", "instances") ||
@@ -698,10 +737,11 @@ async function syncManageOneHourlyMonitoring() {
         continue;
       }
 
-      const [resourceUsage, natGateways, bmsInstances] = await Promise.all([
+      const [resourceUsage, natGateways, bmsInstances, cceNodes] = await Promise.all([
         fetchTenantResourceUsage(vdc.id, session),
         fetchTenantNatGatewayCount(vdc, session),
         fetchTenantBmsInstanceCount(vdc, session),
+        fetchTenantCceNodeCount(vdc, session),
       ]);
 
       rows.push(
@@ -712,6 +752,7 @@ async function syncManageOneHourlyMonitoring() {
           obsGb: obsGbByVdcId.get(String(vdc.id)),
           natGateways,
           bmsInstances,
+          cceNodes,
           capturedAt: startedAt,
         }),
       );
