@@ -1043,6 +1043,17 @@ const TENANT_TOTAL_RECONCILE_FIELDS = [
   "wafEnterpriseInstances",
 ];
 
+const PROJECT_SCOPED_FALLBACK_COVERAGE_THRESHOLD = 0.8;
+const PROJECT_SCOPED_FALLBACK_ANCHOR_FIELDS = ["ecsInstances", "cceNodes", "bmsInstances"];
+const PROJECT_SCOPED_TENANT_FALLBACK_FIELDS = [
+  "ecsInstances",
+  "cceNodes",
+  "bmsInstances",
+  "ecsCores",
+  "ecsRamGb",
+  "evsGb",
+];
+
 function rowFieldValue(row, field) {
   return numberOrNull(row?.[field]) || 0;
 }
@@ -1070,6 +1081,54 @@ function primaryRegionRowIndex(rows, primaryRegion) {
 
 function sumRows(rows, field) {
   return rows.reduce((total, row) => total + rowFieldValue(row, field), 0);
+}
+
+function incompleteProjectScopedCoverageReasons(rows, tenantTotals) {
+  const reasons = [];
+
+  for (const field of PROJECT_SCOPED_FALLBACK_ANCHOR_FIELDS) {
+    const expected = rowFieldValue(tenantTotals, field);
+    const current = sumRows(rows, field);
+
+    if (expected <= 0 || current >= expected) continue;
+
+    if (expected >= 10 && current / expected < PROJECT_SCOPED_FALLBACK_COVERAGE_THRESHOLD) {
+      reasons.push(`${field} ${roundedMetric(current)}/${roundedMetric(expected)}`);
+      continue;
+    }
+
+    if (expected >= 3 && current === 0) {
+      reasons.push(`${field} ${roundedMetric(current)}/${roundedMetric(expected)}`);
+    }
+  }
+
+  return reasons;
+}
+
+function applyProjectScopedTenantFallback({ vdc, rows, target, tenantTotals }) {
+  const reasons = incompleteProjectScopedCoverageReasons(rows, tenantTotals);
+  if (reasons.length === 0) return;
+
+  const applied = [];
+
+  for (const field of PROJECT_SCOPED_TENANT_FALLBACK_FIELDS) {
+    const expectedTotal = rowFieldValue(tenantTotals, field);
+    const currentTotal = sumRows(rows, field);
+    const missing = roundedMetric(expectedTotal - currentTotal);
+
+    if (missing > 0) {
+      target[field] = roundedMetric(rowFieldValue(target, field) + missing);
+      applied.push(`${field} +${missing}`);
+    }
+  }
+
+  if (applied.length > 0) {
+    console.log(
+      `[MANAGEONE HOURLY] project-scoped totals incomplete for ${vdc.name || vdc.id}: ${reasons.join(
+        ", ",
+      )}; applied tenant-level compute fallback: ${applied.join(", ")}`,
+    );
+  }
 }
 
 async function tenantLevelMonitoringRow({ vdc, region, resourceUsage, obsGbByVdcRegion, session, capturedAt }) {
@@ -1113,6 +1172,8 @@ async function reconcileRowsWithTenantTotals({
   const targetIndex = primaryRegionRowIndex(rows, primaryRegion);
   const target = rows[targetIndex];
   const applied = [];
+
+  applyProjectScopedTenantFallback({ vdc, rows, target, tenantTotals });
 
   for (const field of TENANT_TOTAL_RECONCILE_FIELDS) {
     const expectedTotal = rowFieldValue(tenantTotals, field);
