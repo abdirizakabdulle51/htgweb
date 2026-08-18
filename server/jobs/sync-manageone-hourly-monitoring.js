@@ -1028,6 +1028,118 @@ function mapMonitoringRow({
   };
 }
 
+const TENANT_TOTAL_RECONCILE_FIELDS = [
+  "ecsInstances",
+  "cceNodes",
+  "ecsCores",
+  "ecsRamGb",
+  "evsGb",
+  "sfsGb",
+  "csbsGb",
+  "vbsGb",
+  "obsGb",
+  "publicIps",
+  "vpcepEndpoints",
+  "bmsInstances",
+  "loadBalancers",
+  "vpnGateways",
+  "natGateways",
+  "wafInstances",
+  "wafBasicInstances",
+  "wafEnterpriseInstances",
+];
+
+function rowFieldValue(row, field) {
+  return numberOrNull(row?.[field]) || 0;
+}
+
+function roundedMetric(value) {
+  return Math.round((numberOrNull(value) || 0) * 1000) / 1000;
+}
+
+function rowRegion(row) {
+  return {
+    ...(row?.regionId ? { regionId: row.regionId } : {}),
+    ...(row?.regionName ? { regionName: row.regionName } : {}),
+  };
+}
+
+function primaryRegionRowIndex(rows, primaryRegion) {
+  const key = regionKey(primaryRegion);
+  if (key !== "|") {
+    const index = rows.findIndex((row) => regionKey(rowRegion(row)) === key);
+    if (index >= 0) return index;
+  }
+
+  return 0;
+}
+
+function sumRows(rows, field) {
+  return rows.reduce((total, row) => total + rowFieldValue(row, field), 0);
+}
+
+async function tenantLevelMonitoringRow({ vdc, region, resourceUsage, obsGbByVdcRegion, session, capturedAt }) {
+  const [natGateways, bmsInstances, cceNodes] = await Promise.all([
+    fetchTenantNatGatewayCount(vdc, session),
+    fetchTenantBmsInstanceCount(vdc, session),
+    fetchTenantCceNodeCount(vdc, session),
+  ]);
+
+  return mapMonitoringRow({
+    vdc,
+    region,
+    resourceUsage,
+    obsGb: totalObsGbForTenant(obsGbByVdcRegion, vdc),
+    natGateways,
+    bmsInstances,
+    cceNodes,
+    capturedAt,
+  });
+}
+
+async function reconcileRowsWithTenantTotals({
+  vdc,
+  rows,
+  primaryRegion,
+  resourceUsage,
+  obsGbByVdcRegion,
+  session,
+  capturedAt,
+}) {
+  if (rows.length <= 1) return rows;
+
+  const tenantTotals = await tenantLevelMonitoringRow({
+    vdc,
+    region: primaryRegion,
+    resourceUsage,
+    obsGbByVdcRegion,
+    session,
+    capturedAt,
+  });
+  const targetIndex = primaryRegionRowIndex(rows, primaryRegion);
+  const target = rows[targetIndex];
+  const applied = [];
+
+  for (const field of TENANT_TOTAL_RECONCILE_FIELDS) {
+    const expectedTotal = rowFieldValue(tenantTotals, field);
+    const currentTotal = sumRows(rows, field);
+    const missing = roundedMetric(expectedTotal - currentTotal);
+
+    if (missing > 0) {
+      target[field] = roundedMetric(rowFieldValue(target, field) + missing);
+      applied.push(`${field} +${missing}`);
+    }
+  }
+
+  if (applied.length > 0) {
+    console.log(
+      `[MANAGEONE HOURLY] reconciled tenant-level totals for ${vdc.name || vdc.id}: ${applied.join(", ")}`,
+    );
+  }
+
+  return rows;
+}
+
 async function buildMonitoringRowsForTenant({ vdc, region, resourceUsage, obsGbByVdcRegion, session, capturedAt }) {
   let projects = [];
   try {
@@ -1121,7 +1233,15 @@ async function buildMonitoringRowsForTenant({ vdc, region, resourceUsage, obsGbB
     );
   }
 
-  return rows;
+  return reconcileRowsWithTenantTotals({
+    vdc,
+    rows,
+    primaryRegion: region,
+    resourceUsage,
+    obsGbByVdcRegion,
+    session,
+    capturedAt,
+  });
 }
 
 async function pushRowsToCrm(rows, startedAt) {
