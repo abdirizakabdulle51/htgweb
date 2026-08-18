@@ -10,9 +10,20 @@ const MANAGEONE_READ_TIMEOUT_MS = Number(
 );
 const RESOURCE_PAGE_LIMIT = 100;
 const RESOURCE_MAX_PAGES = 20;
+const PROJECT_PAGE_LIMIT = 100;
+const PROJECT_MAX_PAGES = 20;
+const NATIVE_RESOURCE_PAGE_LIMIT = 500;
+const NATIVE_RESOURCE_MAX_PAGES = 10;
 const NAT_RESOURCE_TYPE_NAME = "CLOUD_NAT_INSTANCE";
 const BMS_RESOURCE_TYPE_NAME = "CLOUD_BMS_INSTANCE";
 const CCE_NODE_RESOURCE_TYPE_NAME = "CLOUD_CCE_NODE";
+const PROJECT_NATIVE_RESOURCE_PROBES = [
+  { key: "ecs", serviceId: "ecs", resourceTypeName: "CLOUD_ECS_INSTANCE", required: false },
+  { key: "cce", serviceId: "cce", resourceTypeName: "CLOUD_CCE_NODE", required: false },
+  { key: "cceCloudNode", serviceId: "cce", resourceTypeName: "CLOUD_NODE", required: false },
+  { key: "evs", serviceId: "evs", resourceTypeName: "CLOUD_EVS_INSTANCE", required: false },
+  { key: "bms", serviceId: "bms", resourceTypeName: "CLOUD_BMS_INSTANCE", required: false },
+];
 const DEFAULT_CAPACITY_BASE_URL = "https://10.20.24.9:26335";
 const OBS_CAPACITY_REGIONS = [
   {
@@ -254,7 +265,7 @@ async function fetchObsCapacity(region, session) {
 }
 
 async function fetchObsGbByTenant(session, vdcs) {
-  const obsGbByVdcId = new Map();
+  const obsGbByVdcRegion = new Map();
 
   for (const region of OBS_CAPACITY_REGIONS) {
     try {
@@ -270,7 +281,8 @@ async function fetchObsGbByTenant(session, vdcs) {
         if (totalGb <= 0) continue;
 
         regionMatchCount += matches.length;
-        obsGbByVdcId.set(String(vdc.id), Math.round(((obsGbByVdcId.get(String(vdc.id)) || 0) + totalGb) * 1000) / 1000);
+        const key = `${String(vdc.id)}|${regionKey(region)}`;
+        obsGbByVdcRegion.set(key, Math.round(((obsGbByVdcRegion.get(key) || 0) + totalGb) * 1000) / 1000);
       }
 
       if (rows.length > 0 && regionMatchCount === 0) {
@@ -286,7 +298,34 @@ async function fetchObsGbByTenant(session, vdcs) {
     }
   }
 
-  return obsGbByVdcId;
+  return obsGbByVdcRegion;
+}
+
+function obsGbForRegion(obsGbByVdcRegion, vdc, region) {
+  const exact = obsGbByVdcRegion.get(`${String(vdc.id)}|${regionKey(region)}`);
+  if (exact !== undefined) return exact;
+
+  const regionName = normalizedKey(region?.regionName);
+  if (!regionName) return undefined;
+
+  for (const [key, value] of obsGbByVdcRegion.entries()) {
+    if (key.startsWith(`${String(vdc.id)}|`) && key.endsWith(`|${regionName}`)) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function totalObsGbForTenant(obsGbByVdcRegion, vdc) {
+  let total = 0;
+  for (const [key, value] of obsGbByVdcRegion.entries()) {
+    if (key.startsWith(`${String(vdc.id)}|`)) {
+      total += numberOrNull(value) || 0;
+    }
+  }
+
+  return total > 0 ? Math.round(total * 1000) / 1000 : undefined;
 }
 
 function responseTotal(body) {
@@ -335,6 +374,123 @@ function extractTenantRegion(detail) {
     ...(regionId ? { regionId: String(regionId) } : {}),
     ...(regionName ? { regionName: String(regionName) } : {}),
   };
+}
+
+function extractProjectRegions(project) {
+  const regions = Array.isArray(project?.regions) ? project.regions : [];
+
+  return regions
+    .map((region) => ({
+      regionId: firstDefined(region.region_id, region.regionId, region.id),
+      regionName: parseLocalizedName(firstDefined(region.region_name, region.regionName, region.name)),
+    }))
+    .filter((region) => region.regionId || region.regionName)
+    .map((region) => ({
+      ...(region.regionId ? { regionId: String(region.regionId) } : {}),
+      ...(region.regionName ? { regionName: String(region.regionName) } : {}),
+    }));
+}
+
+function projectId(project) {
+  const value = firstDefined(project?.id, project?.project_id, project?.projectId);
+  return value ? String(value) : null;
+}
+
+function projectName(project) {
+  return String(
+    firstDefined(
+      project?.resource_space_name,
+      project?.resourceSpaceName,
+      project?.display_name,
+      project?.displayName,
+      project?.iam_project_name,
+      project?.name,
+      project?.id,
+      "unknown",
+    ),
+  );
+}
+
+function regionKey(region) {
+  return `${normalizedKey(region?.regionId)}|${normalizedKey(region?.regionName)}`;
+}
+
+function mergeRegion(existing, next) {
+  return {
+    ...(existing?.regionId || next?.regionId ? { regionId: existing?.regionId || next?.regionId } : {}),
+    ...(existing?.regionName || next?.regionName ? { regionName: existing?.regionName || next?.regionName } : {}),
+  };
+}
+
+async function fetchProjectPage(vdc, session, start, limit) {
+  const url = `${vdcEndpointBaseUrl()}/v3.1/vdcs/${encodeURIComponent(vdc.id)}/projects?start=${start}&limit=${limit}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token,
+    },
+    redirect: "manual",
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function listTenantProjects(vdc, session) {
+  const projects = [];
+  let start = 0;
+  let page = 0;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    page += 1;
+    if (page > PROJECT_MAX_PAGES) {
+      throw new Error(`Project pagination exceeded ${PROJECT_MAX_PAGES} page(s) for ${vdc.name || vdc.id}`);
+    }
+
+    const body = await fetchProjectPage(vdc, session, start, PROJECT_PAGE_LIMIT);
+    const pageProjects = listFromResponse(body, ["projects", "project_list"]);
+    projects.push(...pageProjects);
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextPage({
+      reportedTotal,
+      start,
+      pageSize: PROJECT_PAGE_LIMIT,
+      pageResourceCount: pageProjects.length,
+    });
+    start += PROJECT_PAGE_LIMIT;
+
+    if (hasNextPage) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return projects;
+}
+
+function projectRegionGroups(projects, fallbackRegion) {
+  const groups = new Map();
+
+  for (const project of projects) {
+    const regions = extractProjectRegions(project);
+    const region = regions[0] || fallbackRegion || {};
+    const key = regionKey(region);
+    if (key === "|") continue;
+
+    const existing = groups.get(key) || {
+      region: {},
+      projects: [],
+    };
+    existing.region = mergeRegion(existing.region, region);
+    existing.projects.push(project);
+    groups.set(key, existing);
+  }
+
+  return [...groups.values()];
 }
 
 async function fetchTenantRegion(vdc, session) {
@@ -478,6 +634,192 @@ function wafEnterpriseInstancesFromResources(resources) {
     resourceUsed(resources, "waf", "waf.instance.500") ||
     resourceUsedByPattern(resources, /waf/, /waf\.instance\.500|enterprise/)
   );
+}
+
+function nativeResourceIdentity(resource) {
+  return firstDefined(
+    resource?.id,
+    resource?.resource_id,
+    resource?.resourceId,
+    resource?.native_resource_id,
+    resource?.nativeResourceId,
+    resource?.uuid,
+    resource?.properties?.id,
+    resource?.properties?.resource_id,
+    resource?.properties?.resourceId,
+  );
+}
+
+function recordsFromResponses(responses) {
+  return responses.flatMap((body) => listFromResponse(body, ["resources", "resource_list", "native_resources"]));
+}
+
+async function fetchNativeResourcePage(vdc, projectId, probe, session, start, limit) {
+  const params = new URLSearchParams({
+    service_id: probe.serviceId,
+    resource_type_name: probe.resourceTypeName,
+    project_id: projectId,
+    start: String(start),
+    limit: String(limit),
+  });
+  const url = `${resourceEndpointBaseUrl()}/v3.0/native/resources?${params}`;
+  const { response, text } = await fetchTextWithTimeout(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "X-Auth-Token": session.token,
+    },
+    redirect: "manual",
+  });
+
+  if (!response.ok) {
+    throw new HttpStatusError(response.status, `HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchProjectNativeResources(vdc, projectId, probe, session) {
+  const responses = [];
+  let start = 0;
+  let page = 0;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    page += 1;
+    if (page > NATIVE_RESOURCE_MAX_PAGES) {
+      throw new Error(
+        `Native ${probe.key} pagination exceeded ${NATIVE_RESOURCE_MAX_PAGES} page(s) for ${vdc.name || vdc.id} project ${projectId}`,
+      );
+    }
+
+    const body = await fetchNativeResourcePage(vdc, projectId, probe, session, start, NATIVE_RESOURCE_PAGE_LIMIT);
+    responses.push(body);
+    const pageResources = listFromResponse(body, ["resources", "resource_list", "native_resources"]);
+    const reportedTotal = responseTotal(body);
+    hasNextPage = shouldFetchNextPage({
+      reportedTotal,
+      start,
+      pageSize: NATIVE_RESOURCE_PAGE_LIMIT,
+      pageResourceCount: pageResources.length,
+    });
+    start += NATIVE_RESOURCE_PAGE_LIMIT;
+
+    if (hasNextPage) {
+      await delay(RESOURCE_USAGE_REQUEST_DELAY_MS);
+    }
+  }
+
+  return responses;
+}
+
+function parseEcsFlavor(rawFlavor) {
+  if (typeof rawFlavor !== "string") return null;
+
+  const [vcpusValue, ramMbValue, ...nameParts] = rawFlavor.split("|");
+  const flavorName = nameParts.join("|").trim();
+  if (!flavorName || flavorName.toLowerCase().startsWith("waf.")) return null;
+
+  return {
+    flavorName,
+    vcpus: numberOrNull(vcpusValue),
+    ramMb: numberOrNull(ramMbValue),
+  };
+}
+
+function parseEvsVolume(volume) {
+  const properties = volume?.properties || {};
+  const diskSize = numberOrNull(
+    firstDefined(
+      properties.disk_size,
+      properties.diskSize,
+      properties.size,
+      properties.volume_size,
+      properties.volumeSize,
+      volume?.disk_size,
+      volume?.diskSize,
+      volume?.size,
+    ),
+  );
+  return diskSize === null ? null : { diskSize };
+}
+
+function projectScopedTotals() {
+  return {
+    ecsInstances: 0,
+    cceNodes: 0,
+    ecsCores: 0,
+    ecsRamGb: 0,
+    evsGb: 0,
+    bmsInstances: 0,
+  };
+}
+
+function addUniqueRecord(seen, resource) {
+  const identity = nativeResourceIdentity(resource);
+  if (!identity) return true;
+
+  const key = String(identity);
+  if (seen.has(key)) return false;
+  seen.add(key);
+  return true;
+}
+
+async function fetchProjectScopedTotals(vdc, projects, session) {
+  const totals = projectScopedTotals();
+  const seen = {
+    ecs: new Set(),
+    cce: new Set(),
+    evs: new Set(),
+    bms: new Set(),
+  };
+
+  for (const project of projects) {
+    const id = projectId(project);
+    if (!id) continue;
+
+    for (const probe of PROJECT_NATIVE_RESOURCE_PROBES) {
+      let records = [];
+      try {
+        const responses = await fetchProjectNativeResources(vdc, id, probe, session);
+        records = recordsFromResponses(responses);
+      } catch (error) {
+        if (probe.required) {
+          throw error;
+        }
+        const message = error instanceof Error ? error.message : String(error || "Unknown error");
+        console.warn(
+          `[MANAGEONE HOURLY] optional ${probe.key} project lookup skipped for ${vdc.name || vdc.id} / ${projectName(
+            project,
+          )}: ${message}`,
+        );
+      }
+
+      for (const record of records) {
+        if (probe.key === "ecs" && addUniqueRecord(seen.ecs, record)) {
+          const flavor = parseEcsFlavor(record?.properties?.flavor);
+          totals.ecsInstances += 1;
+          totals.ecsCores += numberOrNull(flavor?.vcpus) || 0;
+          totals.ecsRamGb += Math.round(((numberOrNull(flavor?.ramMb) || 0) / 1024) * 1000) / 1000;
+        } else if ((probe.key === "cce" || probe.key === "cceCloudNode") && addUniqueRecord(seen.cce, record)) {
+          totals.cceNodes += 1;
+        } else if (probe.key === "evs" && addUniqueRecord(seen.evs, record)) {
+          const volume = parseEvsVolume(record);
+          totals.evsGb += numberOrNull(volume?.diskSize) || 0;
+        } else if (probe.key === "bms" && addUniqueRecord(seen.bms, record)) {
+          totals.bmsInstances += 1;
+        }
+      }
+    }
+  }
+
+  totals.ecsRamGb = Math.round(totals.ecsRamGb * 1000) / 1000;
+  totals.evsGb = Math.round(totals.evsGb * 1000) / 1000;
+  return totals;
+}
+
+function hasProjectScopedUsage(totals) {
+  return Object.values(totals).some((value) => Number(value) > 0);
 }
 
 function resourceIndexScopes(vdc) {
@@ -634,8 +976,27 @@ async function fetchTenantResourceIndexCount(vdc, session, resourceTypeName, lab
   return instanceIds.size;
 }
 
-function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, bmsInstances, cceNodes, capturedAt }) {
+function mapMonitoringRow({
+  vdc,
+  region,
+  resourceUsage,
+  obsGb,
+  natGateways,
+  bmsInstances,
+  cceNodes,
+  capturedAt,
+  projectScopedTotals: scopedTotals,
+}) {
   const resources = flattenResourceUsage(resourceUsage);
+  const cceNodeCount =
+    scopedTotals?.cceNodes ??
+    (cceNodes ||
+      resourceUsed(resources, "cce", "hybrid.resource.type.cce.cluster") ||
+      resourceUsedByPattern(resources, /cce/, /node|cluster/));
+  const bmsInstanceCount =
+    scopedTotals?.bmsInstances ??
+    (bmsInstances || resourceUsed(resources, "bms", "instances") || resourceUsedByPattern(resources, /bms/, /instance/));
+
   return {
     vdcId: String(vdc.id),
     ...(vdc.domain_id ? { domainId: String(vdc.domain_id) } : {}),
@@ -643,24 +1004,18 @@ function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, bmsI
     ...(region.regionId ? { regionId: region.regionId } : {}),
     ...(region.regionName ? { regionName: region.regionName } : {}),
     capturedAt,
-    ecsInstances: resourceUsed(resources, "ecs", "instances"),
-    cceNodes:
-      cceNodes ||
-      resourceUsed(resources, "cce", "hybrid.resource.type.cce.cluster") ||
-      resourceUsedByPattern(resources, /cce/, /node|cluster/),
-    ecsCores: resourceUsed(resources, "ecs", "cores"),
-    ecsRamGb: resourceUsed(resources, "ecs", "ram"),
-    evsGb: resourceUsed(resources, "evs", "gigabytes"),
+    ecsInstances: scopedTotals?.ecsInstances ?? resourceUsed(resources, "ecs", "instances"),
+    cceNodes: cceNodeCount,
+    ecsCores: scopedTotals?.ecsCores ?? resourceUsed(resources, "ecs", "cores"),
+    ecsRamGb: scopedTotals?.ecsRamGb ?? resourceUsed(resources, "ecs", "ram"),
+    evsGb: scopedTotals?.evsGb ?? resourceUsed(resources, "evs", "gigabytes"),
     sfsGb: sfsGbFromResources(resources),
     csbsGb: csbsGbFromResources(resources),
     vbsGb: vbsGbFromResources(resources),
     obsGb: obsGb ?? obsGbFromResources(resources),
     publicIps: resourceUsed(resources, "vpc", "publicIp"),
     vpcepEndpoints: vpcepEndpointsFromResources(resources),
-    bmsInstances:
-      bmsInstances ||
-      resourceUsed(resources, "bms", "instances") ||
-      resourceUsedByPattern(resources, /bms/, /instance/),
+    bmsInstances: bmsInstanceCount,
     loadBalancers: resourceUsedByPattern(resources, /elb|vpc/, /load.?balancer|elb/),
     vpnGateways: resourceUsedByPattern(resources, /vpc/, /vpn/),
     natGateways,
@@ -671,6 +1026,102 @@ function mapMonitoringRow({ vdc, region, resourceUsage, obsGb, natGateways, bmsI
       resourceUsage,
     },
   };
+}
+
+async function buildMonitoringRowsForTenant({ vdc, region, resourceUsage, obsGbByVdcRegion, session, capturedAt }) {
+  let projects = [];
+  try {
+    projects = await listTenantProjects(vdc, session);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || "Unknown error");
+    console.warn(`[MANAGEONE HOURLY] resource-space lookup skipped for ${vdc.name || vdc.id}: ${message}`);
+  }
+
+  const regionGroups = projectRegionGroups(projects, region);
+  const visibleRegionGroups = REGION_FILTER
+    ? regionGroups.filter((group) => regionMatchesFilter(group.region, REGION_FILTER))
+    : regionGroups;
+
+  if (regionGroups.length <= 1) {
+    if (!regionMatchesFilter(region, REGION_FILTER)) {
+      console.log(
+        `[MANAGEONE HOURLY] tenant skipped by region filter: ${vdc.name || vdc.id} ` +
+          `(${region.regionName || region.regionId || "unknown region"})`,
+      );
+      return [];
+    }
+
+    const [natGateways, bmsInstances, cceNodes] = await Promise.all([
+      fetchTenantNatGatewayCount(vdc, session),
+      fetchTenantBmsInstanceCount(vdc, session),
+      fetchTenantCceNodeCount(vdc, session),
+    ]);
+
+    return [
+      mapMonitoringRow({
+        vdc,
+        region,
+        resourceUsage,
+        obsGb: totalObsGbForTenant(obsGbByVdcRegion, vdc),
+        natGateways,
+        bmsInstances,
+        cceNodes,
+        capturedAt,
+      }),
+    ];
+  }
+
+  if (visibleRegionGroups.length === 0) {
+    console.log(
+      `[MANAGEONE HOURLY] tenant skipped by region filter: ${vdc.name || vdc.id} ` +
+        `(${regionGroups.map((group) => group.region.regionName || group.region.regionId || "unknown").join(", ")})`,
+    );
+    return [];
+  }
+
+  console.log(
+    `[MANAGEONE HOURLY] tenant has ${regionGroups.length} resource-space region(s): ${vdc.name || vdc.id} ` +
+      `(${regionGroups.map((group) => group.region.regionName || group.region.regionId || "unknown").join(", ")})`,
+  );
+
+  const rows = [];
+  for (const group of visibleRegionGroups) {
+    const scopedTotals = await fetchProjectScopedTotals(vdc, group.projects, session);
+    const regionObsGb = obsGbForRegion(obsGbByVdcRegion, vdc, group.region);
+
+    if (!hasProjectScopedUsage(scopedTotals) && !regionObsGb) {
+      rows.push(
+        mapMonitoringRow({
+          vdc,
+          region: group.region,
+          resourceUsage: {},
+          obsGb: 0,
+          natGateways: 0,
+          bmsInstances: 0,
+          cceNodes: 0,
+          capturedAt,
+          projectScopedTotals: scopedTotals,
+        }),
+      );
+      continue;
+    }
+
+    rows.push(
+      mapMonitoringRow({
+        vdc,
+        region: group.region,
+        resourceUsage: {},
+        obsGb: regionObsGb ?? 0,
+        natGateways: 0,
+        bmsInstances: 0,
+        cceNodes: 0,
+        capturedAt,
+        projectScopedTotals: scopedTotals,
+      }),
+    );
+  }
+
+  return rows;
 }
 
 async function pushRowsToCrm(rows, startedAt) {
@@ -712,7 +1163,7 @@ async function syncManageOneHourlyMonitoring() {
     console.log(`[MANAGEONE HOURLY] region filter active: ${REGION_FILTER}`);
   }
 
-  const obsGbByVdcId = await fetchObsGbByTenant(session, vdcs);
+  const obsGbByVdcRegion = await fetchObsGbByTenant(session, vdcs);
 
   for (let index = 0; index < vdcs.length; index += 1) {
     const vdc = vdcs[index];
@@ -729,32 +1180,16 @@ async function syncManageOneHourlyMonitoring() {
         return {};
       });
 
-      if (!regionMatchesFilter(region, REGION_FILTER)) {
-        console.log(
-          `[MANAGEONE HOURLY] tenant skipped by region filter: ${vdc.name || vdc.id} ` +
-            `(${region.regionName || region.regionId || "unknown region"})`,
-        );
-        continue;
-      }
-
-      const [resourceUsage, natGateways, bmsInstances, cceNodes] = await Promise.all([
-        fetchTenantResourceUsage(vdc.id, session),
-        fetchTenantNatGatewayCount(vdc, session),
-        fetchTenantBmsInstanceCount(vdc, session),
-        fetchTenantCceNodeCount(vdc, session),
-      ]);
-
+      const resourceUsage = await fetchTenantResourceUsage(vdc.id, session);
       rows.push(
-        mapMonitoringRow({
+        ...(await buildMonitoringRowsForTenant({
           vdc,
           region,
           resourceUsage,
-          obsGb: obsGbByVdcId.get(String(vdc.id)),
-          natGateways,
-          bmsInstances,
-          cceNodes,
+          obsGbByVdcRegion,
+          session,
           capturedAt: startedAt,
-        }),
+        })),
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || "Unknown error");
