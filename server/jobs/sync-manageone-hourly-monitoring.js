@@ -1029,18 +1029,12 @@ function mapMonitoringRow({
 }
 
 const TENANT_TOTAL_RECONCILE_FIELDS = [
-  "ecsInstances",
-  "cceNodes",
-  "ecsCores",
-  "ecsRamGb",
-  "evsGb",
   "sfsGb",
   "csbsGb",
   "vbsGb",
   "obsGb",
   "publicIps",
   "vpcepEndpoints",
-  "bmsInstances",
   "loadBalancers",
   "vpnGateways",
   "natGateways",
