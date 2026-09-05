@@ -44,7 +44,10 @@ import { passwordStrength, validateManageOnePassword } from "./lib/passwordPolic
 import { phoneValidationMessage, validatePhoneNumberForCountry } from "./lib/phone.js";
 import {
   manageOneUsernameMessage,
+  manageOneTenantNameMessage,
   normalizeManageOneUsername,
+  normalizeManageOneTenantName,
+  validateManageOneTenantName,
   validateManageOneUsername
 } from "./lib/usernamePolicy.js";
 import { countries as authCountries } from "./data/countries";
@@ -14265,6 +14268,11 @@ function SignUpPage() {
     [form.email, form.password, form.phone, username]
   );
   const currentPasswordStrength = passwordStrength(form.password, passwordValidation);
+  const passwordError =
+    fieldErrors.password ||
+    (form.password && !passwordValidation.valid
+      ? "Password must meet all ManageOne console requirements."
+      : "");
   const phoneInvalid =
     Boolean(form.phone.trim()) && !validatePhoneNumberForCountry(form.phone, selectedCountry?.code);
   const phoneError =
@@ -14272,6 +14280,11 @@ function SignUpPage() {
     (phoneInvalid ? phoneValidationMessage(form.country) : "");
   const normalizedUsername = normalizeManageOneUsername(username);
   const usernameValid = validateManageOneUsername(username);
+  const normalizedTenantName = normalizeManageOneTenantName(form.company);
+  const tenantNameValid = !form.company.trim() || validateManageOneTenantName(normalizedTenantName);
+  const companyError =
+    fieldErrors.company ||
+    (form.company.trim() && !tenantNameValid ? manageOneTenantNameMessage : "");
   const requiredFieldsComplete = [
     form.fullName,
     form.email,
@@ -14287,7 +14300,21 @@ function SignUpPage() {
     emailValid &&
     usernameValid &&
     passwordValidation.valid &&
-    validatePhoneNumberForCountry(form.phone, selectedCountry?.code);
+    validatePhoneNumberForCountry(form.phone, selectedCountry?.code) &&
+    tenantNameValid;
+  const continueReasons = [];
+  if (!form.fullName.trim()) continueReasons.push("Full Name");
+  if (!form.email.trim() || !emailValid) continueReasons.push("Work Email");
+  if (!username.trim() || !usernameValid) continueReasons.push("Username");
+  if (!form.password.trim()) continueReasons.push("Password");
+  else if (!passwordValidation.valid) {
+    continueReasons.push(
+      `Password: ${passwordValidation.failed.map((rule) => rule.label).join(", ")}`
+    );
+  }
+  if (!form.phone.trim() || phoneInvalid) continueReasons.push("Phone Number");
+  if (!form.country.trim()) continueReasons.push("Country");
+  if (!form.company.trim() || !tenantNameValid) continueReasons.push("Company Name");
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -14361,6 +14388,10 @@ function SignUpPage() {
 
     if (nextForm.phone && !validatePhoneNumberForCountry(nextForm.phone, getAuthCountry(nextForm.country)?.code)) {
       errors.phone = phoneValidationMessage(nextForm.country);
+    }
+
+    if (nextForm.company && !validateManageOneTenantName(normalizeManageOneTenantName(nextForm.company))) {
+      errors.company = manageOneTenantNameMessage;
     }
 
     return errors;
@@ -14482,7 +14513,7 @@ function SignUpPage() {
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={() => setPasswordFocused(false)}
                 placeholder="8-32 characters, meets all requirements below"
-                aria-invalid={Boolean(fieldErrors.password)}
+                aria-invalid={Boolean(passwordError)}
               />
               <button
                 type="button"
@@ -14513,7 +14544,7 @@ function SignUpPage() {
                 </div>
               </div>
             )}
-            {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
+            {passwordError && <span className="field-error">{passwordError}</span>}
           </label>
         </div>
         <div className="auth-field-row">
@@ -14557,11 +14588,14 @@ function SignUpPage() {
             value={form.company}
             onChange={(event) => updateField("company", event.target.value)}
             placeholder="Enter your company name"
-            aria-invalid={Boolean(fieldErrors.company)}
+            aria-invalid={Boolean(companyError)}
           />
-          {fieldErrors.company && <span className="field-error">{fieldErrors.company}</span>}
+          {companyError && <span className="field-error">{companyError}</span>}
         </label>
         {error && <p className="auth-error">{error}</p>}
+        {!canContinue && continueReasons.length > 0 && (
+          <p className="auth-error">Cannot continue yet: {continueReasons.join("; ")}</p>
+        )}
         <button className="auth-submit" type="submit" disabled={!canContinue}>
           Continue →
         </button>

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { parseManageOnePhone } from "../src/lib/phone.js";
+import { normalizeManageOneTenantName } from "../src/lib/usernamePolicy.js";
 
 const DEFAULT_AUTH_BASE_URL = "https://10.20.24.9:26335";
 const DEFAULT_BASE_URL = "https://10.20.24.9:26335/rest/vdc";
@@ -97,7 +98,7 @@ function config() {
 
 export async function provisionTenant({ companyName, fullName, email, phoneNumber, username, plaintextPassword }) {
   const cfg = config();
-  const tenantName = normalizeTenantName(companyName || username || email);
+  const tenantName = normalizeManageOneTenantName(companyName || username || email);
   const tenantUsername = normalizeUsername(username || email);
   console.log(
     `[MANAGEONE] Provisioning ${tenantName} in ${cfg.regionProfile} (${cfg.regions
@@ -1292,16 +1293,6 @@ function normalizeDigits(value) {
 
 function normalizeAreaCode(value) {
   return normalizeDigits(value).replace(/^0+/, "");
-}
-
-function normalizeTenantName(value) {
-  const cleaned = String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-  return cleaned || `tenant-${Date.now()}`;
 }
 
 function defaultResourceSpaceName(tenantName, regionId) {

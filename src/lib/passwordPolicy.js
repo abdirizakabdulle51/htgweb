@@ -43,6 +43,10 @@ export const passwordPolicyRules = [
   {
     id: "characterSet",
     label: "No Chinese or full-width characters"
+  },
+  {
+    id: "whitespace",
+    label: "No spaces or whitespace characters"
   }
 ];
 
@@ -71,7 +75,8 @@ export function validateManageOnePassword(password, context = {}) {
       (!email || !passwordLower.includes(email)) &&
       (!emailLocalPart || !passwordLower.includes(emailLocalPart)) &&
       (!phoneDigits || !passwordDigits.includes(phoneDigits)),
-    characterSet: !cjkOrFullWidthPattern.test(value)
+    characterSet: !cjkOrFullWidthPattern.test(value),
+    whitespace: !/\s/.test(value)
   };
 
   const results = passwordPolicyRules.map((rule) => ({
