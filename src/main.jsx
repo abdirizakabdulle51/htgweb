@@ -14271,7 +14271,7 @@ function SignUpPage() {
   const passwordError =
     fieldErrors.password ||
     (form.password && !passwordValidation.valid
-      ? "Password must meet all ManageOne console requirements."
+      ? "Password must meet all HTG Clouds requirements."
       : "");
   const phoneInvalid =
     Boolean(form.phone.trim()) && !validatePhoneNumberForCountry(form.phone, selectedCountry?.code);
@@ -14328,9 +14328,7 @@ function SignUpPage() {
       `Password must ${failedPasswordRequirements.join("; and ")}`
     );
   }
-  if (!form.phone.trim() || phoneInvalid) continueReasons.push("Phone Number");
   if (!form.country.trim()) continueReasons.push("Country");
-  if (!form.company.trim() || !tenantNameValid) continueReasons.push("Company Name");
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
