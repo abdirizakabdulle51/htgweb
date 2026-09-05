@@ -11,6 +11,11 @@ import { sendVerificationCodeEmail, sendPasswordResetEmail, sendRelayEmail } fro
 import * as manageOne from "./manageone.js";
 import { validateManageOnePassword } from "../src/lib/passwordPolicy.js";
 import {
+  manageOneTenantNameMessage,
+  normalizeManageOneTenantName,
+  validateManageOneTenantName
+} from "../src/lib/usernamePolicy.js";
+import {
   normalizePhoneNumberForCountry,
   phoneValidationMessage,
   validatePhoneNumberForCountry
@@ -228,20 +233,14 @@ app.post("/api/auth/signup", async (request, response) => {
 
     const provisioningEnabled = process.env.MANAGEONE_ENABLED === "true";
     if (provisioningEnabled) {
+      const tenantName = normalizeManageOneTenantName(companyName);
+      if (!validateManageOneTenantName(tenantName)) {
+        throw new HttpError(manageOneTenantNameMessage, 400);
+      }
+
       username = normalizeManageOneUsername(username);
       if (!validateManageOneUsername(username)) {
         throw new HttpError(manageOneUsernameMessage, 400);
-      }
-
-      try {
-        await manageOne.assertTenantUsernameAvailable(username);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error || "");
-        if (/already exists in ManageOne|username already exists|movdc-01109/i.test(message)) {
-          throw new HttpError("This username is already used by another cloud account. Choose a different username.", 409);
-        }
-
-        console.warn(`[AUTH] ManageOne username preflight skipped for ${username}: ${safeProvisioningError(error)}`);
       }
     }
 
@@ -259,6 +258,19 @@ app.post("/api/auth/signup", async (request, response) => {
       throw new HttpError(phoneValidationMessage(country), 400);
     }
     phoneNumber = phoneNumber ? normalizePhoneNumberForCountry(phoneNumber, country) : null;
+
+    if (provisioningEnabled) {
+      try {
+        await manageOne.assertTenantUsernameAvailable(username);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || "");
+        if (/already exists in ManageOne|username already exists|movdc-01109/i.test(message)) {
+          throw new HttpError("This username is already used by another cloud account. Choose a different username.", 409);
+        }
+
+        console.warn(`[AUTH] ManageOne username preflight skipped for ${username}: ${safeProvisioningError(error)}`);
+      }
+    }
 
     if (provisioningEnabled && phoneNumber) {
       try {
