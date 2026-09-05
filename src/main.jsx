@@ -14308,8 +14308,24 @@ function SignUpPage() {
   if (!username.trim() || !usernameValid) continueReasons.push("Username");
   if (!form.password.trim()) continueReasons.push("Password");
   else if (!passwordValidation.valid) {
+    const passwordFailureMessages = {
+      length: "be 8 to 32 characters",
+      letters: "include at least one uppercase letter and one lowercase letter",
+      digit: "include at least one number",
+      special: "include at least one special character",
+      username: "not contain your username",
+      reversedUsername: "not contain your username backwards",
+      repeatedCharacters: "not contain three identical characters in a row",
+      repeatingPattern: "not be a repeated character pattern",
+      personalInfo: "not contain your phone number or email",
+      characterSet: "use standard characters only",
+      whitespace: "not contain spaces"
+    };
+    const failedPasswordRequirements = passwordValidation.failed.map(
+      (rule) => passwordFailureMessages[rule.id] || rule.label.toLowerCase()
+    );
     continueReasons.push(
-      `Password: ${passwordValidation.failed.map((rule) => rule.label).join(", ")}`
+      `Password must ${failedPasswordRequirements.join("; and ")}`
     );
   }
   if (!form.phone.trim() || phoneInvalid) continueReasons.push("Phone Number");
