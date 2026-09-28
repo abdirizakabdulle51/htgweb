@@ -1522,53 +1522,17 @@ function AboutPage() {
   );
 }
 
-function EastAfricaPresenceMap() {
+function InfrastructureVisual() {
   return (
-    <figure className="why-map-card" aria-label="HTG Clouds presence in Kenya, Ethiopia, Somalia, and Somaliland">
-      <div className="why-map-header">
-        <span>Regional Presence</span>
-        <strong>Kenya, Ethiopia, Somalia, Somaliland</strong>
+    <figure className="why-infrastructure-card">
+      <div className="why-infrastructure-visual">
+        <img
+          className="why-infrastructure-image"
+          src="/images/why-htg-clouds/enterprise-infrastructure.webp"
+          alt="HTG CLOUDS connected enterprise infrastructure"
+        />
       </div>
-      <svg className="why-map-svg" viewBox="0 0 520 420" role="img" aria-labelledby="why-map-title">
-        <title id="why-map-title">Simplified East Africa map showing HTG Clouds presence in Kenya, Ethiopia, Somalia, and Somaliland</title>
-        <defs>
-          <linearGradient id="whyMapPresence" x1="18%" y1="10%" x2="84%" y2="88%">
-            <stop offset="0%" stopColor="#7ce7e5" />
-            <stop offset="100%" stopColor="#13a9b2" />
-          </linearGradient>
-          <filter id="whyMapShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="16" stdDeviation="18" floodColor="#0b3940" floodOpacity="0.18" />
-          </filter>
-        </defs>
-        <g filter="url(#whyMapShadow)">
-          <path className="why-map-neighbor" data-country="Tanzania" d="M215.9 255.6 L218.2 256.9 L267.4 279.3 L268.4 285.6 L287.9 296.6 L281.6 310.2 L282.4 316.4 L291.1 320.4 L291.5 323.3 L287.8 329.9 L288.5 333.3 L287.6 338.5 L292.4 345.4 L298 356.3 L303 358.7 L292.2 365.1 L277.3 369.3 L269.2 369.2 L264.4 372.5 L254.9 372.7 L251.4 374.1 L235.1 371 L224.8 371.9 L221 357 L216.4 351.8 L213.7 348.8 L200.4 346.7 L192.7 343.4 L184.1 341.6 L178.7 339.7 L173 336.9 L165.7 323.1 L157.8 316.9 L155.1 310.5 L156.4 304.8 L154 294.7 L159.6 294.2 L164.5 290.2 L169.8 284.5 L173.2 282.2 L173 278.6 L170.1 276.1 L169.3 271.8 L173.2 270.4 L174 263.9 L168.6 257.7 L173.4 256.4 L188.3 256.5 L215.9 255.6 Z" />
-          <path className="why-map-neighbor" data-country="Sudan" d="M89.2 154.7 L78.9 149.9 L74.2 146.7 L73.3 143.3 L75.5 138.7 L75.5 134.2 L67.6 127.3 L66.1 122.6 L66.3 120 L61.3 116.7 L61.1 110.3 L58.3 106.1 L53.5 106.7 L54.9 102.7 L58.4 98.1 L56.8 93.5 L61.3 90.2 L58.5 87.6 L62.1 80.8 L68.3 72.7 L80 73.5 L79.3 29.8 L79.5 25.2 L95.1 25.2 L95.1 3.2 L149.6 3.2 L202.3 3.2 L256.1 3.2 L260.5 14 L257.5 16 L259.5 27.3 L264.5 40.4 L269.7 43.2 L277.1 47.2 L270.2 53.5 L260.2 55.3 L256 58.7 L254.6 66 L248.8 82.2 L250.2 86.6 L248.1 96 L242.5 106.8 L234.4 112.3 L228.5 120.7 L227.2 125.2 L220.7 128.3 L216.7 139.8 L216.9 149.7 L216.7 141.1 L214.9 140.9 L215.1 135.4 L213.5 131.6 L206.5 127.3 L204.8 119.3 L206.5 111.2 L200.2 110.5 L199.3 112.9 L191.1 113.5 L194.4 116.7 L195.5 123.3 L188.1 129.4 L181.3 137.3 L174.3 138.4 L162.9 132 L157.8 134.3 L156.4 137.5 L149.4 139.6 L148.9 141.8 L135.4 141.8 L133.5 139.6 L123.8 139.2 L118.9 141.1 L115.1 140.1 L108.1 133.7 L105.8 130.7 L96 132.2 L92.3 137.3 L88.8 147.1 L84.1 149.2 L80 150.4 L89.2 154.7 Z" />
-          <path className="why-map-neighbor" data-country="Eritrea" d="M250.2 86.6 L248.8 82.2 L254.6 66 L256 58.7 L260.2 55.3 L270.2 53.5 L277.1 47.2 L285 60 L288.7 70.1 L296.2 75.4 L314.7 85.8 L322.2 92.1 L329.6 98.4 L333.8 102.2 L340.5 105.5 L336.4 108.2 L330.6 107.2 L326 103.7 L320.4 97.2 L314.4 93.7 L310.9 89.9 L299 85.5 L289.7 85.4 L286.5 83.1 L278.5 85.6 L270.3 80.6 L266 88.9 L250.2 86.6 Z" />
-          <path className="why-map-neighbor" data-country="Djibouti" d="M330.6 107.2 L336.4 108.2 L340.5 105.5 L343.7 108.9 L343.3 113.5 L335.5 116.1 L341.4 119.1 L336.4 125 L333.4 123 L330.1 123.8 L322.5 123.6 L322.3 120.3 L321.2 117.3 L325.8 112.1 L330.6 107.2 Z" />
-          <path className="why-map-neighbor" data-country="Uganda" d="M215.9 255.6 L188.3 256.5 L173.4 256.4 L168.6 257.7 L160.5 261.1 L157.2 260 L157.4 251.7 L160.5 247.5 L161.3 238.6 L164.1 233.5 L169.3 227.8 L174.5 224.9 L178.9 221 L173.4 219.5 L174.3 206.6 L179.9 203.6 L188.5 206.1 L199.4 203.5 L209 203.5 L217.3 198.5 L223.7 206.1 L225.3 211.6 L231.3 224.2 L226.4 232.3 L219.7 239.5 L215.8 244 L215.9 255.6 Z" />
-          <path className="why-map-neighbor" data-country="South Sudan" d="M174.3 206.6 L162.3 199.3 L159.1 194.6 L151.5 196.9 L145.3 196.2 L141.6 198 L135.5 196.7 L127.3 187.6 L125.1 184.1 L115 179.8 L111.6 173.2 L105.9 168.4 L96.8 162.7 L96.6 159.1 L89.2 154.7 L80 150.4 L84.1 149.2 L88.8 147.1 L92.3 137.3 L96 132.2 L105.8 130.7 L108.1 133.7 L115.1 140.1 L118.9 141.1 L123.8 139.2 L133.5 139.6 L135.4 141.8 L148.9 141.8 L149.4 139.6 L156.4 137.5 L157.8 134.3 L162.9 132 L174.3 138.4 L181.3 137.3 L188.1 129.4 L195.5 123.3 L194.4 116.7 L191.1 113.5 L199.3 112.9 L200.2 110.5 L206.5 111.2 L204.8 119.3 L206.5 127.3 L213.5 131.6 L215.1 135.4 L214.9 140.9 L216.7 141.1 L216.9 149.7 L214.9 153 L207.7 153.3 L203 159.6 L211.4 160.4 L218.3 165.7 L220.6 170.1 L226.8 172.7 L234.9 184.6 L225.7 191.9 L217.3 198.5 L209 203.5 L199.4 203.5 L188.5 206.1 L179.9 203.6 L174.3 206.6 Z" />
-          <path className="why-map-presence" data-country="Somalia" d="M320.2 263.7 L312.2 254.6 L312 214.6 L323.9 202.1 L327.6 198.6 L336.3 198.4 L348.4 190.7 L366.1 190.2 L404.4 157.2 L413.9 148 L420 141.2 L420 135.5 L420 124.4 L420.1 119.9 L420.1 119.7 L424.5 119.5 L430.7 117.8 L437.9 116.7 L444.4 113 L449.5 112.9 L449.8 116 L448.6 122.4 L448.6 128.2 L445.7 132.1 L441.9 144 L435.4 156.3 L427 170.3 L415.3 186.5 L403.8 198.8 L387.8 213.8 L374.2 222.7 L353.9 233.6 L341.3 242 L326.4 255.3 L323.3 261.1 L320.2 263.7 Z" />
-          <path className="why-map-presence" data-country="Kenya" d="M287.9 296.6 L268.4 285.6 L267.4 279.3 L218.2 256.9 L215.9 255.6 L215.8 244 L219.7 239.5 L226.4 232.3 L231.3 224.2 L225.3 211.6 L223.7 206.1 L217.3 198.5 L225.7 191.9 L234.9 184.6 L241.9 186.5 L241.9 192.7 L246.5 196.3 L256 196.3 L273.2 205.6 L277.5 205.7 L280.6 205.4 L283.7 206.7 L292.7 207.6 L296.7 203 L309.1 198.4 L314.6 202.1 L323.9 202.1 L312 214.6 L312.2 254.6 L320.2 263.7 L310.7 268.1 L307.3 272.7 L302.3 273.5 L300.3 281.3 L296 285.7 L293.3 293 L287.9 296.6 Z" />
-          <path className="why-map-presence" data-country="Ethiopia" d="M404.4 157.2 L366.1 190.2 L348.4 190.7 L336.3 198.4 L327.6 198.6 L323.9 202.1 L314.6 202.1 L309.1 198.4 L296.7 203 L292.7 207.6 L283.7 206.7 L280.6 205.4 L277.5 205.7 L273.2 205.6 L256 196.3 L246.5 196.3 L241.9 192.7 L241.9 186.5 L234.9 184.6 L226.8 172.7 L220.6 170.1 L218.3 165.7 L211.4 160.4 L203 159.6 L207.7 153.3 L214.9 153 L216.9 149.7 L216.7 139.8 L220.7 128.3 L227.2 125.2 L228.5 120.7 L234.4 112.3 L242.5 106.8 L248.1 96 L250.2 86.6 L266 88.9 L270.3 80.6 L278.5 85.6 L286.5 83.1 L289.7 85.4 L299 85.5 L310.9 89.9 L314.4 93.7 L320.4 97.2 L326 103.7 L330.6 107.2 L325.8 112.1 L321.2 117.3 L322.3 120.3 L322.5 123.6 L330.1 123.8 L333.4 123 L336.4 125 L333.4 128.9 L338.4 135 L343.4 140.3 L348.6 144.2 L393 157.2 L404.4 157.2 Z" />
-          <path className="why-map-presence" data-country="Somaliland" d="M420.1 119.7 L420.1 119.9 L420 124.4 L420 135.5 L420 141.2 L413.9 148 L404.4 157.2 L393 157.2 L348.6 144.2 L343.4 140.3 L338.4 135 L333.4 128.9 L336.4 125 L341.4 119.1 L345.8 121.1 L348.5 125.7 L354.6 130.3 L361.3 130.3 L374.1 127.5 L388.9 126.2 L400.8 122.8 L407.6 122.1 L412.4 120.1 L420.1 119.7 Z" />
-        </g>
-        <g className="why-map-label" transform="translate(382.8 181.4)">
-          <text>Somalia</text>
-        </g>
-        <g className="why-map-label" transform="translate(270.2 238.6)">
-          <text>Kenya</text>
-        </g>
-        <g className="why-map-label" transform="translate(289.2 151.7)">
-          <text>Ethiopia</text>
-        </g>
-        <g className="why-map-label" transform="translate(370.6 137.4)">
-          <text>Somaliland</text>
-        </g>
-      </svg>
-      <div className="why-map-foot">
-        <span>Local access paths</span>
-        <span>Regional cloud operations</span>
-      </div>
+      <figcaption>Enterprise infrastructure. Engineered to perform.</figcaption>
     </figure>
   );
 }
@@ -1614,7 +1578,7 @@ function WhyHTGCloudsPage() {
             </a>
           </div>
           </div>
-          <EastAfricaPresenceMap />
+          <InfrastructureVisual />
         </div>
       </section>
 
