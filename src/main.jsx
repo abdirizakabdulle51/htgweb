@@ -328,7 +328,7 @@ const useCases = [
   {
     title: "SaaS Applications",
     text: "Build and scale multi-tenant SaaS products with automatic scaling, user management, and billing integration.",
-    image: "/use-case-saas.png"
+    image: "/use-case-saas.png?v=f998174"
   },
   {
     title: "APIs & Microservices",
@@ -343,7 +343,7 @@ const useCases = [
   {
     title: "Enterprise Apps",
     text: "Enterprise-grade security, compliance, and support.",
-    image: "/use-case-enterprise.png"
+    image: "/use-case-enterprise.png?v=f998174"
   }
 ];
 
