@@ -137,6 +137,10 @@ export async function logout() {
   }
 }
 
+export async function sendContactEnquiry(payload: Record<string, string>) {
+  return apiRequest("/api/contact", { method: "POST", body: JSON.stringify(payload) });
+}
+
 async function apiRequest(path: string, options: RequestInit) {
   let response: Response;
 

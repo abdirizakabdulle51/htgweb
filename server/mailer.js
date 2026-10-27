@@ -28,7 +28,7 @@ if (emailEnabled) {
   console.warn("[MAIL] SMTP_USER / SMTP_PASS not set — emails will be logged to the console instead of sent.");
 }
 
-async function sendMail({ to, subject, html, text, attachments, logLabel }) {
+async function sendMail({ to, subject, html, text, attachments, logLabel, replyTo }) {
   if (!emailEnabled) {
     console.log("=====================================================");
     console.log(`HTGCLOUD EMAIL (TEST MODE) — ${logLabel}`);
@@ -50,6 +50,7 @@ async function sendMail({ to, subject, html, text, attachments, logLabel }) {
     await transporter.sendMail({
       from: `"${fromName}" <${fromEmail}>`,
       to,
+      replyTo,
       subject,
       html,
       text,
@@ -61,6 +62,18 @@ async function sendMail({ to, subject, html, text, attachments, logLabel }) {
     console.error(`[MAIL] Failed to send "${logLabel}" to ${to}:`, error);
     return { delivered: false, error };
   }
+}
+
+export async function sendContactEnquiry({ fullName, email, company, phone, enquiryType, message }) {
+  if (!transporter) throw new Error("Email delivery is not configured.");
+  const result = await sendMail({
+    to: "support@htgclouds.com",
+    replyTo: email,
+    subject: `Website enquiry: ${enquiryType}`,
+    text: `Name: ${fullName}\nEmail: ${email}\nCompany: ${company || "Not provided"}\nPhone: ${phone || "Not provided"}\nEnquiry: ${enquiryType}\n\n${message}`,
+    logLabel: "CONTACT ENQUIRY"
+  });
+  if (!result.delivered) throw new Error("Email delivery failed.");
 }
 
 function htmlToText(html) {

@@ -79,6 +79,25 @@ The Express auth server runs on `http://localhost:4001`.
 
 ## Development Email Verification
 
+## Contact enquiries
+
+The public `/contact` page sends enquiries through `POST /api/contact` to
+`support@htgclouds.com`. The visitor's validated email is used as Reply-To;
+the recipient and subject category are controlled by the server. Phone and
+company are optional. Requests are validated, limited in size and rate, and
+only report success after SMTP accepts the message. No database migration is needed.
+
+Configure the existing `SMTP_USER`, `SMTP_PASS`, and other SMTP settings on
+the backend. Without working SMTP the form returns an error, never a false
+success. Restart the backend after pulling changes:
+`pm2 restart htgweb-backend`. Frontend API selection uses the existing
+`VITE_API_BASE_URL` configuration. Ensure it points to a backend running this endpoint.
+
+Validation: `node --test server/contact.test.js server/contact-mailer.test.js`
+(mail transport is mocked; tests do not send real email).
+
+### Development verification codes
+
 Real email is not connected yet. Verification codes are logged in the backend terminal:
 
 ```text

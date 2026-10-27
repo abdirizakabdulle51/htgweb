@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import crypto from "crypto";
 import express from "express";
+import { createContactRouter } from "./contact.js";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { generateInvoicePdf, invoicePdfFilename } from "./invoicePdf.js";
@@ -70,6 +71,7 @@ app.use(
 app.use("/internal/send-invoice-email", express.json({ limit: "1mb" }));
 app.use(express.json({ limit: "200kb" }));
 app.use(cookieParser());
+app.use("/api/contact", createContactRouter());
 
 app.get("/", (_request, response) => {
   response.type("text/plain").send("HTGCloud API is running");

@@ -38,6 +38,7 @@ import {
   saveOnboarding,
   signInWithPassword,
   signUp,
+  sendContactEnquiry,
   verifyEmail
 } from "./lib/auth";
 import { passwordStrength, validateManageOnePassword } from "./lib/passwordPolicy.js";
@@ -125,7 +126,8 @@ const navItems = [
   { label: "Solutions", hasMenu: true },
   { label: "About us", path: "/about" },
   { label: "Why HTG Clouds", path: "/why-htg-clouds" },
-  { label: "Pricing", path: "/pricing" }
+  { label: "Pricing", path: "/pricing" },
+  { label: "Contact Us", path: "/contact" }
 ];
 
 const productCategories = [
@@ -360,6 +362,7 @@ const footerColumns = [
 ];
 
 const footerLinkTargets = {
+  Contact: "/contact",
   About: "/about",
   Documentation: "https://docs-htgcloud-region-02.htgclouds.com/en-us/index.html",
   "Privacy Policy": "/legal/privacy-policy",
@@ -369,7 +372,7 @@ const footerLinkTargets = {
 
 const externalFooterLinks = new Set(["Documentation"]);
 
-const disabledFooterLinks = new Set(["Blog", "Contact"]);
+const disabledFooterLinks = new Set(["Blog"]);
 
 const pricingTabs = ["Compute", "Storage", "Networking", "Database"];
 
@@ -737,6 +740,7 @@ const defaultPageMetadata = {
 };
 
 const pageMetadata = {
+  "/contact": { title: "Contact Us | HTG Clouds", description: "Contact HTG Clouds for cloud infrastructure, migration, enterprise solutions, partnerships, and support in East Africa." },
   "/": defaultPageMetadata,
   "/about": {
     title: "About HTG Clouds | AI-First Cloud",
@@ -1022,6 +1026,8 @@ function App() {
     return () => window.clearTimeout(metadataTimer);
   }, [route]);
 
+  if (path === "/contact/") return <RouteRedirect to="/contact" />;
+  if (path === "/contact") return <ContactPage />;
   if (path === "/signup") return <SignUpPage />;
   if (path === "/signin") return <SignInPage />;
   if (path === "/verify-email") return <VerifyEmailPage />;
@@ -1081,6 +1087,53 @@ function App() {
       <Footer />
     </main>
   );
+}
+
+function ContactPage() {
+  const emptyForm = { fullName: "", email: "", company: "", phone: "", enquiryType: "", message: "", website: "" };
+  const [form, setForm] = useState(emptyForm);
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState("");
+  const enquiryTypes = ["Cloud infrastructure & pricing", "Migration to HTG Clouds", "Enterprise solutions", "Partnerships", "Other enquiry"];
+  function change(event) { setForm((current) => ({ ...current, [event.target.name]: event.target.value })); }
+  async function submit(event) {
+    event.preventDefault();
+    if (status === "sending") return;
+    setStatus("sending"); setError("");
+    try {
+      await sendContactEnquiry(form);
+      setStatus("sent"); setForm(emptyForm);
+    } catch (failure) {
+      setStatus("error"); setError(failure.message || "Please try again or email support@htgclouds.com.");
+    }
+  }
+  return <main className="contact-page">
+    <Navigation />
+    <section className="contact-hero"><span className="contact-eyebrow">Contact HTG Clouds</span><h1>Let’s build what’s next.</h1><p>Tell us what you’re working on.<br />We’ll help you find the right cloud infrastructure for your business.</p></section>
+    <section className="contact-layout">
+      <div className="contact-intro"><h2>A conversation starts here.</h2><p>From your first deployment to your next stage of growth, connect with the right team.</p>
+        <div className="contact-channel"><span className="contact-icon"><Mail size={22} /></span><div><h3>Talk to sales</h3><p>Explore pricing, plan a migration, or discuss your infrastructure needs.</p><a href="#contact-enquiry" onClick={() => document.getElementById("contact-name")?.focus()}>Tell us about your project →</a></div></div>
+        <div className="contact-channel"><span className="contact-icon"><Headphones size={22} /></span><div><h3>Need technical support?</h3><p>Already using HTG Clouds? Get help with your account or services.</p><a href="mailto:support@htgclouds.com">support@htgclouds.com</a></div></div>
+        <div className="contact-channel"><span className="contact-icon"><Globe2 size={22} /></span><div><h3>Connect with us</h3><p><a href="tel:+252770612727">+252 770 612 727</a></p><a href="https://www.facebook.com/HTGclouds" target="_blank" rel="noopener noreferrer">HTG Clouds on Facebook ↗</a></div></div>
+      </div>
+      <form id="contact-enquiry" className="contact-form" onSubmit={submit}>
+        <h2>Tell us about your project</h2><p>Share a few details to help us understand your needs.</p>
+        <fieldset disabled={status === "sending"}>
+          <div className="contact-field-row"><label htmlFor="contact-name">Full name *<input id="contact-name" name="fullName" required maxLength={120} autoComplete="name" value={form.fullName} onChange={change} placeholder="Your full name" /></label><label htmlFor="contact-email">Work email *<input id="contact-email" name="email" required type="email" maxLength={254} autoComplete="email" value={form.email} onChange={change} placeholder="you@company.com" /></label></div>
+          <div className="contact-field-row"><label htmlFor="contact-company">Company<input id="contact-company" name="company" maxLength={160} autoComplete="organization" value={form.company} onChange={change} placeholder="Company name" /></label><label htmlFor="contact-phone">Phone <span>(optional)</span><input id="contact-phone" name="phone" type="tel" maxLength={40} autoComplete="tel" value={form.phone} onChange={change} placeholder="Including country code" /></label></div>
+          <label htmlFor="contact-type">How can we help? *<select id="contact-type" name="enquiryType" required value={form.enquiryType} onChange={change}><option value="">Select an enquiry type</option>{enquiryTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
+          <label htmlFor="contact-message">Your message *<textarea id="contact-message" name="message" required maxLength={5000} rows={5} value={form.message} onChange={change} placeholder="Tell us about your workload, goals, or questions." /></label>
+          <div hidden aria-hidden="true"><label>Website<input name="website" value={form.website} onChange={change} tabIndex={-1} autoComplete="off" /></label></div>
+          <p className="contact-privacy">By submitting, you agree to our <a href="/legal/privacy-policy">Privacy Policy</a>.</p>
+          <button className="button button-dark contact-submit" type="submit">{status === "sending" ? "Sending enquiry…" : "Send enquiry →"}</button>
+        </fieldset>
+        {error && <p className="contact-error" role="alert">{error}</p>}
+        <div aria-live="polite">{status === "sent" && <p className="contact-success" role="status">Thank you. Your enquiry has been sent to our team. We’ll reply to the email address you provided.</p>}</div>
+      </form>
+    </section>
+    <section className="contact-offices" aria-label="Our offices"><div><span className="contact-eyebrow">Kenya office</span><h2>Nairobi</h2><p>4th Floor, 401, Crawford Business Park<br />State House Road, Nairobi, Kenya</p></div><div><span className="contact-eyebrow">Somalia office</span><h2>Mogadishu</h2><p>Airport Road, next to Ali Jimale Mosque<br />Wadajir District<br />Mogadishu, Somalia</p></div></section>
+    <Footer />
+  </main>;
 }
 
 function RouteRedirect({ to }) {
@@ -1568,10 +1621,10 @@ function WhyHTGCloudsPage() {
             </a>
             <a
               className="button hero-cta hero-cta-secondary"
-              href="/signup"
+              href="/contact"
               onClick={(event) => {
                 event.preventDefault();
-                navigateTo("/signup");
+                navigateTo("/contact");
               }}
             >
               Contact Sales
@@ -2327,7 +2380,7 @@ function ElasticCloudServerPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get a Demo
             </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -3318,10 +3371,10 @@ function BmsCta() {
             Get Started
           </a>
           <a
-            href="/signup"
+            href="/contact"
             onClick={(event) => {
               event.preventDefault();
-              navigateTo("/signup");
+              navigateTo("/contact");
             }}
           >
             Contact Sales
@@ -3498,7 +3551,7 @@ function ElasticVolumeServicePage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get Started
             </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -3689,10 +3742,10 @@ function EvsCta() {
             Get Started
           </a>
           <a
-            href="/signup"
+            href="/contact"
             onClick={(event) => {
               event.preventDefault();
-              navigateTo("/signup");
+              navigateTo("/contact");
             }}
           >
             Contact Sales
@@ -3870,7 +3923,7 @@ function ObjectStorageServicePage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get Started
             </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -4062,10 +4115,10 @@ function ObsCta() {
             Get Started
           </a>
           <a
-            href="/signup"
+            href="/contact"
             onClick={(event) => {
               event.preventDefault();
-              navigateTo("/signup");
+              navigateTo("/contact");
             }}
           >
             Contact Sales
@@ -4244,7 +4297,7 @@ function ScalableFileServicePage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get Started
             </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -4430,10 +4483,10 @@ function SfsCta() {
             Get Started
           </a>
           <a
-            href="/signup"
+            href="/contact"
             onClick={(event) => {
               event.preventDefault();
-              navigateTo("/signup");
+              navigateTo("/contact");
             }}
           >
             Contact Sales
@@ -4611,7 +4664,7 @@ function CloudServerBackupServicePage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get Started
             </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -4795,10 +4848,10 @@ function CsbsCta() {
             Get Started
           </a>
           <a
-            href="/signup"
+            href="/contact"
             onClick={(event) => {
               event.preventDefault();
-              navigateTo("/signup");
+              navigateTo("/contact");
             }}
           >
             Contact Sales
@@ -4977,7 +5030,7 @@ function VolumeBackupServicePage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get Started
             </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -5164,10 +5217,10 @@ function VbsCta() {
             Get Started
           </a>
           <a
-            href="/signup"
+            href="/contact"
             onClick={(event) => {
               event.preventDefault();
-              navigateTo("/signup");
+              navigateTo("/contact");
             }}
           >
             Contact Sales
@@ -10239,7 +10292,7 @@ function AutoScalingPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get Started
             </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -10510,10 +10563,10 @@ function AutoScalingCta() {
             Get Started
           </a>
           <a
-            href="/signup"
+            href="/contact"
             onClick={(event) => {
               event.preventDefault();
-              navigateTo("/signup");
+              navigateTo("/contact");
             }}
           >
             Contact Sales
@@ -10653,7 +10706,7 @@ function ImageManagementServicePage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get a Demo
             </a>
-            <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -11061,7 +11114,7 @@ function MoneyProSolutionPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get a Demo
             </a>
-            <a href="/contact" onClick={(event) => event.preventDefault()}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -11335,7 +11388,7 @@ function ConnectPaySolutionPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get a Demo
             </a>
-            <a href="/contact" onClick={(event) => event.preventDefault()}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -11596,7 +11649,7 @@ function FlexiPaySolutionPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Get a Demo
             </a>
-            <a href="/contact" onClick={(event) => event.preventDefault()}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -11879,7 +11932,7 @@ function AutoAssistSolutionPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Start Free Trial
             </a>
-            <a href="/contact" onClick={(event) => event.preventDefault()}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -12138,7 +12191,7 @@ function BizFlowSolutionPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Start Free Trial
             </a>
-            <a href="/contact" onClick={(event) => event.preventDefault()}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -12398,7 +12451,7 @@ function ChargeOneSolutionPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Start Free Trial
             </a>
-            <a href="/contact" onClick={(event) => event.preventDefault()}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
@@ -12657,7 +12710,7 @@ function PolicyProSolutionPage() {
             <a href="/signup" onClick={(event) => { event.preventDefault(); navigateTo("/signup"); }}>
               Start Free Trial
             </a>
-            <a href="/contact" onClick={(event) => event.preventDefault()}>
+            <a href="/contact" onClick={(event) => { event.preventDefault(); navigateTo("/contact"); }}>
               Contact Sales
             </a>
           </div>
