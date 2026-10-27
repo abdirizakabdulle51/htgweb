@@ -16,6 +16,7 @@ import {
   LoaderCircle,
   Lock,
   Mail,
+  MapPin,
   Maximize2,
   Menu,
   MousePointerClick,
@@ -1115,6 +1116,7 @@ function ContactPage() {
         <div className="contact-channel"><span className="contact-icon"><Mail size={22} /></span><div><h3>Talk to sales</h3><p>Explore pricing, plan a migration, or discuss your infrastructure needs.</p><a href="#contact-enquiry" onClick={() => document.getElementById("contact-name")?.focus()}>Tell us about your project →</a></div></div>
         <div className="contact-channel"><span className="contact-icon"><Headphones size={22} /></span><div><h3>Need technical support?</h3><p>Already using HTG Clouds? Get help with your account or services.</p><a href="mailto:support@htgclouds.com">support@htgclouds.com</a></div></div>
         <div className="contact-channel"><span className="contact-icon"><Globe2 size={22} /></span><div><h3>Connect with us</h3><p><a href="tel:+252770612727">+252 770 612 727</a></p><a href="https://www.facebook.com/HTGclouds" target="_blank" rel="noopener noreferrer">HTG Clouds on Facebook ↗</a></div></div>
+        <div className="contact-channel"><span className="contact-icon"><MapPin size={22} /></span><div><h3>Our address</h3><address className="contact-address">Airport Road, next to Ali Jimale Mosque<br />Wadajir District<br />Mogadishu, Somalia</address></div></div>
       </div>
       <form id="contact-enquiry" className="contact-form" onSubmit={submit}>
         <h2>Tell us about your project</h2><p>Share a few details to help us understand your needs.</p>
@@ -1131,7 +1133,6 @@ function ContactPage() {
         <div aria-live="polite">{status === "sent" && <p className="contact-success" role="status">Thank you. Your enquiry has been sent to our team. We’ll reply to the email address you provided.</p>}</div>
       </form>
     </section>
-    <section className="contact-offices" aria-label="Our offices"><div><span className="contact-eyebrow">Kenya office</span><h2>Nairobi</h2><p>4th Floor, 401, Crawford Business Park<br />State House Road, Nairobi, Kenya</p></div><div><span className="contact-eyebrow">Somalia office</span><h2>Mogadishu</h2><p>Airport Road, next to Ali Jimale Mosque<br />Wadajir District<br />Mogadishu, Somalia</p></div></section>
     <Footer />
   </main>;
 }
