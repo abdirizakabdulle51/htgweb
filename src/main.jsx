@@ -365,7 +365,7 @@ const footerColumns = [
 const footerLinkTargets = {
   Contact: "/contact",
   About: "/about",
-  Documentation: "https://docs-htgcloud-region-02.htgclouds.com/en-us/index.html",
+  Documentation: "https://docs.htgclouds.com/mohelpcenter/operation/en-us/index.html",
   "Privacy Policy": "/legal/privacy-policy",
   "Online Subscription and Ordering Terms": "/legal/online-subscription-and-ordering-terms",
   "View All Legal Documents": "/legal"
